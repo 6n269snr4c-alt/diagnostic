@@ -1442,7 +1442,7 @@ ${lc.length?`Dados com baixa confiabilidade: ${lc.map(d=>d.ind.name).join(', ')}
 Responda: diagnóstico (2 frases), ação prioritária #1, ação prioritária #2.`;
   try{
     const r=await fetch("/api/diagnose",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
-    const data=await r.json();const txt=(data.text|||[]).map(c=>c.text||'').join('').trim();
+    const data=await r.json();const txt=(data.text||'').trim();
     if(!txt)throw new Error();
     const lines=txt.split('\n').filter(l=>l.trim());
     const diag=lines[0]||'';const acts=lines.filter(l=>/^[12][\.\)]\s/.test(l.trim())).slice(0,2);
@@ -1937,7 +1937,7 @@ async function fetchBench(){
   const p=`Para o setor "${S.sector}", retorne benchmarks. Apenas JSON: ${JSON.stringify(Object.fromEntries(IND.map(i=>[i.id,i.goalDef])))}`;
   try{
     const r=await fetch("/api/diagnose",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
-    const data=await r.json();const txt=(data.text||a.content||[]).map(c=>c.text||'').join('').replace(/```[a-z]*|```/g,'').trim();
+    const data=await r.json();const txt=(data.text||'').replace(/```[a-z]*/g,'').replace(/```/g,'').trim();
     const bench=JSON.parse(txt);
     IND.forEach(ind=>{if(bench[ind.id]!=null)S.cfg[ind.id].benchGoal=bench[ind.id];});
     sv();toast('✓ Benchmarks carregados!');

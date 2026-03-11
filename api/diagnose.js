@@ -5,21 +5,20 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'API key não configurada no Vercel' });
+    return res.status(500).json({ error: 'API key não configurada' });
   }
 
   try {
     const { prompt, system, history } = req.body;
     if (!prompt) return res.status(400).json({ error: 'Prompt ausente' });
 
-    let messages = [];
-    if (history && Array.isArray(history)) {
-      messages = [...history];
-    }
-    messages.push({ role: 'user', content: prompt });
+    const messages = [
+      ...(history || []),
+      { role: 'user', content: prompt }
+    ];
 
     const body = {
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 600,
       messages
     };
@@ -39,9 +38,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(response.status).json({ 
-        error: data.error?.message || 'Erro na API Anthropic' 
-      });
+      return res.status(response.status).json({ error: data.error?.message || 'Erro na API' });
     }
 
     const text = (data.content || []).map(c => c.text || '').join('').trim();

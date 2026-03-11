@@ -1153,7 +1153,7 @@ Críticos: ${worst.map(d=>d.ind.name+' '+Math.round(d.pct)+'%').join(', ')}
 Destaques: ${best.map(d=>d.ind.name+' '+Math.round(d.pct)+'%').join(', ')}
 Formato: diagnóstico (2 frases), 1. ação, 2. ação`;
   try{
-    const r=await fetch("/api/diagnostic",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
+    const r=await fetch("/api/diagnose",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
     const data=await r.json();const txt=(data.text||'').trim();
     if(!txt)throw new Error();
     const lines=txt.split('\n').filter(l=>l.trim());const diag=lines[0]||'';

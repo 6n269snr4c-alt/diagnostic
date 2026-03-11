@@ -1221,8 +1221,8 @@ function _renderDiag(el, txt, worst, best){
     if(['DIAGNÓSTICO','ALERTAS PRIORITÁRIOS','AÇÕES IMEDIATAS'].includes(s)){
       const content=(sections[i+1]||'').trim();
       if(s==='DIAGNÓSTICO'){
-        html+=`<div style="font-size:13px;color:#dce8ff;margin-bottom:10px;line-height:1.6">${content.replace(/
-/g,'<br>')}</div>`;
+        html+=`<div style="font-size:13px;color:#dce8ff;margin-bottom:10px;line-height:1.6">${content.replace(/\n/g,"<br>")}</div>`;
+
       } else if(s==='ALERTAS PRIORITÁRIOS'){
         html+=`<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--amber);font-weight:700;margin:10px 0 6px">⚠ Alertas</div>`;
         content.split('

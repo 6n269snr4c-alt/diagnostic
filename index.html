@@ -89,25 +89,32 @@ nav{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
 .ip{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;text-align:right}
 .ad{width:8px;height:8px;border-radius:50%}.ad.h{background:var(--green)}.ad.a{background:var(--amber)}.ad.r{background:var(--red)}
 .diag-sec{padding:10px 0;flex:1;overflow-y:auto}
+.diag-box{background:linear-gradient(135deg,rgba(255,255,255,.03) 0%,rgba(0,232,155,.04) 100%);border:1px solid rgba(0,232,155,.12);border-radius:12px;padding:14px 16px;margin-bottom:8px}
+.diag-score-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,232,155,.1);border:1px solid rgba(0,232,155,.2);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--teal);text-transform:uppercase;margin-bottom:10px}
+.diag-narrative{font-size:12.5px;color:#c8dff0;line-height:1.7;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06)}
+.diag-section-title{font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:6px;margin-top:10px}
 .diag-box p{font-size:13px;color:#9ab8d8;line-height:1.65;margin-bottom:6px}
-.dact{font-size:12px;background:rgba(0,240,200,.07);border-left:2px solid var(--teal);padding:5px 10px;border-radius:0 5px 5px 0;margin-bottom:4px}
-.dchips{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
-.dchip{font-size:10px;padding:2px 7px;border-radius:10px;border:1px solid}
+.dact{font-size:11.5px;background:rgba(0,240,200,.06);border-left:2px solid var(--teal);padding:6px 10px;border-radius:0 6px 6px 0;margin-bottom:5px;color:#a8d8c8;line-height:1.5}
+.dact strong{color:var(--teal);font-weight:700}
+.dalert{font-size:11.5px;background:rgba(255,160,0,.05);border-left:2px solid var(--amber);padding:6px 10px;border-radius:0 6px 6px 0;margin-bottom:5px;color:#d4a84b;line-height:1.5}
+.dchips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.dchip{font-size:10px;padding:3px 8px;border-radius:10px;border:1px solid;font-weight:600}
 .dcr{color:var(--red);border-color:rgba(255,61,90,.3);background:rgba(255,61,90,.08)}
 .dcg{color:var(--green);border-color:rgba(0,232,155,.3);background:rgba(0,232,155,.08)}
+.dca{color:var(--amber);border-color:rgba(255,160,0,.3);background:rgba(255,160,0,.06)}
 .dload{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mut)}
 .spin{width:13px;height:13px;border:2px solid var(--dim);border-top-color:var(--teal);border-radius:50%;animation:sp .6s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .empty{display:flex;flex-direction:column;align-items:center;padding:20px;color:var(--mut);gap:6px;font-size:12px}
 .eico{font-size:26px}
-.chat-inp{display:flex;gap:6px;padding:7px 16px;border-top:1px solid var(--bdr);flex-shrink:0}
-input.ci{flex:1;background:var(--glass);border:1px solid var(--bdr);border-radius:8px;color:var(--text);padding:6px 10px;font-size:11px;outline:none;font-family:'Outfit',sans-serif}
+.chat-inp{display:flex;gap:6px;padding:10px 16px;border-top:1px solid var(--bdr);flex-shrink:0}
+input.ci{flex:1;background:var(--glass);border:1px solid var(--bdr);border-radius:8px;color:var(--text);padding:8px 12px;font-size:13px;outline:none;font-family:'Outfit',sans-serif}
 input.ci:focus{border-color:var(--teal)}
 button.cs{background:var(--teal);color:#07101c;border:none;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-weight:700}
-#chatOut{font-size:10px;padding:5px 16px;overflow-y:auto;max-height:70px}
-.dash-diag{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#chatOut{font-size:12px;padding:8px 16px;overflow-y:auto;flex:1;min-height:0;line-height:1.6}
+.dash-diag{display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:400px}
 .diag-top{flex-shrink:0;padding:12px 14px 8px;border-bottom:1px solid var(--bdr)}
-.diag-scroll{flex:1;overflow-y:auto;padding:10px 14px}
+.diag-scroll{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
 .kpi-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:center;justify-content:center}
 .kpi-modal-bg.open{display:flex}
 .kpi-modal{background:#0d1e32;border:1px solid var(--bdr);border-radius:16px;padding:24px;max-width:400px;width:90%}
@@ -186,9 +193,9 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
 .dir-btn{padding:3px 8px;border-radius:5px;border:1px solid var(--bdr);background:transparent;color:var(--mut);font-size:10px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s}
 .dir-btn.active{background:var(--teal);border-color:var(--teal);color:#07101c;font-weight:700}
 /* SIMULATOR */
-.sim-layout{flex:1;display:flex;flex-direction:row;min-height:0;overflow:hidden}
-.sim-left{flex:0 0 50%;border-right:1px solid var(--bdr);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 24px;gap:16px;overflow:hidden;box-sizing:border-box}
-.sim-right{flex:1;overflow-y:auto;padding:16px 20px}
+.sim-layout{width:100%;height:100%;display:flex;flex-direction:row;overflow:hidden}
+.sim-left{width:50%;flex-shrink:0;border-right:1px solid var(--bdr);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 24px;gap:16px;overflow:hidden;box-sizing:border-box}
+.sim-right{flex:1;min-width:0;overflow-y:auto;padding:16px 20px}
 .ssb{display:flex;align-items:center;gap:6px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;padding:5px 12px;background:var(--glass);border:1px solid var(--bdr);border-radius:9px;flex-wrap:wrap}
 #simWheelBox{position:relative;flex-shrink:0}
 .sim-wc{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
@@ -515,7 +522,7 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
     </div>
   </div>
 </div>
-<div class="page" id="page-sim">
+<div class="page" id="page-sim" style="overflow:hidden">
   <div class="ph" style="flex-shrink:0">
     <div><div class="pt">Simulador de Cenários</div><div class="ps">Ajuste os campos brutos — os KPIs recalculam em tempo real</div></div>
     <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -919,12 +926,12 @@ function sizeSimWheel(){
   const box=document.getElementById('simWheelBox');if(!box)return;
   const left=document.querySelector('.sim-left');
   if(!left)return;
-  const W=left.offsetWidth||left.clientWidth||300;
-  const H=left.offsetHeight||left.clientHeight||500;
-  const avail=Math.min(W-48, H-100);
-  const sz=Math.max(220,Math.min(avail,520));
+  const W=left.offsetWidth>150?left.offsetWidth:Math.floor(window.innerWidth*0.48);
+  const H=left.offsetHeight>150?left.offsetHeight:window.innerHeight-120;
+  const avail=Math.min(W-40,H-90);
+  const sz=Math.max(240,Math.min(avail,500));
   const svg=document.getElementById('simHw');
-  svg.setAttribute('width',sz);svg.setAttribute('height',sz);svg.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
+  svg.setAttribute('width',sz);svg.setAttribute('height',sz);svg.setAttribute('viewBox','0 0 '+sz+' '+sz);
   box.style.width=sz+'px';box.style.height=sz+'px';
   rWheel(window._simDets||null,sz,'simHw');
 }
@@ -1143,38 +1150,128 @@ function closeKpi(){document.getElementById('kpiModal').classList.remove('open')
 // ═══════════════════════════════════════════
 async function rDiag(res){
   const el=document.getElementById('diagC');
-  el.innerHTML='<div class="dload"><div class="spin"></div><span>Analisando...</span></div>';
-  const sorted=[...res.details].sort((a,b)=>a.adjPct-b.adjPct);
-  const worst=sorted.slice(0,3),best=sorted.slice(-2),lc=res.details.filter(d=>d.conf!=='high');
-  const cf=calcConf(res.details);const[y,mo]=S.sel.split('-');
-  const prompt=`CFO experiente. Diagnóstico executivo ${MES[parseInt(mo)-1]}/${y}. Máximo 100 palavras. Direto.
-Empresa: ${S.company}${S.sector?' · '+S.sector:''} | Saúde: ${res.score}% | Conf: ${cf?cf.p+'%':'N/A'}
-Críticos: ${worst.map(d=>d.ind.name+' '+Math.round(d.pct)+'%').join(', ')}
-Destaques: ${best.map(d=>d.ind.name+' '+Math.round(d.pct)+'%').join(', ')}
-Formato: diagnóstico (2 frases), 1. ação, 2. ação`;
-  try{
-    const r=await fetch("/api/diagnose",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})})
-    const data=await r.json();const txt=(data.text||'').trim();
-    if(!txt)throw new Error();
-    const lines=txt.split('\n').filter(l=>l.trim());const diag=lines[0]||'';
-    const acts=lines.filter(l=>/^[12][\.\)]\s/.test(l.trim())).slice(0,2);
-    el.innerHTML=`<div class="diag-box"><p>${diag}</p>${acts.map(a=>`<div class="dact">${a}</div>`).join('')}</div><div class="dchips">${worst.slice(0,2).map(d=>`<span class="dchip dcr">↓${d.ind.short}</span>`).join('')}${best.slice(-1).map(d=>`<span class="dchip dcg">✓${d.ind.short}</span>`).join('')}</div>`;
-    _chatCtx=res;
-  }catch(e){el.innerHTML=`<div class="diag-box"><p style="color:var(--amber)">Configure a API key para diagnósticos com IA.</p>${worst[0]?`<div class="dact">⚠️ Foco: ${worst[0].ind.name} em ${Math.round(worst[0].pct)}% da meta</div>`:''}</div>`;}
+  if(!el)return;
+  const sorted=[...res.details].sort((a,b)=>a.pct-b.pct);
+  const worst=sorted.filter(d=>d.pct<80).slice(0,3);
+  const best=sorted.filter(d=>d.pct>=80).slice(-3);
+  const all=sorted;
+  const cf=calcConf(res.details);
+  const[y,mo]=S.sel.split('-');
+  const mesLabel=MES[parseInt(mo)-1]+'/'+y;
+  const cacheKey=S.sel+'-'+res.score;
+
+  // Cache — não chama API se já tem diagnóstico para este período+score
+  if(!window._diagCache)window._diagCache={};
+  if(S.diagCache)Object.assign(window._diagCache,S.diagCache);
+  if(window._diagCache[cacheKey]){
+    _renderDiag(el,window._diagCache[cacheKey],res,worst,best,mesLabel);
+    _chatCtx=res;return;
+  }
+
+  el.innerHTML='<div class="dload"><div class="spin"></div><span>Gerando diagnóstico executivo...</span></div>';
+
+  const kpiAll=all.map(d=>d.ind.name+': '+Math.round(d.pct)+'% da meta ('+fmtKpiVal(d.ind.id,d.value)+')').join('\n');
+  const scoreLabel=res.score>=80?'SAUDÁVEL':res.score>=60?'ATENÇÃO':res.score>=40?'CRÍTICO':'GRAVE';
+
+  const prompt='Você é um CFO sênior com 20 anos de experiência consultando PMEs brasileiras.\n\n'+
+    'EMPRESA: '+S.company+(S.sector?' | Setor: '+S.sector:'')+'\n'+
+    'PERÍODO: '+mesLabel+' | SCORE: '+res.score+'/100 ('+scoreLabel+')\n'+
+    'CONFIABILIDADE: '+(cf?cf.p+'%':'Alta')+'\n\n'+
+    'KPIs DO PERÍODO:\n'+kpiAll+'\n\n'+
+    (worst.length?'PONTOS CRÍTICOS: '+worst.map(d=>d.ind.name+' em '+Math.round(d.pct)+'% da meta').join(', ')+'\n':'')+
+    (best.length?'PONTOS FORTES: '+best.map(d=>d.ind.name+' em '+Math.round(d.pct)+'% da meta').join(', ')+'\n':'')+
+    '\nGere um diagnóstico executivo COMPLETO com exatamente este formato:\n\n'+
+    'SITUAÇÃO\n'+
+    '[2-3 frases diretas descrevendo a realidade do negócio com dados específicos. '+
+    (res.score>=80?'Empresa saudável — destaque os pontos fortes e os riscos de complacência.':
+     res.score>=60?'Empresa em atenção — identifique o que está puxando o score para baixo.':
+     'Empresa em situação crítica — seja direto sobre a gravidade e urgência.')+
+    ' Use linguagem executiva, sem clichês.]\n\n'+
+    'ALERTAS\n'+
+    '• [KPI mais preocupante e por que representa risco real ao negócio]\n'+
+    '• [2º ponto de atenção com consequência prática]\n\n'+
+    'AÇÕES\n'+
+    '1. [Ação específica, executável, com prazo — ex: "Revisar política de crédito em 30 dias para reduzir CAC"]\n'+
+    '2. [Ação específica, executável, com prazo]\n'+
+    '3. [Ação estratégica de médio prazo]\n\n'+
+    'Máximo 220 palavras. Seja direto, use os números reais, evite generalidades.';
+
+  (async()=>{
+    try{
+      const r=await fetch('/api/diagnose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+      const data=await r.json();
+      const txt=(data.text||'').trim();
+      if(!txt)throw new Error('empty');
+      window._diagCache[cacheKey]=txt;
+      if(!S.diagCache)S.diagCache={};
+      S.diagCache[cacheKey]=txt;
+      sv();
+      _renderDiag(el,txt,res,worst,best,mesLabel);
+      _chatCtx=res;
+    }catch(e){
+      el.innerHTML='<div class="diag-box"><p class="diag-narrative" style="color:var(--amber)">⚠ Não foi possível gerar o diagnóstico. Verifique a API key.</p>'+
+        (worst[0]?'<div class="dalert">Foco imediato: '+worst[0].ind.name+' está em '+Math.round(worst[0].pct)+'% da meta</div>':'')+
+        '</div>';
+    }
+  })();
+}
+
+function _renderDiag(el,txt,res,worst,best,mesLabel){
+  const g=grade(res.score);
+  var situacao='', alertas=[], acoes=[];
+  var lines=txt.split('\n');
+  var section='';
+  lines.forEach(function(line){
+    var t=line.trim();
+    if(!t)return;
+    if(t==='SITUAÇÃO'||t==='SITUACAO')section='sit';
+    else if(t==='ALERTAS')section='alrt';
+    else if(t==='AÇÕES'||t==='ACOES')section='ac';
+    else if(section==='sit')situacao+=(situacao?' ':'')+t;
+    else if(section==='alrt'&&t.startsWith('•'))alertas.push(t.replace(/^•\s*/,''));
+    else if(section==='ac'&&/^\d\./.test(t))acoes.push(t.replace(/^\d\.\s*/,''));
+  });
+  if(!situacao)situacao=txt.split('\n').filter(function(l){return l.trim()&&!['SITUAÇÃO','ALERTAS','AÇÕES','SITUACAO','ACOES'].includes(l.trim());})[0]||txt;
+
+  var html='<div class="diag-box">';
+  html+='<div class="diag-score-badge"><span>'+mesLabel+'</span><span style="color:'+g.c+'">'+res.score+' pts · '+g.l+'</span></div>';
+  html+='<div class="diag-narrative">'+situacao+'</div>';
+  if(alertas.length){
+    html+='<div class="diag-section-title" style="color:var(--amber)">⚠ Alertas</div>';
+    alertas.forEach(function(a){html+='<div class="dalert">'+a+'</div>';});
+  }
+  if(acoes.length){
+    html+='<div class="diag-section-title" style="color:var(--teal)">→ Ações Prioritárias</div>';
+    acoes.forEach(function(a){html+='<div class="dact"><strong>›</strong> '+a+'</div>';});
+  }
+  var chips='';
+  worst.slice(0,2).forEach(function(d){chips+='<span class="dchip dcr">↓ '+d.ind.short+' '+Math.round(d.pct)+'%</span>';});
+  best.slice(-2).forEach(function(d){chips+='<span class="dchip dcg">✓ '+d.ind.short+' '+Math.round(d.pct)+'%</span>';});
+  if(chips)html+='<div class="dchips">'+chips+'</div>';
+  html+='</div>';
+  el.innerHTML=html;
 }
 let _chatCtx=null,_chatHist=[];
 async function sendChat(){
   const inp=document.getElementById('chatInp');const msg=inp.value.trim();if(!msg)return;
   inp.value='';_chatHist.push({role:'user',content:msg});
-  const[y,mo]=(S.sel||'-').split('-');
-  const sys=`Consultor de gestão de ${S.company}. Saúde: ${_chatCtx?.score||'?'}%. Mês: ${MES[parseInt(mo)-1]||''}/${y}. Máximo 70 palavras.`;
+  const[y,mo]=(S.sel||'2000-01').split('-');
+  const sorted=_chatCtx?[..._chatCtx.details].sort((a,b)=>a.pct-b.pct):[];
+  const kpiSummary=sorted.map(d=>d.ind.name+': '+Math.round(d.pct)+'% da meta').join(' | ');
+  const sys='Você é um consultor financeiro sênior especialista em gestão de PMEs brasileiras. '+
+    'Está assessorando '+S.company+(S.sector?' ('+S.sector+')':'')+'. '+
+    'Período: '+(MES[parseInt(mo)-1]||'')+'/'+y+'. '+
+    'Score de saúde: '+(_chatCtx?_chatCtx.score:'?')+'/100. '+
+    'KPIs: '+(kpiSummary||'não disponível')+'. '+
+    'Responda de forma direta, use os dados reais do negócio, seja específico e prático. '+
+    'Máximo 150 palavras. Use parágrafos curtos, não listas extensas.';
   const el=document.getElementById('chatOut');
-  el.innerHTML+='<div style="color:var(--teal);font-size:10px;margin-top:4px">→ '+msg+'</div>';
+  el.innerHTML+='<div style="color:var(--teal);font-size:12px;margin-top:10px;padding:7px 10px;background:rgba(0,232,155,.06);border-radius:8px;border-left:2px solid var(--teal)">'+msg+'</div>';
   try{
     const r=await fetch("/api/diagnose",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:msg,system:sys,history:_chatHist.slice(-6)})})
     const data=await r.json();const reply=(data.text||'').trim();
     _chatHist.push({role:'assistant',content:reply});
-    el.innerHTML+='<div style="font-size:10px;color:#9ab8d8;margin-top:3px;line-height:1.5">'+reply+'</div>';
+    el.innerHTML+='<div style="font-size:12px;color:#9ab8d8;margin-top:6px;line-height:1.7;padding:8px 10px;background:rgba(255,255,255,.03);border-radius:8px">'+reply.split('\n').join('<br>')+'</div>';el.scrollTop=el.scrollHeight;
     el.scrollTop=el.scrollHeight;
   }catch(e){el.innerHTML+='<div style="font-size:10px;color:var(--red)">Erro na API</div>';}
 }

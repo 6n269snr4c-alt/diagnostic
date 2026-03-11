@@ -1212,40 +1212,39 @@ Máximo 220 palavras. Linguagem direta, executiva, sem rodeios.`;
 }
 
 function _renderDiag(el, txt, worst, best){
-  // Parse das seções do diagnóstico
-  const sections=txt.split(/\*\*([^*]+)\*\*/g).filter(s=>s.trim());
-  let html='<div class="diag-box" style="font-size:12px;line-height:1.7">';
-  let i=0;
-  while(i<sections.length){
-    const s=sections[i].trim();
-    if(['DIAGNÓSTICO','ALERTAS PRIORITÁRIOS','AÇÕES IMEDIATAS'].includes(s)){
-      const content=(sections[i+1]||'').trim();
-      if(s==='DIAGNÓSTICO'){
-        html+=`<div style="font-size:13px;color:#dce8ff;margin-bottom:10px;line-height:1.6">${content.replace(/\n/g,"<br>")}</div>`;
-
-      } else if(s==='ALERTAS PRIORITÁRIOS'){
-        html+=`<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--amber);font-weight:700;margin:10px 0 6px">⚠ Alertas</div>`;
-        content.split('
-').filter(l=>l.trim()).forEach(l=>{
-          html+=`<div style="font-size:11px;color:#f4a522;margin-bottom:4px;padding-left:8px;border-left:2px solid #f4a52244">${l.replace(/^⚠\s*/,'')}</div>`;
-        });
-      } else if(s==='AÇÕES IMEDIATAS'){
-        html+=`<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);font-weight:700;margin:10px 0 6px">→ Ações</div>`;
-        content.split('
-').filter(l=>l.trim()).forEach(l=>{
-          html+=`<div class="dact">${l.replace(/^\d+\.\s*/,'')}</div>`;
-        });
-      }
-      i+=2;
-    } else { i++; }
+  var html = '<div class="diag-box" style="font-size:12px;line-height:1.7">';
+  var diagMatch = txt.match(/\*\*DIAGN[^*]+\*\*\s*([\s\S]*?)(?=\*\*|$)/);
+  var alertMatch = txt.match(/\*\*ALERTAS[^*]+\*\*\s*([\s\S]*?)(?=\*\*|$)/);
+  var acaoMatch  = txt.match(/\*\*A[CÇ][^*]+\*\*\s*([\s\S]*?)(?=\*\*|$)/);
+  if(diagMatch){
+    var diagTxt = diagMatch[1].trim().replace(/\n/g,'<br>');
+    html += '<div style="font-size:13px;color:#dce8ff;margin-bottom:10px;line-height:1.6">' + diagTxt + '</div>';
   }
-  // Fallback se o formato não vier estruturado
-  if(html==='<div class="diag-box" style="font-size:12px;line-height:1.7">'){
-    html+=`<div style="font-size:12px;color:#dce8ff;line-height:1.7">${txt.replace(/
-/g,'<br>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')}</div>`;
+  if(alertMatch){
+    html += '<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--amber);font-weight:700;margin:10px 0 6px">Alertas</div>';
+    var alertLines = alertMatch[1].trim().split('\n').filter(function(l){return l.trim();});
+    alertLines.forEach(function(l){
+      var clean = l.replace(/^[⚠\s]+/,'').trim();
+      html += '<div style="font-size:11px;color:#f4a522;margin-bottom:4px;padding-left:8px;border-left:2px solid #f4a52244">' + clean + '</div>';
+    });
   }
-  html+=`</div><div class="dchips" style="margin-top:8px">${worst.slice(0,2).map(d=>`<span class="dchip dcr">↓ ${d.ind.short} ${Math.round(d.pct)}%</span>`).join('')}${best.slice(-1).map(d=>`<span class="dchip dcg">✓ ${d.ind.short} ${Math.round(d.pct)}%</span>`).join('')}</div>`;
-  el.innerHTML=html;
+  if(acaoMatch){
+    html += '<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);font-weight:700;margin:10px 0 6px">Acoes</div>';
+    var acaoLines = acaoMatch[1].trim().split('\n').filter(function(l){return l.trim();});
+    acaoLines.forEach(function(l){
+      var clean = l.replace(/^\d+[\.\)]\s*/,'').trim();
+      html += '<div class="dact">' + clean + '</div>';
+    });
+  }
+  if(!diagMatch && !alertMatch && !acaoMatch){
+    var fallback = txt.replace(/\n/g,'<br>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    html += '<div style="font-size:12px;color:#dce8ff;line-height:1.7">' + fallback + '</div>';
+  }
+  var chips = '';
+  worst.slice(0,2).forEach(function(d){ chips += '<span class="dchip dcr">down ' + d.ind.short + ' ' + Math.round(d.pct) + '%</span>'; });
+  best.slice(-1).forEach(function(d){ chips += '<span class="dchip dcg">ok ' + d.ind.short + ' ' + Math.round(d.pct) + '%</span>'; });
+  html += '</div><div class="dchips" style="margin-top:8px">' + chips + '</div>';
+  el.innerHTML = html;
 }
 
 async function sendChat(){

@@ -423,6 +423,12 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
           </div>
         </div>
       </div>
+      <!-- Lucro Líquido — destaque ao lado do wheel -->
+      <div id="lucroCard" style="display:none;margin-top:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 18px;text-align:center">
+        <div style="font-size:9px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:6px">💰 LUCRO LÍQUIDO</div>
+        <div id="lucroVal" style="font-size:32px;font-weight:800;line-height:1"></div>
+        <div id="lucroLbl" style="font-size:11px;font-weight:600;margin-top:4px"></div>
+      </div>
       <div class="sp-wrap">
         <div class="tStats" id="tStats"></div>
         <div class="sp-right">
@@ -687,6 +693,9 @@ const IND = [
   {id:'turnover', name:'Turnover Voluntário %',       short:'Turnover',  group:'operac', icon:'👥', unit:'%',  goalDef:2,      hb:false,
    formula:'(Saídas Voluntárias / Total Colaboradores) × 100',
    desc:'Percentual de funcionários que pediram demissão. Alto turnover destrói cultura e eleva custos.'},
+  {id:'lucroliq', name:'Lucro Líquido %',              short:'Lucro Líq.', group:'rentab', icon:'💰', unit:'%',  goalDef:10,     hb:true,
+   formula:'(EBITDA R$ − Despesas Financeiras e Impostos) / Receita × 100',
+   desc:'O que sobrou de verdade após todas as despesas, juros e impostos. O KPI mais importante da empresa.'},
 ];
 const GC={tracao:'#3b82f6',rentab:'#10d4a8',caixa:'#a855f7',operac:'#f59e0b'};
 const GN={tracao:'Tração e Mercado',rentab:'Rentabilidade',caixa:'Caixa & Liquidez',operac:'Operação & Capacidade'};
@@ -709,6 +718,7 @@ const FIELDS=[
   {id:'f_colab', label:'Total de Colaboradores',       unit:'',  hint:'Headcount total ativo no período',           group:'operac'},
   {id:'f_saiv',  label:'Saídas Voluntárias',           unit:'',  hint:'Demissões a pedido do colaborador',          group:'operac'},
   {id:'f_estq',  label:'Estoque Total (R$)',           unit:'R$',hint:'Valor do estoque no período',                group:'operac'},
+  {id:'f_depfin',label:'Despesas Financeiras e Impostos s/ Lucro',unit:'R$',hint:'Juros, IOF, empréstimos e IR/CSLL do período',group:'rentab'},
 ];
 const FG={tracao:{label:'Vendas e Clientes',color:'var(--g-tracao)',bg:'rgba(59,130,246,.12)',icon:'📈'},
           rentab:{label:'DRE e Eficiência', color:'var(--g-rentab)',bg:'rgba(16,212,168,.10)',icon:'💰'},
@@ -732,6 +742,8 @@ function calcKPIs(r){
   const cv=v('f_cv'),df=v('f_df'),ent=v('f_ent'),sai=v('f_said'),sal=v('f_saldo');
   const pmr=v('f_pmr'),pmp=v('f_pmp'),col=v('f_colab'),sv=v('f_saiv'),est=v('f_estq');
   const mc=(fat!==null&&cv!==null)?fat-cv:null;
+  const ebitda_r=mc!==null&&df!==null?mc-df:null;
+  const depfin=v('f_depfin');
   return{
     receita:fat,
     cac:pct(dc,fat),
@@ -745,6 +757,7 @@ function calcKPIs(r){
     reccolab:sd(fat,col),
     estoque:est!==null&&cv!==null&&cv>0?(est/cv)*30:null,
     turnover:pct(sv,col),
+    lucroliq:ebitda_r!==null&&depfin!==null&&fat?((ebitda_r-depfin)/fat)*100:null,
   };
 }
 
@@ -1282,6 +1295,26 @@ function rDash(){
   const nl=document.getElementById('navLogo');if(S.logo){nl.src=S.logo;nl.style.display='block';}else nl.style.display='none';
   rPills();rTrend();
   const res=S.sel?calcScore(S.sel):null;
+  // Lucro Líquido card
+  (function(){
+    var lc=document.getElementById('lucroCard');
+    var lv=document.getElementById('lucroVal');
+    var ll=document.getElementById('lucroLbl');
+    if(!lc||!lv||!ll)return;
+    var raw=S.sel&&S.raw&&S.raw[S.sel]?S.raw[S.sel]:null;
+    if(!raw){lc.style.display='none';return;}
+    var kpis=calcKPIs(raw);
+    var ll_val=kpis.lucroliq;
+    if(ll_val===null){lc.style.display='none';return;}
+    lc.style.display='block';
+    var col=ll_val>=10?'#10b981':ll_val>=0?'#f59e0b':'#ef4444';
+    var lbl=ll_val>=10?'Saudável':ll_val>=0?'Atenção':'Negativo';
+    lc.style.borderColor=col+'40';
+    lv.style.color=col;
+    lv.textContent=(ll_val>=0?'+':'')+ll_val.toFixed(1)+'%';
+    ll.style.color=col;
+    ll.textContent=lbl;
+  })();
   window._lastDets=res?res.details:null;
   sizeWheel();
   // Check for forecast-only month

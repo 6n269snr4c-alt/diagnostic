@@ -25,7 +25,7 @@ nav{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
 .cobadge{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
 .codot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2.5s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.page{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column}.page.active{display:flex}.act-row{border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}.act-row:hover{background:rgba(255,255,255,.03)}
+.page{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column}.page.active{display:flex}.act-row{border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}.act-row:hover{background:rgba(255,255,255,.03)}.act-row-overdue{border-left:2px solid #ef4444}input[type="date"].m-ai,input[type="date"].kact-inp{color-scheme:dark;color:var(--text);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:3px 6px;font-size:11px;font-family:Outfit,sans-serif;outline:none}
 .scrollpage{display:none;flex:1;min-height:0;overflow-y:auto;flex-direction:column}.scrollpage.active{display:flex}
 .ph{flex-shrink:0;padding:16px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .pt{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--teal)}
@@ -804,6 +804,7 @@ async function loadUserData(uid){
       if(d.forecast)S.forecast=d.forecast;
       if(d.meetActions)S.meetActions=d.meetActions;
       if(d.actions)S.actions=d.actions;
+      if(d.diagCache)S.diagCache=d.diagCache;
       if(d.sel)S.sel=d.sel;
     }
   }catch(e){console.warn('Load error:',e);}
@@ -953,7 +954,9 @@ function rActions(){
   var tbody=document.createElement('tbody');
   filtered.forEach(function(a){
     var sc=statusCfg[a.status]||statusCfg.open;
-    var tr=document.createElement('tr');tr.className='act-row';
+    var tr=document.createElement('tr');
+    var _prazoOverdue=a.prazo&&a.status==='open'&&new Date(a.prazo+'T00:00:00')<(function(){var d=new Date();d.setHours(0,0,0,0);return d;})();
+    tr.className='act-row'+(_prazoOverdue?' act-row-overdue':'');
 
     // Mês
     var tdMes=document.createElement('td');
@@ -976,8 +979,30 @@ function rActions(){
     tdResp.textContent=a.resp||'—';tr.appendChild(tdResp);
 
     // Prazo
-    var tdPrazo=document.createElement('td');tdPrazo.style.cssText='padding:12px;color:var(--mut);white-space:nowrap';
-    tdPrazo.textContent=a.prazo||'—';tr.appendChild(tdPrazo);
+    var tdPrazo=document.createElement('td');tdPrazo.style.cssText='padding:12px;white-space:nowrap';
+    if(a.prazo){
+      var prazoDate=new Date(a.prazo+'T00:00:00');
+      var today=new Date();today.setHours(0,0,0,0);
+      var isOverdue=a.status==='open'&&prazoDate<today;
+      var prazoSpan=document.createElement('span');
+      prazoSpan.style.cssText=isOverdue
+        ?'color:#ef4444;font-weight:700;font-size:12px'
+        :'color:var(--mut);font-size:12px';
+      // Format as dd/mm/yyyy
+      var parts=a.prazo.split('-');
+      prazoSpan.textContent=parts[2]+'/'+parts[1]+'/'+parts[0];
+      tdPrazo.appendChild(prazoSpan);
+      if(isOverdue){
+        var badge=document.createElement('span');
+        badge.style.cssText='margin-left:6px;font-size:9px;font-weight:700;color:#ef4444;background:rgba(239,68,68,.12);padding:1px 6px;border-radius:20px;letter-spacing:.5px';
+        badge.textContent='ATRASADO';
+        tdPrazo.appendChild(badge);
+      }
+    } else {
+      var dash=document.createElement('span');dash.style.color='rgba(255,255,255,.2)';dash.textContent='—';
+      tdPrazo.appendChild(dash);
+    }
+    tr.appendChild(tdPrazo);
 
     // Status select
     var tdSt=document.createElement('td');tdSt.style.padding='12px';
@@ -1345,12 +1370,25 @@ function closeKpi(){document.getElementById('kpiModal').classList.remove('open')
 // ═══════════════════════════════════════════
 async function rDiag(res){
   const el=document.getElementById('diagC');
-  el.innerHTML='<div class="dload"><div class="spin"></div><span>Analisando...</span></div>';
   const sorted=[...res.details].sort(function(a,b){return a.adjPct-b.adjPct;});
   const worst=sorted.slice(0,3),best=sorted.slice(-2);
   const cf=calcConf(res.details);
   const[y,mo]=S.sel.split('-');
   const kpiAll=res.details.map(function(d){return d.ind.name+': '+Math.round(d.adjPct)+'% da meta';}).join(' | ');
+  // ── Cache check ──────────────────────────────────────────────────
+  const cacheKey=S.sel+'|'+res.score+'|'+kpiAll;
+  if(!S.diagCache)S.diagCache={};
+  const cached=S.diagCache[S.sel];
+  if(cached&&cached.key===cacheKey){
+    el.innerHTML=cached.html;
+    _chatCtx=res;
+    var _oa=(S.actions||[]).filter(function(a){return a.status==='open';}).length;
+    var _aw=document.getElementById('actWidget'),_awc=document.getElementById('actWidgetCount');
+    if(_aw&&_awc){_aw.style.display=_oa>0?'flex':'none';_awc.textContent=_oa+(_oa===1?' ação':' ações')+' em aberto';}
+    return; // ← sem chamada à API
+  }
+  // ── Cache miss: mostra loader e chama API ────────────────────────
+  el.innerHTML='<div class="dload"><div class="spin"></div><span>Analisando...</span></div>';
   const scoreLabel=res.score>=90?'SAUDÁVEL':res.score>=70?'ATENÇÃO':res.score>=50?'CRÍTICO':'GRAVE';
   const prompt='Você é um CFO experiente analisando '+S.company+(S.sector?' ('+S.sector+')':'')+'. '
     +'Mês: '+MES[parseInt(mo)-1]+'/'+y+'. Score: '+res.score+'% ('+scoreLabel+'). '
@@ -1369,6 +1407,8 @@ async function rDiag(res){
     const txt=data.text||'';
     if(!txt)throw new Error('Resposta vazia');
     _renderDiag(el,txt,res,worst,best,MES[parseInt(mo)-1]+'/'+y);
+    if(!S.diagCache)S.diagCache={};
+    S.diagCache[S.sel]={key:cacheKey,html:el.innerHTML};
     _chatCtx=res;
     var _oa=(S.actions||[]).filter(function(a){return a.status==='open';}).length;
     var _aw=document.getElementById('actWidget'),_awc=document.getElementById('actWidgetCount');
@@ -1702,7 +1742,9 @@ function saveData(){
   IND.forEach(ind=>{const v=kpis[ind.id];if(v!==null){
     const deps=KF[ind.id]||[];const mr=deps.length?Math.min(...deps.map(f=>cr[raw['_c_'+f]||'high'])):2;
     S.data[mk][ind.id]={value:parseFloat(v.toFixed(4)),confidence:rc(mr)};}});
-  S.sel=mk;sv();toast(`✓ ${filled} KPIs salvos!`);
+  S.sel=mk;
+  if(S.diagCache)delete S.diagCache[mk]; // invalida cache do diagnóstico
+  sv();toast(`✓ ${filled} KPIs salvos!`);
   setTimeout(()=>go('dashboard',document.querySelector('[data-page=dashboard]')),900);
 }
 function saveForecast(){
@@ -2121,14 +2163,14 @@ function actTableHTML(mk,type){
   const dfl=type==='fechamento'?[{text:'',resp:'',prazo:''},{text:'',resp:'',prazo:''}]:[{text:'',resp:'',prazo:''}];
   const acts=saved.length?saved:dfl;
   let html=`<table class="m-act-tbl"><thead><tr><th style="width:42%">Ação</th><th style="width:25%">Responsável</th><th style="width:20%">Prazo</th><th></th></tr></thead><tbody id="actBody_${type}">`;
-  acts.forEach(a=>{html+=`<tr class="act-row" data-type="${type}"><td><input class="m-ai act-text" value="${a.text||''}" placeholder="Descreva a ação..."></td><td><input class="m-ai act-resp" value="${a.resp||''}" placeholder="Nome..."></td><td><input class="m-ai act-prazo" value="${a.prazo||''}" placeholder="dd/mm/aa"></td><td><button class="m-del" onclick="this.closest('tr').remove()">✕</button></td></tr>`;});
+  acts.forEach(a=>{html+=`<tr class="act-row" data-type="${type}"><td><input class="m-ai act-text" value="${a.text||''}" placeholder="Descreva a ação..."></td><td><input class="m-ai act-resp" value="${a.resp||''}" placeholder="Nome..."></td><td><input type="date" class="m-ai act-prazo" value="${a.prazo||''}"></td><td><button class="m-del" onclick="this.closest('tr').remove()">✕</button></td></tr>`;});
   html+=`</tbody></table><button class="m-add-row" onclick="addActRow('${type}')">+ Adicionar Ação</button>`;
   return html;
 }
 function addActRow(type){
   const tbody=document.getElementById('actBody_'+type);if(!tbody)return;
   const tr=document.createElement('tr');tr.className='act-row';tr.setAttribute('data-type',type);
-  tr.innerHTML=`<td><input class="m-ai act-text" placeholder="Descreva a ação..."></td><td><input class="m-ai act-resp" placeholder="Nome..."></td><td><input class="m-ai act-prazo" placeholder="dd/mm/aa"></td><td><button class="m-del" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tr.innerHTML=`<td><input class="m-ai act-text" placeholder="Descreva a ação..."></td><td><input class="m-ai act-resp" placeholder="Nome..."></td><td><input type="date" class="m-ai act-prazo"></td><td><button class="m-del" onclick="this.closest('tr').remove()">✕</button></td>`;
   tbody.appendChild(tr);
 }
 
@@ -2206,7 +2248,7 @@ function buildSlide1(res){
     const actRow=showAct?`<div class="kcard-act">
         <input class="kact-inp act-text" data-kpi="${d.ind.id}" data-idx="${i}" placeholder="Ação..." value="${(sa.text||'').replace(/"/g,'&quot;')}">
         <input class="kact-inp act-resp" data-kpi="${d.ind.id}" data-idx="${i}" placeholder="Responsável" value="${(sa.resp||'').replace(/"/g,'&quot;')}">
-        <input class="kact-inp act-prazo" data-kpi="${d.ind.id}" data-idx="${i}" placeholder="Prazo" value="${(sa.prazo||'').replace(/"/g,'&quot;')}">
+        <input type="date" class="kact-inp act-prazo" data-kpi="${d.ind.id}" data-idx="${i}" value="${(sa.prazo||'').replace(/"/g,'&quot;')}">
         <button class="kcard-del" onclick="clearKpiAct(this)" title="Limpar">✕</button>
       </div>`:'';
     return`<div class="kcard ${cls}">

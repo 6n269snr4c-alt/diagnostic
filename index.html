@@ -406,7 +406,6 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 4px">
           <div class="dash-title">DIAGNÓSTICO ESTRATÉGICO</div>
           <div style="display:flex;gap:5px">
-            <button class="adm" onclick="openMod()">＋ Período</button>
             <button class="adm" style="border-color:rgba(168,85,247,.4);color:#a855f7" onclick="go('sim',document.querySelector('[data-page=sim]'))">🔮 Simular</button>
             <button class="adm" style="border-color:rgba(0,240,200,.4);color:var(--teal);font-weight:700" onclick="openMeeting()">▶ Reunião</button>
           </div>
@@ -480,12 +479,13 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
 <div class="page" id="page-input">
   <div class="inp-wrap">
     <div class="inp-topbar">
-      <span style="font-size:13px;font-weight:700" id="inpTitle">Lançamento Mensal</span>
-      <button class="mode-btn active" id="modeReal" onclick="setInputMode('real',this)">✅ Fechamento</button>
-      <button class="mode-btn" id="modeFcast" onclick="setInputMode('forecast',this)">🔮 Previsão</button>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:var(--mut)" id="inpSub">Dados financeiros do período</span>
-        <select id="inpMSel" class="csel" style="width:140px;font-size:12px;padding:6px 8px" onchange="_autoDetectMode(this.value);rInputFields()"></select>
+      <span style="font-size:13px;font-weight:700">Lançamento Mensal</span>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap">
+        <select id="inpSelMes" class="csel" style="font-size:12px;padding:5px 10px" onchange="(function(){var mk=document.getElementById('inpSelAno').value+'-'+document.getElementById('inpSelMes').value;S.sel=mk;_autoDetectMode(mk);rInputFields();})()"></select>
+        <select id="inpSelAno" class="csel" style="font-size:12px;padding:5px 10px;width:80px" onchange="(function(){var mk=document.getElementById('inpSelAno').value+'-'+document.getElementById('inpSelMes').value;S.sel=mk;_autoDetectMode(mk);rInputFields();})()"></select>
+        <button class="mode-btn active" id="modeReal" onclick="setInputMode('real',this)">✅ Fechamento</button>
+        <button class="mode-btn" id="modeFcast" onclick="setInputMode('forecast',this)">🔮 Previsão</button>
+        <span id="modeHint" style="font-size:11px;padding:3px 10px;border-radius:20px"></span>
       </div>
     </div>
     <div id="inpAssert"></div>
@@ -1199,7 +1199,7 @@ function sizeSimWheel(){
 // SPARKLINE
 // ═══════════════════════════════════════════
 function rTrend(){
-  const ms=S.months,scores=ms.map(m=>{const r=calcScore(m);return r?r.score:null;});
+  const ms=getKnownMonths(),scores=ms.map(m=>{const r=calcScore(m);return r?r.score:null;});
   const ts=document.getElementById('tStats');ts.innerHTML='';
   const hasD=scores.some(s=>s!==null);
   if(hasD){
@@ -1228,46 +1228,100 @@ function rTrend(){
 }
 function rSparkLbs(){
   const c=document.getElementById('spLbs');c.innerHTML='';
-  S.months.forEach(m=>{const[y,mo]=m.split('-');const d=document.createElement('div');d.className='spl';d.textContent=MES[parseInt(mo)-1]+'/'+y.slice(2);c.appendChild(d);});
+  getKnownMonths().forEach(m=>{const[y,mo]=m.split('-');const d=document.createElement('div');d.className='spl';d.textContent=MES[parseInt(mo)-1]+'/'+y.slice(2);c.appendChild(d);});
 }
 
 // ═══════════════════════════════════════════
 // MODAL + PILLS
 // ═══════════════════════════════════════════
+// Deriva lista de meses conhecidos a partir dos dados (substitui S.months como fonte da verdade)
+function getKnownMonths(){
+  var keys=new Set();
+  if(S.months&&S.months.length)S.months.forEach(function(m){keys.add(m);});
+  if(S.data)Object.keys(S.data).forEach(function(m){if(S.data[m]&&Object.keys(S.data[m]).length)keys.add(m);});
+  if(S.raw)Object.keys(S.raw).forEach(function(m){if(S.raw[m]&&Object.keys(S.raw[m]).length)keys.add(m);});
+  if(S.forecast)Object.keys(S.forecast).forEach(function(m){if(S.forecast[m]&&Object.keys(S.forecast[m]).length)keys.add(m);});
+  return Array.from(keys).sort();
+}
 function rPills(){
   const c=document.getElementById('mpills');c.innerHTML='';
-  if(!S.months.length){
-    c.innerHTML='<span style="font-size:11px;color:var(--mut);padding:4px 2px">Nenhum período. Clique em + Período.</span>';
-    return;
+  const known=getKnownMonths();
+  // Sync S.months
+  S.months=known;
+  if(!S.sel||!known.includes(S.sel)){
+    S.sel=known.length?known[known.length-1]:null;
   }
-  if(!S.sel||!S.months.includes(S.sel))S.sel=S.months[S.months.length-1];
-  S.months.forEach(m=>{
-    const[y,mo]=m.split('-');
-    const hasDados=S.data[m]&&Object.keys(S.data[m]).length>0;
-    const hasFcast=S.forecast&&S.forecast[m]&&Object.keys(S.forecast[m]).length>0;
-    const isActive=m===S.sel;
-    // status badge
-    let badge='',dotColor='var(--dim)';
-    if(hasDados){badge='<span class="mp-badge" style="background:rgba(0,232,155,.12);color:var(--green)">✓ Fechado</span>';dotColor='var(--green)';}
-    else if(hasFcast){badge='<span class="mp-badge" style="background:rgba(168,85,247,.12);color:#a855f7">~ Forecast</span>';dotColor='#a855f7';}
-    else{badge='<span class="mp-badge" style="background:rgba(255,255,255,.05);color:var(--mut)">Vazio</span>';dotColor='var(--dim)';}
-    const b=document.createElement('div');
-    b.className='mp'+(isActive?' active':'');
-    b.innerHTML=`<div class="mp-dot" style="background:${dotColor};box-shadow:${hasDados?'0 0 5px '+dotColor:'none'}"></div>
-      <div><div class="mp-label" style="color:${isActive?'var(--teal)':'var(--text)'}">${MES[parseInt(mo)-1]} ${y}</div>${badge}</div>
-      <button class="mp-del" title="Remover período" onclick="removePeriod('${m}',event)">✕</button>`;
-    b.onclick=(e)=>{if(e.target.classList.contains('mp-del'))return;S.sel=m;sv();rDash();};
-    c.appendChild(b);
+
+  // Build month selector
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+
+  // Month select
+  const selMes=document.createElement('select');
+  selMes.className='csel';
+  selMes.style.cssText='font-size:12px;padding:5px 10px';
+  MES.forEach(function(m,i){
+    const o=document.createElement('option');
+    o.value=String(i+1).padStart(2,'0');
+    o.textContent=m;
+    selMes.appendChild(o);
   });
+
+  // Year select
+  const selAno=document.createElement('select');
+  selAno.className='csel';
+  selAno.style.cssText='font-size:12px;padding:5px 10px;width:80px';
+  const curY=new Date().getFullYear();
+  for(var y=curY-3;y<=curY+1;y++){
+    const o=document.createElement('option');o.value=y;o.textContent=y;
+    selAno.appendChild(o);
+  }
+
+  // Set current values
+  if(S.sel){
+    const[sy,smo]=S.sel.split('-');
+    selMes.value=smo;selAno.value=sy;
+  } else {
+    selMes.value=String(new Date().getMonth()+1).padStart(2,'0');
+    selAno.value=curY;
+  }
+
+  function onSelChange(){
+    var mk=selAno.value+'-'+selMes.value;
+    S.sel=mk;
+    if(!S.months.includes(mk))S.months.push(mk);
+    S.months.sort();
+    sv();rDash();
+  }
+  selMes.addEventListener('change',onSelChange);
+  selAno.addEventListener('change',onSelChange);
+
+  // Status badge for current month
+  var statusBadge=document.createElement('span');
+  statusBadge.id='dashMonthBadge';
+  function updateBadge(mk){
+    const hasDados=S.data[mk]&&Object.keys(S.data[mk]).length>0;
+    const hasFcast=S.forecast&&S.forecast[mk]&&Object.keys(S.forecast[mk]).length>0;
+    if(hasDados){statusBadge.style.cssText='font-size:11px;font-weight:700;color:var(--green);background:rgba(0,232,155,.1);padding:3px 10px;border-radius:20px';statusBadge.textContent='✓ Fechado';}
+    else if(hasFcast){statusBadge.style.cssText='font-size:11px;font-weight:700;color:#a855f7;background:rgba(168,85,247,.1);padding:3px 10px;border-radius:20px';statusBadge.textContent='~ Forecast';}
+    else{statusBadge.style.cssText='font-size:11px;color:var(--mut);background:rgba(255,255,255,.05);padding:3px 10px;border-radius:20px';statusBadge.textContent='Sem dados';}
+  }
+  if(S.sel)updateBadge(S.sel);
+
+  wrap.appendChild(selMes);
+  wrap.appendChild(selAno);
+  wrap.appendChild(statusBadge);
+  c.appendChild(wrap);
 }
 function removePeriod(mk,e){
-  e.stopPropagation();
+  if(e)e.stopPropagation();
   const[y,mo]=mk.split('-');
-  if(!confirm(`Remover ${MES[parseInt(mo)-1]}/${y} e todos os dados deste período?`))return;
+  if(!confirm(`⚠️ Excluir ${MES[parseInt(mo)-1]}/${y}?\n\nIsso vai apagar permanentemente todos os dados deste mês. Esta ação não pode ser desfeita.`))return;
   S.months=S.months.filter(m=>m!==mk);
   delete S.data[mk];delete S.raw[mk];delete S.forecast[mk];
   if(S.meetActions)delete S.meetActions[mk];
-  if(S.sel===mk)S.sel=S.months[S.months.length-1]||null;
+  if(S.diagCache)delete S.diagCache[mk];
+  if(S.sel===mk){var km=getKnownMonths();S.sel=km.length?km[km.length-1]:null;}
   sv();rDash();
 }
 function openMod(){
@@ -1281,9 +1335,10 @@ function closeMod(){document.getElementById('modal').classList.remove('open');}
 function confirmMod(){
   const mes=document.getElementById('addMes').value,ano=document.getElementById('addAno').value;
   const key=`${ano}-${mes}`;
+  S.sel=key;
   if(!S.months.includes(key)){S.months.push(key);S.months.sort();}
-  S.sel=key;sv();closeMod();rDash();
-  setTimeout(()=>go('input',document.querySelector('[data-page=input]')),300);
+  sv();closeMod();
+  go('input',document.querySelector('[data-page=input]'));
 }
 
 // ═══════════════════════════════════════════
@@ -1599,27 +1654,36 @@ function setInputMode(mode,btn){
 }
 
 function rInput(){
-  const sel=document.getElementById('inpMSel');sel.innerHTML='';
-  const allMonths=[...S.months];
-  if(S.months.length){
-    const[ly,lm]=S.months[S.months.length-1].split('-').map(Number);
-    const nm=lm===12?(ly+1)+'-01':ly+'-'+String(lm+1).padStart(2,'0');
-    if(!allMonths.includes(nm))allMonths.push(nm);
+  // Populate month select
+  var selMes=document.getElementById('inpSelMes');
+  var selAno=document.getElementById('inpSelAno');
+  if(!selMes||!selAno){rInputFields();return;}
+
+  // Fill years if empty
+  if(!selAno.options.length){
+    var cy=new Date().getFullYear();
+    for(var y=cy-3;y<=cy+2;y++){
+      var o=document.createElement('option');o.value=y;o.textContent=y;
+      if(y===cy)o.selected=true;
+      selAno.appendChild(o);
+    }
   }
-  if(!allMonths.length){
-    const now=new Date();
-    const autoKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-    S.months.push(autoKey);S.months.sort();S.sel=autoKey;sv();allMonths.push(autoKey);
+  // Fill months if empty
+  if(!selMes.options.length){
+    MES.forEach(function(m,i){
+      var o=document.createElement('option');
+      o.value=String(i+1).padStart(2,'0');
+      o.textContent=m;
+      selMes.appendChild(o);
+    });
   }
-  allMonths.forEach(function(m){
-    const[y,mo]=m.split('-');
-    const o=document.createElement('option');o.value=m;
-    const isFcastOnly=!S.months.includes(m);
-    o.textContent=MES[parseInt(mo)-1]+' '+y+(isFcastOnly?' (próximo)':'');
-    if(m===S.sel||(!S.sel&&m===allMonths[0]))o.selected=true;
-    sel.appendChild(o);
-  });
-  _autoDetectMode(sel.value);
+
+  // Set current selection from S.sel or today
+  var curMk=S.sel||(new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'));
+  var parts=curMk.split('-');
+  selMes.value=parts[1];selAno.value=parts[0];
+
+  _autoDetectMode(selAno.value+'-'+selMes.value);
   rInputFields();
 }
 function _autoDetectMode(mk){
@@ -1650,7 +1714,7 @@ function _autoDetectMode(mk){
 }
 
 function rInputFields(){
-  const mk=document.getElementById('inpMSel').value;
+  const mk=(function(){var _m=document.getElementById('inpSelMes'),_y=document.getElementById('inpSelAno');return _y&&_m?_y.value+'-'+_m.value:S.sel||'';})();
   if(!mk){rKpiLive({});return;}
   showAssert(mk);
   if(_inputMode==='forecast'){rFcastFields(mk);return;}
@@ -1788,7 +1852,7 @@ function showAssert(mk){
 
 function saveData(){
   if(_inputMode==='forecast'){saveForecast();return;}
-  const mk=document.getElementById('inpMSel').value;if(!mk){toast('⚠️ Selecione um período');return;}
+  const mk=(function(){var _m=document.getElementById('inpSelMes'),_y=document.getElementById('inpSelAno');return _y&&_m?_y.value+'-'+_m.value:S.sel||'';})();if(!mk){toast('⚠️ Selecione um período');return;}
   const raw=getRaw();const kpis=calcKPIs(raw);
   const filled=Object.values(kpis).filter(v=>v!==null).length;
   if(!filled){toast('⚠️ Preencha pelo menos alguns campos');return;}
@@ -1957,7 +2021,7 @@ function initSim(){
   // Populate month selector with periods that have data
   const sel=document.getElementById('simMonthSel');
   if(sel){
-    const months=(S.months||[]).filter(m=>S.raw&&S.raw[m]&&Object.keys(S.raw[m]).length>0);
+    const months=getKnownMonths().filter(m=>S.raw&&S.raw[m]&&Object.keys(S.raw[m]).length>0);
     sel.innerHTML=months.length
       ?months.map(m=>{const[y,mo]=m.split('-');return`<option value="${m}"${m===S.sel?' selected':''}>${MES[parseInt(mo)-1]}/${y}</option>`;}).join('')
       :'<option value="">Nenhum período</option>';
@@ -2294,9 +2358,9 @@ function buildSlide1(res){
   const mesLabel=MES[parseInt(mo)-1]+' '+y;
 
   // Delta vs prev month
-  const idx=S.months.indexOf(S.sel);let deltaH='';
+  const idx=getKnownMonths().indexOf(S.sel);let deltaH='';
   if(idx>0){
-    const prev=calcScore(S.months[idx-1]);
+    const _km=getKnownMonths();const prev=calcScore(_km[idx-1]);
     if(prev){
       const d=res.score-prev.score;
       const dc=d>0?'#059669':d<0?'#ef4444':'#94a3b8';

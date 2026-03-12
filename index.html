@@ -2086,21 +2086,31 @@ function fillAllMonths(){
   });
   toast('✓ Meses preenchidos com o valor padrão');
 }
+// KPIs onde benchmark de mercado faz sentido (métricas relativas)
+const _BENCHABLE=new Set(['cac','churn','margem','ebitda','despop','ciclo','reccolab','estoque','turnover','lucroliq']);
 function rCfgKpiTable(){
   const t=document.getElementById('cfgGrid');t.innerHTML='';
   const dis=S.locked?'disabled':'';
-  let html=`<thead><tr><th>KPI</th><th>Grupo</th><th>Peso</th><th>Meta</th><th>Fonte</th><th>Direção</th></tr></thead><tbody>`;
+  let html=`<thead><tr><th>KPI</th><th>Grupo</th><th>Peso</th><th>Meta (quadro acima)</th><th>Benchmark</th><th>Direção</th></tr></thead><tbody>`;
   IND.forEach(ind=>{
     const cfg=S.cfg[ind.id]||{weight:1,hb:ind.hb,benchMode:'manual'};const col=GC[ind.group];
-    const isAI=cfg.benchMode==='ai'&&cfg.benchGoal!=null;
+    const canBench=_BENCHABLE.has(ind.id);
+    const isAI=canBench&&cfg.benchMode==='ai'&&cfg.benchGoal!=null;
+    // Meta column: when AI mode, show bench value read-only; otherwise empty (uses goals table above)
+    const metaCell=isAI
+      ?`<span style="font-size:11px;color:#c084fc;font-weight:700">${cfg.benchGoal} ${ind.unit} <span style="font-size:9px;opacity:.7">(IA)</span></span>`
+      :`<span style="font-size:11px;color:var(--mut)">do quadro acima</span>`;
+    const benchCell=canBench
+      ?`<div class="dir-sel" id="bm_${ind.id}">
+          <button class="dir-btn ${!isAI?'active':''}" onclick="setKpiBM('${ind.id}','manual')" ${dis}>🎯 Manual</button>
+          <button class="dir-btn ${isAI?'active':''}" style="${isAI?'color:#c084fc':''}" onclick="setKpiBM('${ind.id}','ai')" ${dis}>🏦 Mercado</button>
+        </div>`
+      :`<span style="font-size:10px;color:var(--mut)">só manual</span>`;
     html+=`<tr id="cfgrow_${ind.id}"><td style="font-size:12px">${ind.icon} ${ind.name}</td>
       <td style="font-size:11px;color:${col}">${GN[ind.group].split(' ')[0]}</td>
       <td><input type="number" min="0" max="5" step=".5" class="gi2" id="cw_${ind.id}" value="${cfg.weight}" ${dis}></td>
-      <td><input type="number" step="any" class="gi2" id="cb_${ind.id}" value="${cfg.benchGoal||''}" placeholder="${isAI?'(IA)':'meta'}" style="${isAI?'color:#c084fc;':''}opacity:${isAI?'.6':'1'}" ${isAI?'disabled':dis}></td>
-      <td><div class="dir-sel" id="bm_${ind.id}">
-        <button class="dir-btn ${!isAI?'active':''}" onclick="setKpiBM('${ind.id}','manual')" ${dis}>🎯 Manual</button>
-        <button class="dir-btn ${isAI?'active':''}" style="${isAI?'color:#c084fc':''};" onclick="setKpiBM('${ind.id}','ai')" ${dis}>🏦 Mercado</button>
-      </div></td>
+      <td>${metaCell}</td>
+      <td>${benchCell}</td>
       <td><div class="dir-sel" id="hb_${ind.id}">
         <button class="dir-btn ${cfg.hb?'active':''}" onclick="setHb('${ind.id}',true)" ${dis}>↑ Maior</button>
         <button class="dir-btn ${!cfg.hb?'active':''}" onclick="setHb('${ind.id}',false)" ${dis}>↓ Menor</button>
@@ -2112,6 +2122,7 @@ function setHb(id,val){if(S.locked)return;S.cfg[id].hb=val;
   const w=document.getElementById('hb_'+id);if(w)w.querySelectorAll('.dir-btn').forEach((b,i)=>b.classList.toggle('active',i===0?val:!val));}
 function setKpiBM(id,mode){
   if(S.locked)return;
+  if(!_BENCHABLE.has(id))return; // não permitir bench em KPIs absolutos
   if(!S.cfg[id])S.cfg[id]={weight:1,hb:IND.find(i=>i.id===id)?.hb??true};
   S.cfg[id].benchMode=mode;
   const w=document.getElementById('bm_'+id);
@@ -2122,7 +2133,7 @@ function setKpiBM(id,mode){
     if(!S.sector){toast('⚠️ Configure o setor primeiro');S.cfg[id].benchMode='manual';rCfgKpiTable();return;}
     const ind=IND.find(i=>i.id===id);
     if(inp){inp.disabled=true;inp.placeholder='buscando...';inp.style.color='#c084fc';}
-    const prompt='Setor "'+S.sector+'". Responda SOMENTE com um número (sem texto, sem JSON, sem unidade): qual o valor de referência de mercado para o KPI "'+ind.name+'" ('+ind.formula+') neste setor? Use a mesma unidade do KPI ('+ind.unit+').';
+    const prompt='Setor "'+S.sector+'". Responda SOMENTE com um número (sem texto, sem JSON, sem unidade): qual a MÉDIA MENSAL de mercado para o KPI "'+ind.name+'" ('+ind.formula+') em empresas deste setor? Unidade: '+ind.unit+'. Exemplo de resposta: 5.2';
     fetch('/api/diagnose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt})})
     .then(r=>r.json()).then(data=>{
       if(data.error)throw new Error(data.error);

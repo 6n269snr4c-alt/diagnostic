@@ -1721,6 +1721,36 @@ function _renderDiag(el,txt,res,worst,best,mesLabel){
   worst.slice(0,2).forEach(function(d){html+='<span class="dchip dcr">↓'+d.ind.short+'</span>';});
   best.slice(-1).forEach(function(d){html+='<span class="dchip dcg">✓'+d.ind.short+'</span>';});
   html+='</div>';
+
+  // ── Simulator CTA: suggest simulation for actionable worst KPIs ──
+  var _simSuggestions={
+    ciclo:  'Simule o impacto de reduzir seu Prazo de Recebimento ou ampliar o Prazo de Pagamento',
+    runway: 'Simule como reduzir saídas ou aumentar o saldo afeta sua sobrevida financeira',
+    margem: 'Simule a redução de Custos Variáveis e veja o impacto na Margem de Contribuição',
+    ebitda: 'Simule cortes em Despesas Fixas e veja como o EBITDA reage',
+    despop: 'Simule a redução de Despesas Fixas sobre a Receita',
+    cac:    'Simule a redução do gasto comercial e veja o efeito no CAC',
+    churn:  'Simule uma redução de cancelamentos e veja o impacto na Receita recorrente',
+    reccolab:'Simule aumento de receita ou ajuste de headcount e veja a produtividade por colaborador',
+    turnover:'Simule a redução de saídas voluntárias e o custo evitado',
+    estoque: 'Simule a redução do estoque e o impacto no ciclo operacional',
+    caixa:   'Simule o aumento de entradas ou corte de saídas para melhorar a geração de caixa',
+  };
+  var simKpi=null;
+  for(var _i=0;_i<worst.length;_i++){
+    if(_simSuggestions[worst[_i].ind.id]){simKpi=worst[_i];break;}
+  }
+  if(simKpi){
+    var ctaDiv=document.createElement('div');
+    ctaDiv.style.cssText='margin-top:10px;padding:10px 12px;background:rgba(0,232,155,.05);border:1px solid rgba(0,232,155,.15);border-radius:10px;display:flex;align-items:center;gap:10px;cursor:pointer';
+    ctaDiv.onclick=function(){go('sim',document.querySelector('[data-page=sim]'));};
+    ctaDiv.innerHTML='<span style="font-size:18px">🧪</span>'
+      +'<div><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:2px">Experimente no Simulador</div>'
+      +'<div style="font-size:11px;color:#7a9cc4;line-height:1.5">'+_simSuggestions[simKpi.ind.id]+'</div></div>'
+      +'<span style="margin-left:auto;font-size:14px;color:var(--green)">→</span>';
+    el.appendChild(ctaDiv);
+  }
+
   el.innerHTML=html;
 }
 

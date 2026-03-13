@@ -302,153 +302,316 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
 .mkf{color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:10px;margin-bottom:3px}
 .mkd{color:var(--mut);font-size:11px;line-height:1.5}
 .mpill{font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:8px;display:inline-block;margin-bottom:6px}
-/* MEETING — CORPORATE PRESENTATION MODE (LIGHT) */
-#meetingOverlay{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;
-  background:#f0f4f8;overflow:hidden}
-#meetingOverlay.open{display:flex;flex-direction:column}
+/* ═══════════════════════════════════════════
+   MEETING MODE — DARK PREMIUM PRESENTATION
+   ═══════════════════════════════════════════ */
+#meetingOverlay{
+  position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;
+  background:#050e1c;overflow:hidden;font-family:'Outfit',sans-serif;
+}
+#meetingOverlay.open{display:flex}
 
-/* HEADER */
-.mhdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
-  padding:12px 36px;border-bottom:2px solid #e2e8f0;background:#fff;
-  box-shadow:0 2px 12px rgba(0,0,0,.06)}
-.mhdr-l{display:flex;align-items:center;gap:14px}
-.mhdr-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:4px;color:#94a3b8}
-.mhdr-co{font-size:15px;font-weight:700;color:#1e293b;letter-spacing:.3px}
-.mhdr-period{font-size:13px;color:#64748b;margin-left:2px}
-.mhdr-r{display:flex;align-items:center;gap:10px}
-.mdots{display:flex;gap:7px;align-items:center}
-.mdot{width:32px;height:4px;border-radius:2px;background:#e2e8f0;cursor:pointer;transition:all .3s}
-.mdot.on{background:#0ea5e9;box-shadow:0 0 8px rgba(14,165,233,.4)}
-.mclose{background:#fff;border:1px solid #e2e8f0;border-radius:8px;
-  color:#64748b;padding:6px 16px;font-size:12px;cursor:pointer;
-  font-family:'Outfit',sans-serif;transition:all .2s}
-.mclose:hover{border-color:#fca5a5;color:#ef4444}
-.pdf-btn{background:#0ea5e9;border:none;color:#fff;
-  padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;
-  cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;
-  box-shadow:0 2px 8px rgba(14,165,233,.3)}
-.pdf-btn:hover{background:#0284c7}
+/* Slide transition */
+.mslide{
+  position:absolute;inset:0;
+  opacity:0;pointer-events:none;
+  transition:opacity .4s ease, transform .4s ease;
+  transform:translateX(20px);
+  display:flex;flex-direction:column;
+}
+.mslide.on{
+  opacity:1;pointer-events:all;
+  transform:translateX(0);
+  position:relative;flex:1;min-height:0;
+}
 
-/* SLIDES */
-.mslide{display:none}
-.mslide.on{display:block;flex:1;min-height:0;position:relative}
+/* ── HEADER ── */
+.mhdr{
+  flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:10px 28px;
+  background:rgba(5,14,28,.95);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  backdrop-filter:blur(20px);
+}
+.mhdr-l{display:flex;align-items:center;gap:16px}
+.mhdr-logo{height:28px;max-width:80px;object-fit:contain;display:none}
+.mhdr-title{
+  font-family:'Bebas Neue',sans-serif;font-size:11px;
+  letter-spacing:4px;color:rgba(255,255,255,.25);
+}
+.mhdr-co{font-size:14px;font-weight:700;color:#e8f0ff;letter-spacing:.3px}
+.mhdr-sep{width:1px;height:18px;background:rgba(255,255,255,.1)}
+.mhdr-period{
+  font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+  color:var(--teal);padding:3px 10px;border:1px solid rgba(0,240,200,.25);
+  border-radius:20px;background:rgba(0,240,200,.06);
+}
+.mhdr-r{display:flex;align-items:center;gap:8px}
+.mdots{display:flex;gap:6px;align-items:center}
+.mdot{
+  width:24px;height:3px;border-radius:2px;
+  background:rgba(255,255,255,.12);cursor:pointer;transition:all .3s;
+}
+.mdot.on{background:var(--teal);box-shadow:0 0 8px rgba(0,240,200,.5);width:32px}
+.mhdr-btn{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:7px;color:rgba(255,255,255,.5);font-size:11px;
+  padding:5px 14px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;
+}
+.mhdr-btn:hover{border-color:rgba(255,255,255,.25);color:#e8f0ff}
+.mhdr-save{
+  background:rgba(0,232,155,.12);border:1px solid rgba(0,232,155,.3);color:var(--green);
+}
+.mhdr-save:hover{background:rgba(0,232,155,.2)}
+.mhdr-pdf{
+  background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.3);color:#38bdf8;
+}
+.mhdr-pdf:hover{background:rgba(14,165,233,.2)}
+.mclose:hover{border-color:rgba(255,61,90,.4)!important;color:#ff5050!important}
 
-/* NAV */
-.mnav{position:absolute;bottom:0;left:0;right:0;padding:14px 40px;
-  background:linear-gradient(transparent,rgba(240,244,248,.98));
-  display:flex;justify-content:space-between;align-items:center;z-index:10;pointer-events:none}
-.marrow{pointer-events:all;background:#fff;border:1px solid #e2e8f0;
-  border-radius:10px;color:#475569;font-size:13px;padding:8px 28px;
-  cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;
-  font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.marrow:hover:not(:disabled){border-color:#0ea5e9;color:#0ea5e9;background:#f0f9ff}
-.marrow:disabled{opacity:.25;cursor:default}
-#mPageLbl{font-size:11px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase}
+/* ── NAV ARROWS ── */
+.mnav{
+  position:fixed;bottom:0;left:0;right:0;padding:16px 40px;
+  display:flex;justify-content:space-between;align-items:center;
+  z-index:10;pointer-events:none;
+  background:linear-gradient(transparent,rgba(5,14,28,.9));
+}
+.marrow{
+  pointer-events:all;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;color:rgba(255,255,255,.6);font-size:12px;
+  padding:8px 24px;cursor:pointer;font-family:'Outfit',sans-serif;
+  transition:all .2s;font-weight:600;letter-spacing:.5px;
+}
+.marrow:hover:not(:disabled){
+  border-color:var(--teal);color:var(--teal);
+  background:rgba(0,240,200,.06);
+}
+.marrow:disabled{opacity:.15;cursor:default}
+#mPageLbl{
+  font-size:10px;color:rgba(255,255,255,.25);
+  letter-spacing:3px;text-transform:uppercase;
+}
 
-/* ── SLIDE 1: FECHAMENTO ── */
-.s1-wrap{display:grid;grid-template-columns:260px 1fr;gap:0;flex:1;min-height:0;overflow:hidden}
+/* ── SLIDE 0: CAPA ── */
+.s0-wrap{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.s0-bg{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 40%, rgba(0,232,155,.08) 0%, transparent 70%),
+             radial-gradient(ellipse 50% 40% at 80% 80%, rgba(0,184,212,.05) 0%, transparent 60%);
+}
+.s0-content{
+  position:relative;text-align:center;z-index:1;
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+}
+.s0-tag{
+  font-size:10px;letter-spacing:5px;text-transform:uppercase;
+  color:var(--teal);font-weight:700;
+  padding:4px 16px;border:1px solid rgba(0,240,200,.3);border-radius:20px;
+  background:rgba(0,240,200,.06);
+}
+.s0-company{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(42px,6vw,80px);
+  letter-spacing:4px;color:#e8f0ff;line-height:1;
+}
+.s0-period{
+  font-size:clamp(14px,2vw,20px);color:rgba(255,255,255,.4);
+  font-weight:500;letter-spacing:2px;
+}
+.s0-score-wrap{
+  display:flex;align-items:center;gap:24px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;padding:20px 36px;margin-top:8px;
+}
+.s0-score-num{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(72px,10vw,120px);line-height:.85;
+}
+.s0-score-right{text-align:left}
+.s0-score-lbl{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px}
+.s0-score-grade{font-size:clamp(16px,2.5vw,24px);font-weight:700}
+.s0-score-sector{font-size:11px;color:rgba(255,255,255,.3);margin-top:4px}
 
-/* Coluna A: Score + grupos */
-.s1-col-a{padding:28px 24px 80px;border-right:2px solid #e2e8f0;
-  display:flex;flex-direction:column;gap:18px;background:#fff;overflow-y:auto}
-.s1-score-block{text-align:center;padding:24px 16px;
-  background:linear-gradient(135deg,#f8fafc,#f1f5f9);
-  border-radius:18px;border:1px solid #e2e8f0}
-.s1-period{font-size:10px;letter-spacing:3px;text-transform:uppercase;
-  color:#94a3b8;margin-bottom:6px;font-weight:700}
-.s1-score-num{font-family:'Bebas Neue',sans-serif;font-size:110px;line-height:.85}
-.s1-score-grade{font-size:13px;font-weight:700;padding:5px 18px;
-  border-radius:20px;display:inline-block;margin-top:8px;letter-spacing:.5px}
-.s1-delta{font-size:13px;font-weight:600;margin-top:8px}
-.s1-groups{display:flex;flex-direction:column;gap:11px}
-.s1-grp{display:flex;flex-direction:column;gap:5px}
+/* ── SLIDE 1: KPIs ── */
+.s1-wrap{
+  flex:1;display:grid;
+  grid-template-columns:220px 1fr;
+  min-height:0;overflow:hidden;
+}
+.s1-col-a{
+  padding:20px 18px 72px;border-right:1px solid rgba(255,255,255,.07);
+  display:flex;flex-direction:column;gap:14px;overflow:hidden;
+}
+.s1-score-block{
+  text-align:center;padding:18px 12px;
+  background:rgba(255,255,255,.03);
+  border-radius:14px;border:1px solid rgba(255,255,255,.07);
+  flex-shrink:0;
+}
+.s1-period{
+  font-size:9px;letter-spacing:3px;text-transform:uppercase;
+  color:rgba(255,255,255,.3);margin-bottom:6px;font-weight:700;
+}
+.s1-score-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(64px,8vw,90px);line-height:.85}
+.s1-score-grade{
+  font-size:12px;font-weight:700;padding:4px 14px;
+  border-radius:14px;display:inline-block;margin-top:8px;letter-spacing:.5px;
+}
+.s1-delta{font-size:12px;font-weight:600;margin-top:6px;opacity:.8}
+.s1-groups{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;justify-content:space-evenly}
+.s1-grp{display:flex;flex-direction:column;gap:4px}
 .s1-grp-header{display:flex;justify-content:space-between;align-items:baseline}
-.s1-grp-name{font-size:11px;font-weight:700;letter-spacing:1px;
-  text-transform:uppercase;color:#475569}
-.s1-grp-val{font-family:'Bebas Neue',sans-serif;font-size:22px}
-.s1-grp-bar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden}
-.s1-grp-fill{height:100%;border-radius:3px;transition:width .6s ease}
-.s1-assert{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;
-  padding:12px 14px;display:flex;align-items:center;gap:12px}
-.s1-assert-num{font-family:'Bebas Neue',sans-serif;font-size:46px;line-height:1}
-.s1-assert-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;
-  color:#94a3b8;margin-bottom:3px;font-weight:700}
-.s1-assert-txt{font-size:12px;font-weight:700}
+.s1-grp-name{
+  font-size:9px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:rgba(255,255,255,.35);
+}
+.s1-grp-val{font-family:'Bebas Neue',sans-serif;font-size:18px}
+.s1-grp-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.s1-grp-fill{height:100%;border-radius:2px;transition:width .8s ease}
+.s1-assert{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;padding:10px 12px;
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.s1-assert-num{font-family:'Bebas Neue',sans-serif;font-size:36px;line-height:1}
+.s1-assert-lbl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:2px;font-weight:700}
+.s1-assert-txt{font-size:11px;font-weight:700}
+.s1-col-b{
+  padding:16px 20px 72px;overflow:hidden;
+  display:flex;flex-direction:column;gap:10px;
+}
+.s1-col-title{
+  font-size:9px;letter-spacing:3px;text-transform:uppercase;
+  color:rgba(255,255,255,.25);font-weight:700;flex-shrink:0;
+}
+.s1-kpi-grid{
+  flex:1;display:grid;min-height:0;
+  gap:8px;
+  /* rows auto-calculated in JS based on KPI count */
+}
 
-/* Coluna B: KPI cards */
-.s1-col-b{padding:28px 24px 80px;overflow-y:auto;background:#f0f4f8}
-.s1-col-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;
-  color:#94a3b8;font-weight:700;margin-bottom:14px}
-.s1-kpi-grid{display:flex;flex-direction:column;gap:10px}
-
-/* KPI cards — light */
-.kcard{border-radius:14px;overflow:hidden;background:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,.06);transition:box-shadow .2s}
-.kcard:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
-.kcard.kred{border-left:5px solid #ef4444;background:#fff5f5}
-.kcard.kamber{border-left:5px solid #f59e0b;background:#fffbf0}
-.kcard.kok{border-left:5px solid #10b981;background:#f0fdf8}
-.kcard-main{display:grid;grid-template-columns:48px 1fr auto;gap:12px;
-  align-items:center;padding:14px 16px}
-.kcard-icon{font-size:26px;text-align:center}
-.kcard-name{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:2px}
-.kcard-sub{font-size:11px;color:#64748b}
-.kcard-bar{height:4px;background:#e2e8f0;border-radius:2px;margin-top:6px;overflow:hidden}
+/* KPI cards — dark */
+.kcard{
+  border-radius:10px;overflow:hidden;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.07);
+  display:flex;flex-direction:column;
+  transition:border-color .2s;
+  min-height:0;
+}
+.kcard.kred{border-left:3px solid #ef4444;background:rgba(239,68,68,.04)}
+.kcard.kamber{border-left:3px solid #f59e0b;background:rgba(245,158,11,.04)}
+.kcard.kok{border-left:3px solid #10b981;background:rgba(16,185,129,.04)}
+.kcard-main{
+  display:grid;grid-template-columns:32px 1fr auto;gap:8px;
+  align-items:center;padding:8px 10px;flex:1;min-height:0;
+}
+.kcard-icon{font-size:18px;text-align:center;line-height:1}
+.kcard-name{font-size:11px;font-weight:700;color:#c8dff5;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kcard-sub{font-size:9px;color:rgba(255,255,255,.3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kcard-bar{height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin-top:3px}
 .kcard-bar-fill{height:100%;border-radius:2px}
-.kcard-right{text-align:right;min-width:70px}
-.kcard-pct{font-family:'Bebas Neue',sans-serif;font-size:38px;line-height:1}
-.kcard-goal{font-size:10px;color:#94a3b8;margin-top:2px}
-/* Action row inside card */
-.kcard-act{display:grid;grid-template-columns:1fr 130px 95px 28px;gap:6px;
-  padding:10px 16px 12px;border-top:1px solid #e2e8f0;background:#f8fafc}
-.kact-inp{background:#fff;border:1px solid #e2e8f0;border-radius:7px;
-  padding:6px 10px;color:#334155;font-size:12px;width:100%;outline:none;
-  font-family:'Outfit',sans-serif;transition:border-color .2s}
-.kact-inp:focus{border-color:#0ea5e9;box-shadow:0 0 0 2px rgba(14,165,233,.1)}
-.kact-inp::placeholder{color:#94a3b8}
-.kcard-del{background:none;border:none;color:#cbd5e1;font-size:14px;
-  cursor:pointer;padding:2px 4px;align-self:center}
+.kcard-right{text-align:right;min-width:44px;flex-shrink:0}
+.kcard-pct{font-family:'Bebas Neue',sans-serif;font-size:clamp(20px,2.5vw,28px);line-height:1}
+.kcard-goal{font-size:8px;color:rgba(255,255,255,.25);margin-top:1px}
+
+/* Action row inside card — compact */
+.kcard-act{
+  display:grid;grid-template-columns:1fr 90px 76px 20px;gap:4px;
+  padding:5px 10px 7px;border-top:1px solid rgba(255,255,255,.06);
+  background:rgba(0,0,0,.15);flex-shrink:0;
+}
+.kact-inp{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:5px;padding:3px 7px;color:#c8dff5;font-size:10px;
+  font-family:'Outfit',sans-serif;outline:none;width:100%;
+  transition:border-color .2s;
+}
+.kact-inp:focus{border-color:rgba(0,240,200,.4)}
+.kact-inp::placeholder{color:rgba(255,255,255,.2)}
+.kcard-del{
+  background:none;border:none;color:rgba(255,255,255,.2);
+  font-size:11px;cursor:pointer;padding:0 2px;align-self:center;
+}
 .kcard-del:hover{color:#ef4444}
 
 /* ── SLIDE 2: FORECAST ── */
-.s2-wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;min-height:0}
-.s2-col{padding:28px 28px 80px;overflow-y:auto}
-.s2-col:first-child{border-right:2px solid #e2e8f0;background:#fff}
-.s2-col:last-child{background:#f0f4f8}
-.s2-section-title{font-size:10px;letter-spacing:3px;text-transform:uppercase;
-  color:#94a3b8;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:10px}
-.s2-section-title span{display:inline-block;height:1px;flex:1;background:#e2e8f0}
+.s2-wrap{
+  flex:1;display:grid;grid-template-columns:1fr 1fr;
+  min-height:0;overflow:hidden;
+}
+.s2-col{padding:20px 24px 72px;overflow:hidden;display:flex;flex-direction:column;gap:12px}
+.s2-col:first-child{border-right:1px solid rgba(255,255,255,.07)}
+.s2-col-title{
+  font-size:9px;letter-spacing:3px;text-transform:uppercase;
+  color:rgba(255,255,255,.25);font-weight:700;flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+}
+.s2-col-title span{display:inline-block;height:1px;flex:1;background:rgba(255,255,255,.07)}
 
-/* Score projeção */
-.s2-score-block{display:flex;align-items:center;gap:20px;background:#fff;
-  border:1px solid #e2e8f0;border-radius:18px;padding:20px 24px;
-  margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.s2-score-num{font-family:'Bebas Neue',sans-serif;font-size:96px;line-height:.85}
-.s2-score-period{font-size:10px;letter-spacing:2px;text-transform:uppercase;
-  color:#94a3b8;margin-bottom:6px;font-weight:700}
-.s2-score-grade{font-size:13px;font-weight:700;padding:4px 14px;border-radius:14px;display:inline-block}
-.s2-score-delta{font-size:16px;font-weight:700;margin-top:8px}
-
-/* Forecast table */
-.s2-fcast-row{display:grid;grid-template-columns:1fr auto auto auto;gap:14px;
-  align-items:center;padding:11px 0;border-bottom:1px solid #f1f5f9}
+/* Forecast table — no scroll */
+.s2-fcast-table{flex:1;display:flex;flex-direction:column;gap:0;min-height:0;justify-content:space-evenly}
+.s2-fcast-row{
+  display:grid;grid-template-columns:1fr 80px 80px 44px;gap:8px;
+  align-items:center;padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
 .s2-fcast-row:last-child{border-bottom:none}
-.s2-fcast-label{font-size:13px;color:#475569;font-weight:500}
-.s2-fcast-val{font-family:'JetBrains Mono',monospace;font-size:13px;
-  font-weight:700;color:#6366f1;text-align:right}
-.s2-fcast-real{font-family:'JetBrains Mono',monospace;font-size:12px;
-  color:#059669;text-align:right}
-.s2-fcast-acc{font-family:'Bebas Neue',sans-serif;font-size:18px;
-  text-align:right;min-width:46px}
+.s2-fcast-label{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s2-fcast-val{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#818cf8;text-align:right}
+.s2-fcast-real{font-family:'JetBrains Mono',monospace;font-size:11px;color:#34d399;font-weight:600;text-align:right}
+.s2-fcast-acc{font-family:'Bebas Neue',sans-serif;font-size:16px;text-align:right;min-width:36px}
 
-/* Action inputs (shared) */
-.m-ai-sm{background:#fff;border:1px solid #e2e8f0;border-radius:6px;
-  padding:5px 9px;color:#334155;font-size:11px;width:100%;outline:none;
-  font-family:'Outfit',sans-serif}
-.m-ai-sm:focus{border-color:#0ea5e9}
-.m-ai-sm::placeholder{color:#cbd5e1}
-.m-del{background:none;border:none;color:#cbd5e1;font-size:13px;cursor:pointer;padding:2px 4px}
+/* Next month score block */
+.s2-score-block{
+  display:flex;align-items:center;gap:16px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;padding:16px 20px;flex-shrink:0;
+}
+.s2-score-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,7vw,80px);line-height:.85}
+.s2-score-period{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:4px;font-weight:700}
+.s2-score-grade{font-size:13px;font-weight:700;padding:3px 12px;border-radius:12px;display:inline-block}
+.s2-score-delta{font-size:14px;font-weight:700;margin-top:6px}
+
+/* Next KPI list — compact */
+.s2-kpi-list{flex:1;display:flex;flex-direction:column;gap:0;min-height:0;justify-content:space-evenly}
+.s2-kpi-row{
+  display:flex;align-items:center;gap:10px;padding:5px 0;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.s2-kpi-row:last-child{border-bottom:none}
+.s2-kpi-label{font-size:11px;color:rgba(255,255,255,.6);flex:1;font-weight:500}
+.s2-kpi-val{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#34d399}
+
+/* Action table inside slides */
+.m-act-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.m-act-tbl th{
+  font-size:8px;letter-spacing:1.5px;text-transform:uppercase;
+  color:rgba(255,255,255,.25);padding:4px 8px;text-align:left;
+  border-bottom:1px solid rgba(255,255,255,.07);font-weight:700;
+}
+.m-act-tbl td{padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.04)}
+.m-ai{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:5px;padding:3px 7px;color:#c8dff5;font-size:10px;
+  font-family:'Outfit',sans-serif;outline:none;width:100%;
+}
+.m-ai::placeholder{color:rgba(255,255,255,.2)}
+.m-ai:focus{border-color:rgba(0,240,200,.35);outline:none}
+.m-add-row{
+  background:none;border:1px dashed rgba(255,255,255,.12);
+  border-radius:6px;color:rgba(255,255,255,.3);font-size:10px;
+  padding:4px 12px;cursor:pointer;margin-top:6px;font-family:'Outfit',sans-serif;
+  transition:all .2s;
+}
+.m-add-row:hover{border-color:rgba(0,240,200,.3);color:var(--teal)}
+.m-del{background:none;border:none;color:rgba(255,255,255,.2);font-size:11px;cursor:pointer;padding:2px 4px}
 .m-del:hover{color:#ef4444}
+
 
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:#0d1e32;border:1px solid var(--teal);color:var(--teal);padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transition:transform .3s;white-space:nowrap}
 #toast.show{transform:translateX(-50%) translateY(0)}
@@ -779,18 +942,24 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
 
 <div id="meetingOverlay">
   <div class="mhdr">
-    <div class="mhdr-l"><span class="mhdr-title">▶ MODO REUNIÃO</span><span class="mhdr-co" id="meetCoLbl"></span></div>
+    <div class="mhdr-l">
+      <img class="mhdr-logo" id="meetLogo" alt="">
+      <span class="mhdr-title">▶ REUNIÃO</span>
+      <div class="mhdr-sep"></div>
+      <span class="mhdr-co" id="meetCoLbl"></span>
+      <span class="mhdr-period" id="meetPeriodLbl"></span>
+    </div>
     <div class="mhdr-r">
-      <div class="mdots"><div class="mdot on" onclick="meetGo(0)" title="Slide 1"></div><div class="mdot" onclick="meetGo(1)" title="Slide 2"></div></div>
-      <button id="meetSaveBtn" onclick="saveMeetAndToast()" style="background:#10b981;border:none;color:#fff;padding:7px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;transition:all .2s;box-shadow:0 2px 8px rgba(16,185,129,.3)" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">💾 Salvar</button> <button class="pdf-btn" onclick="exportMeetingPDF()">📄 Exportar Ata PDF</button>
-      <button class="mclose" onclick="closeMeeting()">✕ ESC</button>
+      <div class="mdots" id="meetDots"></div>
+      <button class="mhdr-btn mhdr-save" onclick="saveMeetAndToast()">💾 Salvar</button>
+      <button class="mhdr-btn mhdr-pdf" onclick="exportMeetingPDF()">📄 PDF</button>
+      <button class="mhdr-btn mclose" onclick="closeMeeting()" style="border-color:rgba(255,255,255,.1)">✕ ESC</button>
     </div>
   </div>
-  <div class="mslide on" id="mslide0" style="position:relative"></div>
-  <div class="mslide" id="mslide1" style="position:relative"></div>
+  <div id="meetSlides" style="flex:1;min-height:0;position:relative;display:flex;flex-direction:column"></div>
   <div class="mnav">
     <button class="marrow" id="mBtnPrev" onclick="meetStep(-1)" disabled>← Anterior</button>
-    <span id="mPageLbl" style="font-size:11px;color:#4a6080;align-self:center"></span>
+    <span id="mPageLbl"></span>
     <button class="marrow" id="mBtnNext" onclick="meetStep(1)">Próximo →</button>
   </div>
 </div>
@@ -2823,31 +2992,80 @@ function rMeth(){
 // ═══════════════════════════════════════════
 let _meetPg=0;
 
+// ── _meetSlides registry ────────────────────────────────────────────
+var _meetSlideBuilders=[];
+
 function openMeeting(){
   const res=S.sel?calcScore(S.sel):null;
   if(!res){toast('⚠️ Lance os dados de um período primeiro');return;}
   _meetPg=0;
+  const[y,mo]=S.sel.split('-');
+  const co=S.company||'Empresa';
+  const period=MES[parseInt(mo)-1]+'/'+y;
+  // Header
+  const coEl=document.getElementById('meetCoLbl');if(coEl)coEl.textContent=co;
+  const perEl=document.getElementById('meetPeriodLbl');if(perEl)perEl.textContent=period;
+  const logoEl=document.getElementById('meetLogo');
+  if(logoEl){if(S.logo){logoEl.src=S.logo;logoEl.style.display='block';}else logoEl.style.display='none';}
+  // Build slides
+  _meetSlideBuilders=[
+    function(){return buildSlide0(res);},  // capa
+    function(){return buildSlide1(res);},  // KPIs
+    function(){return buildSlide2(res);},  // forecast
+  ];
+  // Render dots
+  const dots=document.getElementById('meetDots');
+  if(dots){
+    dots.innerHTML='';
+    _meetSlideBuilders.forEach(function(_,i){
+      var d=document.createElement('div');d.className='mdot';
+      d.onclick=function(){meetGo(i);};
+      dots.appendChild(d);
+    });
+  }
   document.getElementById('meetingOverlay').classList.add('open');
   document.addEventListener('keydown',meetKey);
-  const[y,mo]=S.sel.split('-');
-  document.getElementById('meetCoLbl').textContent=(S.company||'')+' · '+MES[parseInt(mo)-1]+'/'+y;
-  buildSlide1(res);buildSlide2(res);meetGo(0);
+  meetGo(0);
 }
 function closeMeeting(){
   saveMeetActions();
   document.getElementById('meetingOverlay').classList.remove('open');
   document.removeEventListener('keydown',meetKey);
 }
-function meetKey(e){if(e.key==='Escape')closeMeeting();if(e.key==='ArrowRight'||e.key===' ')meetStep(1);if(e.key==='ArrowLeft')meetStep(-1);}
+function meetKey(e){
+  if(e.key==='Escape')closeMeeting();
+  if(e.key==='ArrowRight'||e.key===' ')meetStep(1);
+  if(e.key==='ArrowLeft')meetStep(-1);
+}
 function meetStep(d){meetGo(_meetPg+d);}
 function meetGo(pg){
   saveMeetActions();
-  _meetPg=Math.max(0,Math.min(1,pg));
-  document.querySelectorAll('.mslide').forEach((s,i)=>s.classList.toggle('on',i===_meetPg));
-  document.querySelectorAll('.mdot').forEach((d,i)=>d.classList.toggle('on',i===_meetPg));
+  var total=_meetSlideBuilders.length||3;
+  _meetPg=Math.max(0,Math.min(total-1,pg));
+  // Build/render current slide
+  var container=document.getElementById('meetSlides');
+  if(container){
+    container.innerHTML='';
+    var slideEl=document.createElement('div');
+    slideEl.className='mslide on';
+    slideEl.id='mslide'+_meetPg;
+    var content=_meetSlideBuilders[_meetPg]();
+    if(typeof content==='string'){slideEl.innerHTML=content;}
+    else if(content instanceof HTMLElement){slideEl.appendChild(content);}
+    container.appendChild(slideEl);
+    // Trigger action inputs init for slide 1
+    if(_meetPg===1)setTimeout(function(){initSlide1Actions(slideEl);},50);
+    if(_meetPg===2)setTimeout(function(){
+      document.querySelectorAll('#mslide2 .act-prazo').forEach(maskPrazo);
+    },50);
+  }
+  // Update dots
+  document.querySelectorAll('.mdot').forEach(function(d,i){d.classList.toggle('on',i===_meetPg);});
   document.getElementById('mBtnPrev').disabled=_meetPg===0;
-  document.getElementById('mBtnNext').disabled=_meetPg===1;
-  document.getElementById('mPageLbl').textContent=_meetPg===0?'Slide 1 de 2 — Fechamento':'Slide 2 de 2 — Forecast & Próximo Mês';
+  document.getElementById('mBtnNext').disabled=_meetPg===total-1;
+  var labels=['Capa','Resultados — KPIs','Forecast & Próximo Mês'];
+  document.getElementById('mPageLbl').textContent=
+    (labels[_meetPg]||'Slide '+(_meetPg+1))+' · '+(_meetPg+1)+' / '+total;
 }
 
 function saveMeetAndToast(){
@@ -2861,36 +3079,43 @@ function saveMeetActions(){
   if(!S.sel)return;
   if(!S.meetActions)S.meetActions={};
   if(!S.meetActions[S.sel])S.meetActions[S.sel]={fechamento:[],forecast:[],adicionais:[]};
-  // Ações adicionais (slide 1 bottom table)
-  const _adic=[];document.querySelectorAll('#actAdicBody tr').forEach(function(tr){
-    const t=tr.querySelector('.act-text')?.value?.trim()||'';
-    const r=tr.querySelector('.act-resp')?.value?.trim()||'';
-    const p=tr.querySelector('.act-prazo')?.value?.trim()||'';
+  // Ações adicionais
+  var _adic=[];
+  document.querySelectorAll('#actAdicBody tr').forEach(function(tr){
+    var t=(tr.querySelector('.act-text')||{}).value||'';t=t.trim();
+    var r=(tr.querySelector('.act-resp')||{}).value||'';r=r.trim();
+    var p=(tr.querySelector('.act-prazo')||{}).value||'';p=p.trim();
     if(t||r||p)_adic.push({text:t,resp:r,prazo:p,kpi:'Adicional'});
   });
   S.meetActions[S.sel].adicionais=_adic;
-  // Save inline KPI actions (slide 1)
-  const kpiActTexts=document.querySelectorAll('.kcard-act .act-text:not([data-type]),.m-kr-act .act-text:not([data-type])');
-  const kpiActResps=document.querySelectorAll('.kcard-act .act-resp:not([data-type]),.m-kr-act .act-resp:not([data-type])');
-  const kpiActPrazos=document.querySelectorAll('.kcard-act .act-prazo:not([data-type]),.m-kr-act .act-prazo:not([data-type])');
-  const fech=[];
-  kpiActTexts.forEach((el,i)=>{
-    const text=el.value?.trim()||'';
-    const resp=kpiActResps[i]?.value?.trim()||'';
-    const prazo=kpiActPrazos[i]?.value?.trim()||'';
-    fech.push({text,resp,prazo,kpi:el.dataset.kpi||''});
-  });
-  S.meetActions[S.sel].fechamento=fech;
-  // Save forecast inline KPI actions (slide 2)
-  const fcRows=document.querySelectorAll('.kcard-act [data-type="forecast"],.m-kr-act [data-type="forecast"]');
-  if(fcRows.length){
-    const fcTexts=document.querySelectorAll('.kcard-act .act-text[data-type="forecast"],.m-kr-act .act-text[data-type="forecast"]');
-    const fcResps=document.querySelectorAll('.kcard-act .act-resp[data-type="forecast"],.m-kr-act .act-resp[data-type="forecast"]');
-    const fcPrazos=document.querySelectorAll('.kcard-act .act-prazo[data-type="forecast"],.m-kr-act .act-prazo[data-type="forecast"]');
-    const fcArr=[];
-    fcTexts.forEach((el,i)=>{fcArr.push({text:el.value?.trim()||'',resp:fcResps[i]?.value?.trim()||'',prazo:fcPrazos[i]?.value?.trim()||'',kpi:el.dataset.kpi||''});});
-    S.meetActions[S.sel].forecast=fcArr;
+  // KPI inline actions (no data-type)
+  var texts=document.querySelectorAll('.kcard-act .act-text:not([data-type])');
+  var resps=document.querySelectorAll('.kcard-act .act-resp:not([data-type])');
+  var prazos=document.querySelectorAll('.kcard-act .act-prazo:not([data-type])');
+  var fech=[];
+  for(var i=0;i<texts.length;i++){
+    fech.push({
+      text:(texts[i].value||'').trim(),
+      resp:(resps[i]?resps[i].value||'':'').trim(),
+      prazo:(prazos[i]?prazos[i].value||'':'').trim(),
+      kpi:texts[i].dataset.kpi||''
+    });
   }
+  S.meetActions[S.sel].fechamento=fech;
+  // Forecast actions
+  var ftexts=document.querySelectorAll('.act-text[data-type="forecast"]');
+  var fresps=document.querySelectorAll('.act-resp[data-type="forecast"]');
+  var fprazos=document.querySelectorAll('.act-prazo[data-type="forecast"]');
+  var farr=[];
+  for(var j=0;j<ftexts.length;j++){
+    farr.push({
+      text:(ftexts[j].value||'').trim(),
+      resp:(fresps[j]?fresps[j].value||'':'').trim(),
+      prazo:(fprazos[j]?fprazos[j].value||'':'').trim(),
+      kpi:ftexts[j].dataset.kpi||''
+    });
+  }
+  S.meetActions[S.sel].forecast=farr;
   syncActionsFromMeeting(S.sel);
   sv();
 }
@@ -2955,234 +3180,287 @@ function addActRow(type){
   const newPrazo=tr.querySelector('.act-prazo');if(newPrazo)maskPrazo(newPrazo);
 }
 
-function buildSlide1(res){
-  const g=grade(res.score);
-  const[y,mo]=S.sel.split('-');
-  const mesLabel=MES[parseInt(mo)-1]+' '+y;
-
-  // Delta vs prev month
-  const idx=getKnownMonths().indexOf(S.sel);let deltaH='';
+// ── SLIDE 0: CAPA ────────────────────────────────────────────────────
+function buildSlide0(res){
+  var g=grade(res.score);
+  var parts=S.sel.split('-');var y=parts[0];var mo=parts[1];
+  var period=MES[parseInt(mo)-1]+' '+y;
+  var col=g.c;
+  var idx=getKnownMonths().indexOf(S.sel);
+  var deltaH='';
   if(idx>0){
-    const _km=getKnownMonths();const prev=calcScore(_km[idx-1]);
+    var km=getKnownMonths();var prev=calcScore(km[idx-1]);
     if(prev){
-      const d=res.score-prev.score;
-      const dc=d>0?'#059669':d<0?'#ef4444':'#94a3b8';
-      const[py,pmo]=S.months[idx-1].split('-');
-      deltaH=`<div class="s1-delta" style="color:${dc}">${d>0?'▲ +':'▼ '}${d} pts vs ${MES[parseInt(pmo)-1]}/${py}</div>`;
+      var d=res.score-prev.score;var dc=d>0?'var(--green)':d<0?'var(--red)':'rgba(255,255,255,.4)';
+      var pm=km[idx-1].split('-');
+      deltaH='<div style="font-size:13px;font-weight:600;color:'+dc+';margin-top:8px">'+(d>0?'▲ +':'▼ ')+d+' pts vs '+MES[parseInt(pm[1])-1]+'/'+pm[0]+'</div>';
     }
   }
+  return '<div class="s0-wrap">'
+    +'<div class="s0-bg"></div>'
+    +'<div class="s0-content">'
+    +'<div class="s0-tag">FECHAMENTO MENSAL</div>'
+    +'<div class="s0-company">'+(S.company||'EMPRESA')+'</div>'
+    +(S.sector?'<div class="s0-period" style="letter-spacing:3px;font-size:13px">'+S.sector.toUpperCase()+'</div>':'')
+    +'<div class="s0-score-wrap" style="border-color:'+col+'22">'
+    +'<div class="s0-score-num" style="color:'+col+'">'+res.score+'</div>'
+    +'<div class="s0-score-right">'
+    +'<div class="s0-score-lbl">SCORE DE SAÚDE</div>'
+    +'<div class="s0-score-grade" style="color:'+col+';background:'+col+'15;border:1px solid '+col+'35">'+g.l+'</div>'
+    +deltaH
+    +(S.sector?'<div class="s0-score-sector">'+period+'</div>':'<div class="s0-score-sector">'+period+'</div>')
+    +'</div></div>'
+    +'</div></div>';
+}
 
+// ── SLIDE 1: KPIs ────────────────────────────────────────────────────
+function buildSlide1(res){
+  var g=grade(res.score);var col=g.c;
+  var parts=S.sel.split('-');var y=parts[0];var mo=parts[1];
+  var idx=getKnownMonths().indexOf(S.sel);
+  var deltaH='';
+  if(idx>0){
+    var km=getKnownMonths();var prev=calcScore(km[idx-1]);
+    if(prev){
+      var d=res.score-prev.score;var dc=d>0?'var(--green)':d<0?'var(--red)':'rgba(255,255,255,.3)';
+      var pm=km[idx-1].split('-');
+      deltaH='<div class="s1-delta" style="color:'+dc+'">'+(d>0?'▲ +':'▼ ')+d+' vs '+MES[parseInt(pm[1])-1]+'/'+pm[0]+'</div>';
+    }
+  }
   // Group bars
-  const grpBars=['tracao','rentab','caixa','operac'].map(grp=>{
-    const dts=res.details.filter(d=>d.ind.group===grp);
-    const avg=dts.length?Math.round(dts.reduce((s,d)=>s+d.pct,0)/dts.length):0;
-    const col=GC[grp];
-    return`<div class="s1-grp">
-      <div class="s1-grp-header">
-        <span class="s1-grp-name">${GN[grp].split(' ')[0]}</span>
-        <span class="s1-grp-val" style="color:${col}">${avg}</span>
-      </div>
-      <div class="s1-grp-bar"><div class="s1-grp-fill" style="width:${avg}%;background:${col}"></div></div>
-    </div>`;
+  var grpBars=['tracao','rentab','caixa','operac'].map(function(grp){
+    var dts=res.details.filter(function(d){return d.ind.group===grp;});
+    var avg=dts.length?Math.round(dts.reduce(function(s,d){return s+d.pct;},0)/dts.length):0;
+    var c=GC[grp];
+    return '<div class="s1-grp">'
+      +'<div class="s1-grp-header">'
+      +'<span class="s1-grp-name">'+GN[grp].split(' ')[0]+'</span>'
+      +'<span class="s1-grp-val" style="color:'+c+'">'+avg+'</span>'
+      +'</div>'
+      +'<div class="s1-grp-bar"><div class="s1-grp-fill" style="width:'+avg+'%;background:'+c+'"></div></div>'
+      +'</div>';
   }).join('');
-
   // Assertividade
-  const fc=S.forecast&&S.forecast[S.sel],real=S.raw&&S.raw[S.sel];
-  let assertH='';
+  var fc=S.forecast&&S.forecast[S.sel];var real=S.raw&&S.raw[S.sel];
+  var assertH='';
   if(fc&&real){
-    let tot=0,cnt=0;
-    FCAST_FIELDS.forEach(fld=>{const f=fc[fld.id],r=real[fld.id];if(f==null||r==null||r===0)return;tot+=Math.max(0,100-Math.abs(f-r)/Math.abs(r)*100);cnt++;});
+    var tot=0,cnt=0;
+    FIELDS.forEach(function(fld){
+      var fv=fc[fld.id],rv=real[fld.id];
+      if(fv==null||rv==null||rv===0)return;
+      tot+=Math.max(0,100-Math.abs(fv-rv)/Math.abs(rv)*100);cnt++;
+    });
     if(cnt){
-      const avg=tot/cnt,ac=avg>=90?'#059669':avg>=70?'#d97706':'#dc2626';
-      assertH=`<div class="s1-assert">
-        <div class="s1-assert-num" style="color:${ac}">${avg.toFixed(0)}%</div>
-        <div>
-          <div class="s1-assert-lbl" style="color:#94a3b8">Assertividade Forecast</div>
-          <div class="s1-assert-txt" style="color:${ac}">${avg>=90?'Alta previsibilidade':avg>=70?'Razoável':'Baixa'}</div>
-        </div>
-      </div>`;
+      var acc=tot/cnt;var ac=acc>=90?'var(--green)':acc>=70?'var(--amber)':'var(--red)';
+      assertH='<div class="s1-assert">'
+        +'<div class="s1-assert-num" style="color:'+ac+'">'+acc.toFixed(0)+'%</div>'
+        +'<div><div class="s1-assert-lbl">Assertividade Forecast</div>'
+        +'<div class="s1-assert-txt" style="color:'+ac+'">'+(acc>=90?'Alta':acc>=70?'Razoável':'Baixa')+'</div></div>'
+        +'</div>';
     }
   }
+  // KPI cards — calculate grid columns based on count
+  var sorted=[].concat(res.details).sort(function(a,b){return a.pct-b.pct;});
+  var n=sorted.length; // 12 KPIs (lucroliq excluded from wheel but shown here)
+  // Always 3 columns, rows = ceil(n/3)
+  var cols=3;var rows=Math.ceil(n/cols);
+  var fcastKpis=fc&&real?calcKPIs(Object.assign({},real,fc)):null;
+  var saved_f=(S.meetActions&&S.meetActions[S.sel]&&S.meetActions[S.sel].fechamento)||[];
 
-  // KPI cards — sorted worst first, forecast delta
-  const fcastKpis=fc&&real?calcKPIs({...real,...fc}):null;
-  const sorted=[...res.details].sort((a,b)=>a.pct-b.pct);
-  const saved_f=(S.meetActions?.[S.sel]?.fechamento)||[];
-
-  const kpiCards=sorted.map((d,i)=>{
-    const col=d.pct<50?'#ef4444':d.pct<75?'#f59e0b':'#10b981';
-    const cls=d.pct<50?'kred':d.pct<75?'kamber':'kok';
-    // forecast delta
-    let fDelta='',fcValStr='',fcPctVal=null;
+  var kpiCards=sorted.map(function(d,i){
+    var c=d.pct<50?'#ef4444':d.pct<75?'#f59e0b':'#10b981';
+    var cls=d.pct<50?'kred':d.pct<75?'kamber':'kok';
+    var sa=saved_f[i]||{};
+    var showAct=d.pct<80||sa.text||sa.resp;
+    var fcPctStr='';
     if(fcastKpis){
-      const fv=fcastKpis[d.ind.id];
-      if(fv!==null&&fv!==undefined){
-        const goal=getGoal(d.ind.id,S.sel);const hb=S.cfg[d.ind.id]?.hb??d.ind.hb;
-        let fp=0;if(goal){fp=hb?Math.min((fv/goal)*100,150):(goal===0?100:Math.min((goal/Math.max(fv,.001))*100,150));fp=Math.max(0,Math.min(100,fp));}
-        fcPctVal=Math.round(fp);
-        const diff=Math.round(d.pct-fp); // realizado − previsto
-        const dc=diff>=0?'#059669':'#dc2626';
-        fcValStr=fmtV(fv,d.ind.unit);
-        fDelta=`<div style="font-size:10px;color:${dc};font-weight:700;margin-top:2px">${diff>=0?'▲ +':'▼ '}${diff}% vs prev</div>`;
+      var fv=fcastKpis[d.ind.id];
+      if(fv!=null){
+        var goal=getGoal(d.ind.id,S.sel);var hb=S.cfg[d.ind.id]?S.cfg[d.ind.id].hb:d.ind.hb;
+        var fp=0;if(goal){fp=hb?Math.min((fv/goal)*100,150):(goal===0?100:Math.min((goal/Math.max(fv,.001))*100,150));fp=Math.max(0,Math.min(100,fp));}
+        var diff=Math.round(d.pct-fp);var dc=diff>=0?'var(--green)':'var(--red)';
+        fcPctStr='<div style="font-size:9px;color:'+dc+';">'+(diff>=0?'+':'')+diff+'%</div>';
       }
     }
-    const sa=saved_f[i]||{};
-    const showAct=d.pct<80||sa.text||sa.resp;
-    const actRow=showAct?`<div class="kcard-act">
-        <input class="kact-inp act-text" data-kpi="${d.ind.id}" data-idx="${i}" placeholder="Ação..." value="${(sa.text||'').replace(/"/g,'&quot;')}">
-        <input class="kact-inp act-resp" data-kpi="${d.ind.id}" data-idx="${i}" placeholder="Responsável" value="${(sa.resp||'').replace(/"/g,'&quot;')}">
-        <input type="text" class="kact-inp act-prazo" placeholder="dd/mm/aaaa" data-kpi="${d.ind.id}" data-idx="${i}" value="${(sa.prazo||'').replace(/"/g,'&quot;')}">
-        <button class="kcard-del" onclick="clearKpiAct(this)" title="Limpar">✕</button>
-      </div>`:'';
-    return`<div class="kcard ${cls}">
-      <div class="kcard-main">
-        <div class="kcard-icon">${d.ind.icon}</div>
-        <div class="kcard-info">
-          <div class="kcard-name">${d.ind.name}</div>
-          <div class="kcard-sub">${fmtV(d.val,d.ind.unit)} <span style="color:#94a3b8">/meta</span> ${fmtV(d.goal,d.ind.unit)}${fcValStr?` <span style="color:rgba(139,156,244,.8)">/prev</span> <span style="color:rgba(139,156,244,.9)">${fcValStr}</span>`:''}</div>
-          <div class="kcard-bar"><div class="kcard-bar-fill" style="width:${d.pct}%;background:${col}"></div></div>
-        </div>
-        <div class="kcard-right">
-          <div class="kcard-pct" style="color:${col}">${Math.round(d.pct)}%</div>
-          ${fcPctVal!==null?`<div style="font-size:10px;color:rgba(139,156,244,.8);font-weight:600">${fcPctVal}% prev</div>`:''}
-          ${fDelta}
-        </div>
-      </div>${actRow}
-    </div>`;
+    var actRow=showAct?'<div class="kcard-act">'
+      +'<input class="kact-inp act-text" data-kpi="'+d.ind.id+'" data-idx="'+i+'" placeholder="Ação..." value="'+(sa.text||'').replace(/"/g,'&quot;')+'">'
+      +'<input class="kact-inp act-resp" data-kpi="'+d.ind.id+'" data-idx="'+i+'" placeholder="Resp." value="'+(sa.resp||'').replace(/"/g,'&quot;')+'">'
+      +'<input type="text" class="kact-inp act-prazo" data-kpi="'+d.ind.id+'" data-idx="'+i+'" placeholder="dd/mm/aaaa" value="'+(sa.prazo||'').replace(/"/g,'&quot;')+'">'
+      +'<button class="kcard-del" onclick="clearKpiAct(this)">✕</button>'
+      +'</div>':'';
+    return '<div class="kcard '+cls+'">'
+      +'<div class="kcard-main">'
+      +'<div class="kcard-icon">'+d.ind.icon+'</div>'
+      +'<div style="min-width:0">'
+      +'<div class="kcard-name">'+d.ind.short+'</div>'
+      +'<div class="kcard-sub">'+fmtV(d.val,d.ind.unit)+' · meta '+fmtV(d.goal,d.ind.unit)+'</div>'
+      +'<div class="kcard-bar"><div class="kcard-bar-fill" style="width:'+Math.min(100,d.pct)+'%;background:'+c+'"></div></div>'
+      +'</div>'
+      +'<div class="kcard-right">'
+      +'<div class="kcard-pct" style="color:'+c+'">'+Math.round(d.pct)+'%</div>'
+      +fcPctStr
+      +'</div>'
+      +'</div>'+actRow+'</div>';
   }).join('');
 
-
-  document.getElementById('mslide0').innerHTML=`
-  <div style="position:absolute;inset:0;display:grid;grid-template-columns:260px 1fr;overflow:hidden">
-    <!-- COL A: Score -->
-    <div class="s1-col-a">
-      <div class="s1-score-block">
-        <div class="s1-period">${mesLabel}</div>
-        <div class="s1-score-num" style="color:${g.c}">${res.score}</div>
-        <div class="s1-score-grade" style="color:${g.c};background:${g.c}22;border:1px solid ${g.c}55">${g.l}</div>
-        ${deltaH}
-      </div>
-      <div>
-        <div class="s1-col-title" style="color:#64748b">Saúde por Área</div>
-        <div class="s1-groups">${grpBars}</div>
-      </div>
-      ${assertH}
-    </div>
-
-    <!-- COL B: KPI cards -->
-    <div class="s1-col-b">
-      <div class="s1-col-title" style="color:#64748b">KPIs — Pior para melhor</div>
-      <div class="s1-kpi-grid">${kpiCards}</div>
-      <!-- Planos Adicionais -->
-      <div style="margin-top:20px;padding-top:16px;border-top:2px dashed #e2e8f0">
-        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:10px">📌 Planos de Ação Adicionais</div>
-        <table class="m-act-tbl"><thead><tr><th style="width:42%">Ação</th><th style="width:25%">Responsável</th><th style="width:20%">Prazo</th><th></th></tr></thead>
-        <tbody id="actAdicBody"></tbody>
-        </table>
-        <button class="m-add-row" onclick="addAdicRow()">+ Adicionar Ação</button>
-      </div>
-    </div>
-
-  </div>`;
-  // Populate actAdicBody safely via JS
-  (function(){
-    var tbody=document.getElementById('actAdicBody');if(!tbody)return;
-    var sa=(S.meetActions&&S.meetActions[S.sel]&&S.meetActions[S.sel].adicionais)||[];
-    var rows=sa.length?sa:[{text:'',resp:'',prazo:''}];
-    rows.forEach(function(a){
-      var tr=document.createElement('tr');
-      function mkInp(cls,ph,val){var i=document.createElement('input');i.type='text';i.className='m-ai '+cls;i.placeholder=ph;i.value=val||'';return i;}
-      var td1=document.createElement('td');td1.appendChild(mkInp('act-text','Descreva a ação...',a.text));
-      var td2=document.createElement('td');td2.appendChild(mkInp('act-resp','Responsável',a.resp));
-      var td3=document.createElement('td');var pi=mkInp('act-prazo','dd/mm/aaaa',a.prazo);maskPrazo(pi);td3.appendChild(pi);
-      var td4=document.createElement('td');var btn=document.createElement('button');btn.className='m-del';btn.textContent='✕';btn.onclick=function(){this.closest('tr').remove();};td4.appendChild(btn);
-      tr.appendChild(td1);tr.appendChild(td2);tr.appendChild(td3);tr.appendChild(td4);
-      tbody.appendChild(tr);
-    });
-  })();
-  document.querySelectorAll('#mslide0 .act-prazo').forEach(maskPrazo);
+  return '<div class="s1-wrap">'
+    // Col A
+    +'<div class="s1-col-a">'
+    +'<div class="s1-score-block">'
+    +'<div class="s1-period">'+MES[parseInt(mo)-1]+' '+y+'</div>'
+    +'<div class="s1-score-num" style="color:'+col+'">'+res.score+'</div>'
+    +'<div class="s1-score-grade" style="color:'+col+';background:'+col+'15;border:1px solid '+col+'30">'+g.l+'</div>'
+    +deltaH
+    +'</div>'
+    +'<div class="s1-groups">'+grpBars+'</div>'
+    +assertH
+    +'<!-- Ações adicionais -->'
+    +'<div style="flex-shrink:0">'
+    +'<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.25);font-weight:700;margin-bottom:6px">📌 Ações Adicionais</div>'
+    +'<table class="m-act-tbl"><thead><tr><th>Ação</th><th>Resp.</th><th>Prazo</th><th></th></tr></thead>'
+    +'<tbody id="actAdicBody"></tbody></table>'
+    +'<button class="m-add-row" onclick="addAdicRow()">+ Adicionar</button>'
+    +'</div>'
+    +'</div>'
+    // Col B
+    +'<div class="s1-col-b">'
+    +'<div class="s1-col-title">KPIs — Pior para melhor</div>'
+    +'<div class="s1-kpi-grid" id="s1KpiGrid" style="grid-template-columns:repeat('+cols+',1fr);grid-template-rows:repeat('+rows+',1fr)">'+kpiCards+'</div>'
+    +'</div>'
+    +'</div>';
 }
+
+function initSlide1Actions(slideEl){
+  // Populate actAdicBody
+  var tbody=slideEl.querySelector('#actAdicBody');if(!tbody)return;
+  var sa=(S.meetActions&&S.meetActions[S.sel]&&S.meetActions[S.sel].adicionais)||[];
+  var rows=sa.length?sa:[{text:'',resp:'',prazo:''}];
+  rows.forEach(function(a){
+    var tr=document.createElement('tr');
+    function mkI(cls,ph,val){var i=document.createElement('input');i.type='text';i.className='m-ai '+cls;i.placeholder=ph;i.value=val||'';return i;}
+    var td1=document.createElement('td');td1.appendChild(mkI('act-text','Descreva...',a.text));
+    var td2=document.createElement('td');td2.appendChild(mkI('act-resp','Nome',a.resp));
+    var td3=document.createElement('td');var pi=mkI('act-prazo','dd/mm/aaaa',a.prazo);maskPrazo(pi);td3.appendChild(pi);
+    var td4=document.createElement('td');var btn=document.createElement('button');
+    btn.className='m-del';btn.textContent='✕';btn.onclick=function(){this.closest('tr').remove();};
+    td4.appendChild(btn);
+    tr.append(td1,td2,td3,td4);tbody.appendChild(tr);
+  });
+  slideEl.querySelectorAll('.act-prazo').forEach(maskPrazo);
+}
+
+
 function buildSlide2(res){
-  const[y,mo]=S.sel.split('-');
-  const mesLabel=MES[parseInt(mo)-1]+' '+y;
-  const fc=S.forecast&&S.forecast[S.sel];
-  const real=S.raw&&S.raw[S.sel];
-  const moN=parseInt(mo),yrN=parseInt(y);
-  const nextMk=moN===12?(yrN+1)+'-01':yrN+'-'+String(moN+1).padStart(2,'0');
-  const[nY,nMo]=nextMk.split('-');
-  const nextLabel=MES[parseInt(nMo)-1]+' '+nY;
-  const nextFc=S.forecast&&S.forecast[nextMk];
-  let nextScore=null,ng=null,ndiff=null;
-  if(nextFc){
-    const simR=Object.assign({},real||{},nextFc);
-    const simKpis=calcKPIs(simR);
-    const tw=IND.reduce(function(s,i){return s+((S.cfg[i.id]?S.cfg[i.id].weight:null)||1);},0);
-    const ws=IND.reduce(function(s,ind){
-      const v=simKpis[ind.id];const goal=getGoal(ind.id,nextMk);
-      const hb=S.cfg[ind.id]?S.cfg[ind.id].hb:ind.hb;
-      let pct=0;
-      if(v!==null&&goal){pct=hb?Math.min((v/goal)*100,150):(goal===0?100:Math.min((goal/Math.max(v,.001))*100,150));pct=Math.max(0,Math.min(100,pct));}
-      return s+pct*((S.cfg[ind.id]?S.cfg[ind.id].weight:null)||1);
-    },0);
-    nextScore=tw>0?Math.round(ws/tw):0;ng=grade(nextScore);ndiff=nextScore-res.score;
-  }
+  var parts=S.sel.split('-');var y=parts[0];var mo=parts[1];
+  var mesLabel=MES[parseInt(mo)-1]+' '+y;
+  var fc=S.forecast&&S.forecast[S.sel];
+  var real=S.raw&&S.raw[S.sel];
+  var moN=parseInt(mo),yrN=parseInt(y);
+  var nextMk=moN===12?(yrN+1)+'-01':yrN+'-'+String(moN+1).padStart(2,'0');
+  var nm=nextMk.split('-');
+  var nextLabel=MES[parseInt(nm[1])-1]+'/'+nm[0];
+
+  // ── Left: forecast vs real ────────────────────────────────────────
   var fcastHTML='';
   if(fc&&real){
+    var hdr='<div style="display:grid;grid-template-columns:1fr 72px 72px 40px;gap:6px;padding:0 0 6px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0">'
+      +'<div style="font-size:8px;color:rgba(255,255,255,.25);font-weight:700;letter-spacing:1.5px;text-transform:uppercase">CAMPO</div>'
+      +'<div style="font-size:8px;color:#818cf8;font-weight:700;text-align:right;letter-spacing:1px">PREV</div>'
+      +'<div style="font-size:8px;color:#34d399;font-weight:700;text-align:right;letter-spacing:1px">REAL</div>'
+      +'<div style="font-size:8px;color:rgba(255,255,255,.25);font-weight:700;text-align:right">ACUR</div>'
+      +'</div>';
     var rows='';
     FIELDS.forEach(function(fld){
-      const fv=fc[fld.id],rv=real[fld.id];
+      var fv=fc[fld.id],rv=real[fld.id];
       if(fv==null&&rv==null)return;
-      var acc='—',ac='#94a3b8';
-      if(fv!=null&&rv!=null&&rv!==0){const a=Math.max(0,100-Math.abs(fv-rv)/Math.abs(rv)*100);acc=a.toFixed(0)+'%';ac=a>=90?'#059669':a>=70?'#d97706':'#dc2626';}
-      rows+='<div style="display:grid;grid-template-columns:1fr 88px 88px 50px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9">'+
-        '<div style="font-size:13px;color:#334155;font-weight:500">'+fld.label+'</div>'+
-        '<div style="font-size:13px;color:#6366f1;font-weight:700;text-align:right;font-family:JetBrains Mono,monospace">'+(fv!=null?fv.toLocaleString('pt-BR'):'—')+'</div>'+
-        '<div style="font-size:13px;color:#0f766e;font-weight:700;text-align:right;font-family:JetBrains Mono,monospace">'+(rv!=null?rv.toLocaleString('pt-BR'):'—')+'</div>'+
-        '<div style="font-size:12px;font-weight:700;text-align:right;color:'+ac+'">'+acc+'</div></div>';
+      var acc='—',ac='rgba(255,255,255,.25)';
+      if(fv!=null&&rv!=null&&rv!==0){var a=Math.max(0,100-Math.abs(fv-rv)/Math.abs(rv)*100);acc=a.toFixed(0)+'%';ac=a>=90?'#34d399':a>=70?'#f59e0b':'#ef4444';}
+      rows+='<div class="s2-fcast-row">'
+        +'<div class="s2-fcast-label">'+fld.label+'</div>'
+        +'<div class="s2-fcast-val">'+(fv!=null?fv.toLocaleString('pt-BR'):'—')+'</div>'
+        +'<div class="s2-fcast-real">'+(rv!=null?rv.toLocaleString('pt-BR'):'—')+'</div>'
+        +'<div class="s2-fcast-acc" style="color:'+ac+'">'+acc+'</div>'
+        +'</div>';
     });
-    fcastHTML='<div style="display:grid;grid-template-columns:1fr 88px 88px 50px;gap:8px;padding:0 0 8px;border-bottom:2px solid #e2e8f0;margin-bottom:4px">'+
-      '<div style="font-size:10px;color:#94a3b8;font-weight:700">CAMPO</div>'+
-      '<div style="font-size:10px;color:#6366f1;font-weight:700;text-align:right">PREVISTO</div>'+
-      '<div style="font-size:10px;color:#0f766e;font-weight:700;text-align:right">REALIZADO</div>'+
-      '<div style="font-size:10px;color:#94a3b8;font-weight:700;text-align:right">ACUR.</div></div>'+rows;
+    fcastHTML=hdr+'<div class="s2-fcast-table">'+rows+'</div>';
   } else {
-    fcastHTML='<div style="padding:24px;background:#f8fafc;border-radius:10px;border:1px dashed #e2e8f0;text-align:center">'+
-      '<div style="font-size:32px;margin-bottom:10px">🔮</div>'+
-      '<div style="font-size:14px;color:#475569;font-weight:700;margin-bottom:6px">Sem forecast para '+mesLabel+'</div>'+
-      '<div style="font-size:12px;color:#94a3b8;line-height:1.6">Lance uma previsão em <strong>Lançamento → Previsão</strong> para comparar com o realizado.</div></div>';
+    fcastHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;opacity:.5">'
+      +'<div style="font-size:36px">🔮</div>'
+      +'<div style="font-size:14px;font-weight:700;color:#e8f0ff">Sem forecast para '+mesLabel+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,.4);text-align:center">Lance uma previsão em Lançamento → Previsão</div>'
+      +'</div>';
   }
+
+  // ── Right: next month projection ─────────────────────────────────
+  var nextFc=S.forecast&&S.forecast[nextMk];
   var rightHTML='';
-  if(nextFc&&nextScore!==null){
-    var cards='';
-    IND.slice(0,6).forEach(function(ind){
-      const fv=nextFc[ind.id];
-      cards+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #e2e8f0">'+
-        '<span style="font-size:12px;color:#334155">'+ind.icon+' '+ind.name+'</span>'+
-        '<span style="font-size:13px;font-weight:700;color:#0f766e;font-family:JetBrains Mono,monospace">'+(fv!=null?fv.toLocaleString('pt-BR'):'—')+'</span></div>';
-    });
-    rightHTML='<div style="background:#fff;border:2px solid '+(ng?ng.c:'#94a3b8')+';border-radius:12px;padding:16px 20px;margin-bottom:16px">'+
-      '<div style="font-size:10px;letter-spacing:2px;color:#94a3b8;font-weight:700;margin-bottom:4px">SCORE PROJETADO</div>'+
-      '<div style="display:flex;align-items:baseline;gap:10px">'+
-      '<div style="font-family:Bebas Neue,sans-serif;font-size:52px;line-height:1;color:'+(ng?ng.c:'#94a3b8')+'">'+nextScore+'</div>'+
-      '<div><div style="font-size:14px;font-weight:700;color:'+(ng?ng.c:'#94a3b8')+'">'+(ng?ng.l:'')+'</div>'+
-      '<div style="font-size:12px;color:#64748b">'+(ndiff>0?'+':'')+ndiff+' pts vs '+mesLabel+'</div></div></div></div>'+
-      '<div style="font-size:10px;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:10px">KPIs Previstos</div>'+cards;
+  var nextScore=null,ng=null,ndiff=null;
+  if(nextFc){
+    var simR=Object.assign({},real||{},nextFc);
+    var simKpis=calcKPIs(simR);
+    var tw=IND.reduce(function(s,i){return s+((S.cfg[i.id]&&S.cfg[i.id].weight)||1);},0);
+    var ws=IND.reduce(function(s,ind){
+      var v=simKpis[ind.id];var goal=getGoal(ind.id,nextMk);
+      var hb=S.cfg[ind.id]?S.cfg[ind.id].hb:ind.hb;
+      var pct=0;
+      if(v!==null&&goal){pct=hb?Math.min((v/goal)*100,150):(goal===0?100:Math.min((goal/Math.max(v,.001))*100,150));pct=Math.max(0,Math.min(100,pct));}
+      return s+pct*((S.cfg[ind.id]&&S.cfg[ind.id].weight)||1);
+    },0);
+    nextScore=tw>0?Math.round(ws/tw):0;ng=grade(nextScore);ndiff=nextScore-res.score;
+    var dc=ndiff>0?'var(--green)':ndiff<0?'var(--red)':'rgba(255,255,255,.4)';
+    var kpiRows=IND.filter(function(i){return nextFc[i.id]!=null||simKpis[i.id]!=null;}).map(function(ind){
+      var v=simKpis[ind.id];var goal=getGoal(ind.id,nextMk);var hb=S.cfg[ind.id]?S.cfg[ind.id].hb:ind.hb;
+      var pct=0;if(v!=null&&goal){pct=hb?Math.min((v/goal)*100,150):(goal===0?100:Math.min((goal/Math.max(v,.001))*100,150));pct=Math.max(0,Math.min(100,pct));}
+      var c=pct<50?'#ef4444':pct<75?'#f59e0b':'#34d399';
+      return '<div class="s2-kpi-row"><span class="s2-kpi-label">'+ind.icon+' '+ind.short+'</span>'
+        +'<span class="s2-kpi-val" style="color:'+c+'">'+Math.round(pct)+'%</span></div>';
+    }).join('');
+    rightHTML='<div class="s2-score-block" style="border-color:'+(ng?ng.c:'rgba(255,255,255,.1)')+'22">'
+      +'<div class="s2-score-num" style="color:'+(ng?ng.c:'rgba(255,255,255,.4)')+'">'+nextScore+'</div>'
+      +'<div><div class="s2-score-period">Score Projetado</div>'
+      +'<div class="s2-score-grade" style="color:'+(ng?ng.c:'')+'">'+( ng?ng.l:'')+'</div>'
+      +'<div class="s2-score-delta" style="color:'+dc+'">'+(ndiff>0?'▲ +':'▼ ')+ndiff+' pts vs '+mesLabel+'</div>'
+      +'</div></div>'
+      +'<div class="s2-kpi-list">'+kpiRows+'</div>';
   } else {
-    rightHTML='<div style="padding:24px;background:#f8fafc;border-radius:10px;border:1px dashed #e2e8f0;text-align:center">'+
-      '<div style="font-size:32px;margin-bottom:10px">📈</div>'+
-      '<div style="font-size:14px;color:#475569;font-weight:700;margin-bottom:6px">Sem projeção para '+nextLabel+'</div>'+
-      '<div style="font-size:12px;color:#94a3b8;line-height:1.6">Lance uma previsão para o próximo mês em <strong>Lançamento → Previsão</strong>.</div></div>';
+    rightHTML='<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;opacity:.5">'
+      +'<div style="font-size:36px">📈</div>'
+      +'<div style="font-size:14px;font-weight:700;color:#e8f0ff">Sem previsão para '+nextLabel+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,.4);text-align:center">Lance em Lançamento → Previsão</div>'
+      +'</div>';
   }
-  document.getElementById('mslide1').innerHTML=
-    '<div style="position:absolute;inset:0;display:flex;overflow:hidden">'+
-    '<div style="flex:1;padding:28px 28px 80px;overflow-y:auto;background:#fff;border-right:2px solid #e2e8f0">'+
-    '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:16px">🔮 Forecast vs Realizado — '+mesLabel+'</div>'+
-    fcastHTML+'</div>'+
-    '<div style="flex:1;padding:28px 28px 80px;overflow-y:auto;background:#f0f4f8">'+
-    '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:16px">📈 Projeção — '+nextLabel+'</div>'+
-    rightHTML+'</div></div>';
-  document.querySelectorAll('#mslide1 .act-prazo').forEach(maskPrazo);
+
+  // Saved actions
+  var acts_fc=(S.meetActions&&S.meetActions[S.sel]&&S.meetActions[S.sel].forecast)||[];
+  var actRows='';
+  var dfl=acts_fc.length?acts_fc:[{text:'',resp:'',prazo:''}];
+  dfl.forEach(function(a){
+    actRows+='<tr data-type="forecast">'
+      +'<td><input class="m-ai act-text" data-type="forecast" placeholder="Ação..." value="'+(a.text||'').replace(/"/g,'&quot;')+'"></td>'
+      +'<td><input class="m-ai act-resp" data-type="forecast" placeholder="Nome" value="'+(a.resp||'').replace(/"/g,'&quot;')+'"></td>'
+      +'<td><input type="text" class="m-ai act-prazo" data-type="forecast" placeholder="dd/mm/aaaa" value="'+(a.prazo||'').replace(/"/g,'&quot;')+'"></td>'
+      +'<td><button class="m-del" onclick="this.closest(&quot;tr&quot;).remove()">✕</button></td>'
+      +'</tr>';
+  });
+
+  return '<div class="s2-wrap">'
+    +'<div class="s2-col">'
+    +'<div class="s2-col-title">🔮 Forecast vs Realizado — '+mesLabel+'<span></span></div>'
+    +'<div style="flex:1;display:flex;flex-direction:column;min-height:0;gap:8px">'+fcastHTML+'</div>'
+    +'</div>'
+    +'<div class="s2-col">'
+    +'<div class="s2-col-title">📈 Projeção — '+nextLabel+'<span></span></div>'
+    +'<div style="flex:1;display:flex;flex-direction:column;min-height:0;gap:10px">'+rightHTML+'</div>'
+    +'<div style="flex-shrink:0;margin-top:8px">'
+    +'<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.25);font-weight:700;margin-bottom:5px">Plano de Ação — '+nextLabel+'</div>'
+    +'<table class="m-act-tbl"><thead><tr><th>Ação</th><th>Resp.</th><th>Prazo</th><th></th></tr></thead>'
+    +'<tbody id="actFcBody">'+actRows+'</tbody></table>'
+    +'<button class="m-add-row" onclick="addActRow(&quot;forecast&quot;)">+ Adicionar</button>'
+    +'</div>'
+    +'</div>'
+    +'</div>';
 }
+
 
 function exportMeetingPDF(){
   saveMeetActions();

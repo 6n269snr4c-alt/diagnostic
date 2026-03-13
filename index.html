@@ -12,19 +12,87 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);background-image:radial-gradient(ellipse 60% 50% at 12% 8%,rgba(59,130,246,.1) 0,transparent 55%),radial-gradient(ellipse 45% 55% at 88% 88%,rgba(16,212,168,.07) 0,transparent 50%);}
-.shell{display:flex;flex-direction:column;height:100vh}
-nav{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:10px 24px;border-bottom:1px solid var(--bdr);background:rgba(7,16,28,.92);backdrop-filter:blur(20px);z-index:100}
-.logo-area{display:flex;align-items:center;gap:12px}
-#navLogo{height:44px;max-width:120px;object-fit:contain;display:none;filter:drop-shadow(0 0 8px rgba(0,240,200,.15))}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2.5px}
+/* ── SHELL: sidebar layout ── */
+.shell{display:flex;flex-direction:row;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;flex-shrink:0;
+  background:rgba(5,12,25,.96);
+  border-right:1px solid var(--bdr);
+  display:flex;flex-direction:column;
+  transition:width .25s ease;
+  overflow:hidden;z-index:200;
+  backdrop-filter:blur(20px);
+}
+.sidebar.collapsed{width:56px}
+.sidebar-top{
+  flex-shrink:0;padding:16px 12px 10px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--bdr);
+  min-height:64px;
+}
+.sidebar-logo-wrap{display:flex;align-items:center;gap:10px;flex:1;overflow:hidden;min-width:0}
+#navLogo{height:32px;max-width:80px;object-fit:contain;display:none;filter:drop-shadow(0 0 6px rgba(0,240,200,.2));flex-shrink:0}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;white-space:nowrap;overflow:hidden}
 .logo em{color:var(--teal);font-style:normal}
-.nav-tabs{display:flex;gap:2px;background:var(--glass);border:1px solid var(--bdr);border-radius:10px;padding:3px}
-.tb{padding:5px 13px;border-radius:7px;border:none;background:transparent;color:var(--mut);font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
-.tb.active{background:var(--bg3);color:var(--text);box-shadow:0 0 0 1px var(--bdr)}
-.tb:hover:not(.active){color:var(--text)}
-.cobadge{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
-.codot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2.5s infinite}
+.sidebar.collapsed .logo{display:none}
+.sidebar.collapsed #navLogo{display:none!important}
+
+/* Collapse toggle button */
+.sb-toggle{
+  flex-shrink:0;background:none;border:1px solid rgba(255,255,255,.1);
+  border-radius:6px;color:var(--mut);font-size:14px;cursor:pointer;
+  padding:4px 7px;line-height:1;transition:all .2s;
+}
+.sb-toggle:hover{border-color:var(--teal);color:var(--teal)}
+
+/* Company badge */
+.cobadge{
+  padding:8px 12px;border-bottom:1px solid var(--bdr);flex-shrink:0;
+  display:flex;align-items:center;gap:8px;overflow:hidden;
+}
+.codot{width:7px;height:7px;flex-shrink:0;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2.5s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.cobadge-text{overflow:hidden}
+.co-name-lbl{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.co-sector-lbl{font-size:10px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar.collapsed .cobadge-text{display:none}
+
+/* Nav items */
+.nav-items{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:none}
+.tb{
+  width:100%;display:flex;align-items:center;gap:10px;
+  padding:9px 14px;border:none;background:transparent;
+  color:var(--mut);font-family:'Outfit',sans-serif;font-size:13px;
+  font-weight:500;cursor:pointer;transition:all .15s;
+  white-space:nowrap;text-align:left;border-radius:0;
+}
+.tb .tb-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center}
+.tb .tb-label{overflow:hidden;text-overflow:ellipsis}
+.sidebar.collapsed .tb .tb-label{display:none}
+.sidebar.collapsed .tb{justify-content:center;padding:9px 0}
+.tb.active{background:rgba(0,240,200,.1);color:var(--teal);border-right:2px solid var(--teal)}
+.tb:hover:not(.active){background:rgba(255,255,255,.04);color:var(--text)}
+
+/* Sidebar bottom: user + logout */
+.sidebar-bottom{
+  flex-shrink:0;padding:8px 12px;border-top:1px solid var(--bdr);
+  display:flex;align-items:center;gap:8px;overflow:hidden;
+}
+#userEmail{font-size:10px;color:rgba(255,255,255,.3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar.collapsed #userEmail{display:none}
+.logout-btn{
+  flex-shrink:0;background:none;border:1px solid rgba(255,255,255,.1);
+  border-radius:6px;color:rgba(255,255,255,.3);font-size:11px;
+  padding:4px 8px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;
+  white-space:nowrap;
+}
+.logout-btn:hover{border-color:#ff5050;color:#ff5050}
+.sidebar.collapsed .logout-btn{padding:4px 6px;font-size:13px}
+
+/* Main content area */
+.main-content{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .page{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column}.page.active{display:flex}.act-row{border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}.act-row:hover{background:rgba(255,255,255,.03)}.act-row-overdue{border-left:2px solid #ef4444}input[type="date"].m-ai{color-scheme:light;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;color:#334155;font-size:12px;font-family:Outfit,sans-serif;outline:none}.kact-inp{color:var(--text);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:4px 8px;font-size:11px;font-family:Outfit,sans-serif;outline:none;width:100%}
 .scrollpage{display:none;flex:1;min-height:0;overflow-y:auto;flex-direction:column}.scrollpage.active{display:flex}
 .ph{flex-shrink:0;padding:16px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -43,7 +111,7 @@ nav{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
 .btn-cancel{background:none;border:1px solid var(--bdr);color:var(--mut);padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-family:'Outfit',sans-serif}
 .btn-ok{background:var(--teal);color:#07101c;font-weight:700;padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-family:'Outfit',sans-serif}
 /* DASHBOARD */
-.dash-layout{display:grid;grid-template-columns:minmax(360px,45%) minmax(260px,35%) minmax(200px,20%);flex:1;min-height:0;overflow:hidden;transition:grid-template-columns .3s ease}.dash-layout.kpi-hidden{grid-template-columns:minmax(0,68%) 0px minmax(200px,32%)}.dash-layout.kpi-hidden .dash-right{overflow:hidden;opacity:0;pointer-events:none;min-width:0}
+.dash-layout{display:grid;grid-template-columns:1fr 260px;flex:1;min-height:0;overflow:hidden}
 .dash-left{border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;padding:12px 16px}
 .dash-right{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--bdr);transition:opacity .25s}
 .dash-top{flex-shrink:0;gap:6px;margin-bottom:8px}
@@ -111,6 +179,29 @@ button.cs{background:var(--teal);color:#07101c;border:none;border-radius:8px;pad
 .kpi-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:center;justify-content:center}
 .kpi-modal-bg.open{display:flex}
 .kpi-modal{background:#0d1e32;border:1px solid var(--bdr);border-radius:16px;padding:24px;max-width:400px;width:90%}
+/* DIAGNÓSTICO PAGE */
+.diag-layout{display:grid;grid-template-columns:1fr 300px;flex:1;min-height:0;overflow:hidden}
+.diag-main{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--bdr)}
+.diag-header{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--bdr)}
+.diag-body{flex:1;overflow-y:auto;padding:16px 20px}
+.diag-side{display:flex;flex-direction:column;overflow:hidden}
+.diag-goals{flex:1;overflow-y:auto;padding:8px 12px}
+.goal-card{background:var(--glass);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.goal-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.goal-card-name{font-size:12px;font-weight:600}
+.goal-card-pct{font-family:'Bebas Neue',sans-serif;font-size:20px}
+.goal-bar{height:4px;background:var(--dim);border-radius:2px;overflow:hidden}
+.goal-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+.goal-vals{display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--mut)}
+
+/* Bullet points widget */
+.dash-bullets{padding:10px 16px 12px;border-top:1px solid var(--bdr);flex-shrink:0}
+.bullet-item{display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:12px;line-height:1.5;color:#9ab8d8}
+.bullet-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.bullet-dot.neg{background:var(--red)}
+.bullet-dot.pos{background:var(--green)}
+.bullet-load{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mut);padding:6px 0}
+
 /* INPUT */
 .inp-wrap{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .inp-topbar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 20px;border-bottom:1px solid var(--bdr);flex-wrap:wrap}
@@ -385,20 +476,41 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
 </div>
 <div id="appShell" style="display:none">
 <div class="shell">
-<nav>
-  <div class="logo-area"><img id="navLogo" alt="logo"><div class="logo">VITAL <em>DIAGNOSTIC</em></div></div>
-  <div class="nav-tabs">
-    <button class="tb active" data-page="dashboard" onclick="go('dashboard',this)">Dashboard</button>
-    <button class="tb" data-page="input" onclick="go('input',this)">Lançamento</button>
-    <button class="tb" data-page="sim" onclick="go('sim',this)">Simulador</button>
-    <button class="tb" data-page="config" onclick="go('config',this)">Configuração</button>
-    <button class="tb" data-page="actions" onclick="go('actions',this)">📋 Planos de Ação</button>
-    <button class="tb" data-page="import" onclick="go('import',this)">Importar</button>
-    <button class="tb" data-page="meth" onclick="go('meth',this)">Metodologia</button>
+<aside class="sidebar" id="sidebar">
+  <!-- Top: logo + toggle -->
+  <div class="sidebar-top">
+    <div class="sidebar-logo-wrap">
+      <img id="navLogo" alt="logo">
+      <div class="logo">VITAL <em>DIAGNOSTIC</em></div>
+    </div>
+    <button class="sb-toggle" onclick="toggleSidebar()" title="Recolher menu">‹</button>
   </div>
-  <div style="display:flex;align-items:center;gap:12px"><span id="userEmail" style="font-size:11px;color:rgba(255,255,255,.3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button onclick="doLogout()" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:7px;color:rgba(255,255,255,.3);font-size:11px;padding:4px 12px;cursor:pointer;font-family:'Outfit',sans-serif;flex-shrink:0" onmouseover="this.style.borderColor='#ff5050';this.style.color='#ff5050'" onmouseout="this.style.borderColor='rgba(255,255,255,.12)';this.style.color='rgba(255,255,255,.3)'">Sair</button></div>
-  <div class="cobadge"><div class="codot"></div><span id="coName">Minha Empresa</span><span id="scoreSector" style="font-size:11px;color:var(--mut);margin-left:6px"></span></div>
-</nav>
+  <!-- Company badge -->
+  <div class="cobadge">
+    <div class="codot"></div>
+    <div class="cobadge-text">
+      <div class="co-name-lbl" id="coName">Minha Empresa</div>
+      <div class="co-sector-lbl" id="scoreSector"></div>
+    </div>
+  </div>
+  <!-- Nav items -->
+  <nav class="nav-items">
+    <button class="tb active" data-page="dashboard" onclick="go('dashboard',this)"><span class="tb-icon">📊</span><span class="tb-label">Dashboard</span></button>
+    <button class="tb" data-page="diag" onclick="go('diag',this)"><span class="tb-icon">🤖</span><span class="tb-label">Diagnóstico</span></button>
+    <button class="tb" data-page="input" onclick="go('input',this)"><span class="tb-icon">📝</span><span class="tb-label">Lançamento</span></button>
+    <button class="tb" data-page="sim" onclick="go('sim',this)"><span class="tb-icon">🧪</span><span class="tb-label">Simulador</span></button>
+    <button class="tb" data-page="actions" onclick="go('actions',this)"><span class="tb-icon">📋</span><span class="tb-label">Planos de Ação</span></button>
+    <button class="tb" data-page="config" onclick="go('config',this)"><span class="tb-icon">⚙️</span><span class="tb-label">Configuração</span></button>
+    <button class="tb" data-page="import" onclick="go('import',this)"><span class="tb-icon">📂</span><span class="tb-label">Importar</span></button>
+    <button class="tb" data-page="meth" onclick="go('meth',this)"><span class="tb-icon">📖</span><span class="tb-label">Metodologia</span></button>
+  </nav>
+  <!-- Bottom: user + logout -->
+  <div class="sidebar-bottom">
+    <span id="userEmail"></span>
+    <button class="logout-btn" onclick="doLogout()">Sair</button>
+  </div>
+</aside>
+<div class="main-content">
 <div class="page active" id="page-dashboard">
   <div class="dash-layout">
     <div class="dash-left">
@@ -434,34 +546,34 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
       </div>
     </div>
     <div class="dash-right">
-      <!-- Lucro Líquido — topo do painel direito -->
-      <div id="lucroCard" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;margin-bottom:10px;align-items:center;justify-content:space-between;gap:12px">
+      <!-- Score + confidence summary -->
+      <div id="lucroCard" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;margin:10px 14px 0;align-items:center;justify-content:space-between;gap:12px">
         <div>
-          <div style="font-size:9px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:4px">💰 LUCRO LÍQUIDO</div>
-          <div id="lucroVal" style="font-size:26px;font-weight:800;line-height:1"></div>
-          <div id="lucroLbl" style="font-size:11px;font-weight:600;margin-top:3px"></div>
+          <div style="font-size:9px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:3px">💰 LUCRO LÍQUIDO</div>
+          <div id="lucroVal" style="font-size:22px;font-weight:800;line-height:1"></div>
+          <div id="lucroLbl" style="font-size:10px;font-weight:600;margin-top:2px"></div>
         </div>
       </div>
       <div class="dash-rt">
         <div><div class="rp-sec">Score</div><div class="rp-val" id="rScore" style="color:var(--teal)">—</div><div class="rp-bw"><div class="rp-b" id="rScoreBar" style="width:0;background:var(--teal)"></div></div></div>
-        <div><div class="rp-sec">Confiabilidade</div><div class="rp-val" id="rConf" style="color:var(--mut)">—</div><div class="rp-bw"><div class="rp-b" id="rConfBar" style="width:0"></div></div><div style="display:flex;gap:3px;margin-top:3px" id="rConfChips"></div></div>
+        <div><div class="rp-sec">Confiab.</div><div class="rp-val" id="rConf" style="color:var(--mut)">—</div><div class="rp-bw"><div class="rp-b" id="rConfBar" style="width:0"></div></div><div style="display:flex;gap:3px;margin-top:3px" id="rConfChips"></div></div>
       </div>
-      <div style="padding:3px 16px;font-size:10px;color:var(--amber);flex-shrink:0" id="rConfWarn"></div>
-      <div class="ind-list" id="indList"><div class="empty"><div class="eico">📊</div><p>Adicione um período e lance os dados</p></div></div>
-    </div>
-    <div class="dash-diag">
-      <div class="diag-top" style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#8aabce;font-weight:700;margin-bottom:2px">Analista Financeiro IA</div>
-          <div style="font-size:10px;color:var(--mut)" id="diagPeriod"></div>
-        </div>
-        <button onclick="openChat()" style="background:linear-gradient(135deg,#00e89b,#00b8d4);border:none;border-radius:20px;padding:6px 14px;color:#060d18;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:.3px;font-family:Outfit,sans-serif">
-          💬 Perguntar ao Analista
+      <div style="padding:2px 14px;font-size:10px;color:var(--amber);flex-shrink:0" id="rConfWarn"></div>
+      <!-- AI Bullets -->
+      <div class="dash-bullets" id="dashBullets">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:6px">Pontos de Atenção</div>
+        <div id="bulletContent"><div class="empty" style="padding:8px 0"><p style="font-size:11px">Gerado ao salvar os dados</p></div></div>
+      </div>
+      <!-- CTA: go to full diagnosis -->
+      <div style="padding:10px 14px;border-top:1px solid var(--bdr);flex-shrink:0">
+        <button onclick="go('diag',document.querySelector('[data-page=diag]'))" style="width:100%;background:rgba(0,232,155,.08);border:1px solid rgba(0,232,155,.2);border-radius:9px;color:var(--teal);font-size:12px;font-weight:700;padding:8px;cursor:pointer;font-family:Outfit,sans-serif;transition:all .2s" onmouseover="this.style.background='rgba(0,232,155,.15)'" onmouseout="this.style.background='rgba(0,232,155,.08)'">
+          🤖 Ver Diagnóstico Completo →
         </button>
       </div>
-      <div class="diag-scroll">
-        <div class="diag-sec"><div id="diagC"><div class="empty"><div class="eico">🤖</div><p>Gerado ao salvar os dados</p></div></div></div>
-      </div>
+      <!-- hidden elements kept for compatibility -->
+      <div style="display:none" id="indList"></div>
+      <div style="display:none" id="diagC"></div>
+      <div style="display:none" id="diagPeriod"></div>
     </div>
 <div id="chatPopup" style="display:none;position:fixed;bottom:24px;right:24px;width:380px;height:500px;background:#0c1628;border:1px solid rgba(0,240,200,.2);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);z-index:9000;flex-direction:column;overflow:hidden">
   <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(0,232,155,.08),rgba(0,184,212,.05));flex-shrink:0">
@@ -479,6 +591,34 @@ input[type=number]::-webkit-inner-spin-button{opacity:.3}
 </div>
   </div>
 </div>
+<div class="page" id="page-diag">
+  <div class="diag-layout">
+    <!-- Left: diagnosis + chat -->
+    <div class="diag-main">
+      <div class="diag-header">
+        <div>
+          <div class="pt" style="font-size:16px">🤖 Diagnóstico IA</div>
+          <div class="ps" id="diagPagePeriod">Selecione um período no Dashboard</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="openMeeting()" class="adm" style="border-color:rgba(0,240,200,.4);color:var(--teal);font-weight:700">▶ Reunião</button>
+          <button onclick="openChat()" style="background:linear-gradient(135deg,#00e89b,#00b8d4);border:none;border-radius:20px;padding:7px 16px;color:#060d18;font-size:12px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif">💬 Perguntar ao Analista</button>
+        </div>
+      </div>
+      <div class="diag-body" id="diagPageBody">
+        <div class="empty"><div class="eico">🤖</div><p>Gerado ao salvar os dados do período</p></div>
+      </div>
+    </div>
+    <!-- Right: KPI goal cards -->
+    <div class="diag-side">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);font-weight:700;padding:14px 16px 8px;border-bottom:1px solid var(--bdr)">Metas do Período</div>
+      <div class="diag-goals" id="diagGoals">
+        <div class="empty"><div class="eico">🎯</div><p>Lance os dados para ver as metas</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-input">
   <div class="inp-wrap">
     <div class="inp-topbar">
@@ -1097,12 +1237,22 @@ function updateActionObs(id,obs){
   if(a){a.obs=obs;sv();}
 }
 
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const collapsed=sb.classList.toggle('collapsed');
+  const btn=sb.querySelector('.sb-toggle');
+  if(btn)btn.textContent=collapsed?'›':'‹';
+}
 function go(name,btn){
   document.querySelectorAll('.page,.scrollpage').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  if(btn) btn.classList.add('active');
+  const pg=document.getElementById('page-'+name);
+  if(pg)pg.classList.add('active');
+  // Activate sidebar button
+  const sbBtn=document.querySelector('.tb[data-page="'+name+'"]');
+  if(sbBtn)sbBtn.classList.add('active');
   if(name==='dashboard'){rDash();setTimeout(sizeWheel,60);}
+  if(name==='diag')rDiagPage();
   if(name==='input')rInput();
   if(name==='config')rConfig();
   if(name==='sim')initSim();
@@ -1425,6 +1575,100 @@ function confirmMod(){
 // ═══════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// DIAGNOSIS PAGE
+// ═══════════════════════════════════════════
+function rDiagPage(){
+  if(!S.sel){return;}
+  const[y,mo]=S.sel.split('-');
+  const label=MES[parseInt(mo)-1]+'/'+y;
+  const pd=document.getElementById('diagPagePeriod');
+  if(pd)pd.textContent=label+(S.sector?' · '+S.sector:'');
+  // Render goal cards
+  rDiagGoals();
+  // Render full diagnosis (reuse cached or call API)
+  const res=calcScore(S.sel);
+  if(!res){
+    const body=document.getElementById('diagPageBody');
+    if(body)body.innerHTML='<div class="empty"><div class="eico">📊</div><p>Lance os dados do período para gerar o diagnóstico</p></div>';
+    return;
+  }
+  // Mirror diagC to diagPageBody
+  const diagC=document.getElementById('diagC');
+  const diagBody=document.getElementById('diagPageBody');
+  if(diagBody){
+    if(diagC&&diagC.innerHTML&&!diagC.innerHTML.includes('eico')){
+      diagBody.innerHTML=diagC.innerHTML;
+    } else {
+      // Call diagnosis and render in both places
+      rDiag(res,true);
+    }
+  }
+}
+function rDiagGoals(){
+  const el=document.getElementById('diagGoals');if(!el)return;
+  const res=S.sel?calcScore(S.sel):null;
+  if(!res){el.innerHTML='<div class="empty"><div class="eico">🎯</div><p>Lance os dados para ver as metas</p></div>';return;}
+  el.innerHTML='';
+  [...res.details].sort((a,b)=>a.pct-b.pct).forEach(d=>{
+    const col=d.pct>=80?'var(--green)':d.pct>=60?'var(--amber)':'var(--red)';
+    const card=document.createElement('div');card.className='goal-card';
+    card.innerHTML='<div class="goal-card-top">'+
+      '<span class="goal-card-name">'+d.ind.icon+' '+d.ind.short+'</span>'+
+      '<span class="goal-card-pct" style="color:'+col+'">'+Math.round(d.pct)+'%</span></div>'+
+      '<div class="goal-bar"><div class="goal-bar-fill" style="width:'+Math.min(100,d.pct)+'%;background:'+col+'"></div></div>'+
+      '<div class="goal-vals"><span>'+fmtV(d.val,d.ind.unit)+'</span><span>meta: '+fmtV(d.goal,d.ind.unit)+'</span></div>';
+    el.appendChild(card);
+  });
+}
+
+// ── AI Bullet Points for Dashboard ──────────────────────────────────
+var _bulletsCache={};
+async function rBullets(res){
+  var el=document.getElementById('bulletContent');if(!el)return;
+  if(!res||!S.sel){el.innerHTML='<div class="empty" style="padding:4px 0"><p style="font-size:11px">Sem dados</p></div>';return;}
+  var parts=S.sel.split('-');var y=parts[0];var mo=parts[1];
+  var cacheKey=S.sel+'|'+res.score;
+  if(_bulletsCache[cacheKey]){el.innerHTML=_bulletsCache[cacheKey];return;}
+  el.innerHTML='<div class="bullet-load"><div class="spin"></div><span>Analisando...</span></div>';
+  var sorted=[].concat(res.details).sort(function(a,b){return a.adjPct-b.adjPct;});
+  var worst=sorted.slice(0,2),best=sorted.slice(-1);
+  var kpiCtx=res.details.map(function(d){return d.ind.short+': '+Math.round(d.adjPct)+'%';}).join(', ');
+  var prompt='Empresa: '+S.company+(S.sector?' ('+S.sector+')':'')+'. Mês: '+MES[parseInt(mo)-1]+'/'+y+'. Score: '+res.score+'. KPIs: '+kpiCtx+'. '
+    +'Escreva EXATAMENTE 3 bullet points curtos (máx 12 palavras cada) sobre os pontos mais importantes deste mês. '
+    +'Misture alertas e pontos positivos. Prefixe cada linha com NEG: ou POS: conforme o caso. Sem markdown. Um por linha.';
+  try{
+    var r=await fetch('/api/diagnose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt})});
+    var data=await r.json();
+    if(data.error)throw new Error(data.error);
+    var rawLines=(data.text||'').split(String.fromCharCode(10));
+    var lines=[];
+    for(var i=0;i<rawLines.length;i++){
+      var l=rawLines[i].trim();
+      if(l.indexOf('NEG:')==0||l.indexOf('POS:')==0)lines.push(l);
+      if(lines.length>=3)break;
+    }
+    if(!lines.length)throw new Error('sem bullets');
+    var html='';
+    for(var j=0;j<lines.length;j++){
+      var isNeg=lines[j].indexOf('NEG:')==0;
+      var txt=lines[j].substring(4).trim();
+      html+='<div class="bullet-item"><div class="bullet-dot '+(isNeg?'neg':'pos')+'"></div><span>'+txt+'</span></div>';
+    }
+    el.innerHTML=html;
+    _bulletsCache[cacheKey]=html;
+  }catch(e){
+    var html='';
+    for(var k=0;k<Math.min(2,worst.length);k++){
+      html+='<div class="bullet-item"><div class="bullet-dot neg"></div><span>'+worst[k].ind.short+' em '+Math.round(worst[k].adjPct)+'% da meta</span></div>';
+    }
+    for(var m=0;m<Math.min(1,best.length);m++){
+      html+='<div class="bullet-item"><div class="bullet-dot pos"></div><span>'+best[m].ind.short+' com '+Math.round(best[m].adjPct)+'% — destaque</span></div>';
+    }
+    el.innerHTML=html;
+  }
+}
+
 function rDash(){
   document.getElementById('coName').textContent=S.company;
   const dp=document.getElementById('diagPeriod');
@@ -1542,6 +1786,7 @@ function rDash(){
     document.getElementById('rConfWarn').textContent=low.length?`⚠️ Verifique: ${low.map(d=>d.ind.short).join(', ')}`:'';}
   rIndList(res.details);
   rDiag(res); // API call only here — fechamento only
+  rBullets(res); // AI bullet points for dashboard
 }
 function rIndList(dets){
   const el=document.getElementById('indList');el.innerHTML='';
@@ -1632,8 +1877,8 @@ function closeKpi(){document.getElementById('kpiModal').classList.remove('open')
 // ═══════════════════════════════════════════
 // DIAGNOSIS + CHAT
 // ═══════════════════════════════════════════
-async function rDiag(res){
-  const el=document.getElementById('diagC');
+async function rDiag(res,diagPageOnly){
+  const el=document.getElementById(diagPageOnly?'diagPageBody':'diagC');
   const sorted=[...res.details].sort(function(a,b){return a.adjPct-b.adjPct;});
   const worst=sorted.slice(0,3),best=sorted.slice(-2);
   const cf=calcConf(res.details);
@@ -1645,6 +1890,8 @@ async function rDiag(res){
   const cached=S.diagCache[S.sel];
   if(cached&&cached.key===cacheKey){
     el.innerHTML=cached.html;
+    var _dpb2=document.getElementById('diagPageBody');
+    if(_dpb2&&_dpb2!==el)_dpb2.innerHTML=cached.html;
     _chatCtx=res;
     var _oa=(S.actions||[]).filter(function(a){return a.status==='open';}).length;
     var _aw=document.getElementById('actWidget'),_awc=document.getElementById('actWidgetCount');
@@ -1673,6 +1920,9 @@ async function rDiag(res){
     _renderDiag(el,txt,res,worst,best,MES[parseInt(mo)-1]+'/'+y);
     if(!S.diagCache)S.diagCache={};
     S.diagCache[S.sel]={key:cacheKey,html:el.innerHTML};
+    // Mirror to diagPageBody if it exists and is different
+    var _dpb=document.getElementById('diagPageBody');
+    if(_dpb&&_dpb!==el)_dpb.innerHTML=el.innerHTML;
     _chatCtx=res;
     var _oa=(S.actions||[]).filter(function(a){return a.status==='open';}).length;
     var _aw=document.getElementById('actWidget'),_awc=document.getElementById('actWidgetCount');
@@ -3109,6 +3359,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 </script>
+</div><!-- /main-content -->
 </div><!-- /appShell -->
 </body>
 </html>

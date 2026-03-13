@@ -2009,16 +2009,30 @@ function openChat(){
   if(_dashView==='forecast'){
     toast('💬 Chat disponível apenas com dados de fechamento');return;
   }
+  // Navigate to Diagnóstico tab if not already there
+  const diagPage=document.getElementById('page-diag');
+  const isDiagActive=diagPage&&diagPage.classList.contains('active');
+  if(!isDiagActive){
+    go('diag',document.querySelector('[data-page=diag]'));
+    // Small delay to allow page render before showing chat
+    setTimeout(function(){
+      var popup=document.getElementById('chatPopup');
+      if(popup)popup.style.display='flex';
+      _initChatGreeting();
+    },120);
+    return;
+  }
   const popup=document.getElementById('chatPopup');
   popup.style.display='flex';
+  _initChatGreeting();
+}
+function _initChatGreeting(){
   const out=document.getElementById('chatOut');
-  if(!out.children.length){
-    const empresa=S.company||'sua empresa';
-    const scoreEl=document.getElementById('rScore');
-    const score=_chatCtx?_chatCtx.score:(scoreEl&&scoreEl.textContent!=='—'?scoreEl.textContent:'?');
-    out.innerHTML='<div style="font-size:12px;color:#8aabce;line-height:1.6;padding:8px 10px;background:rgba(0,232,155,.05);border-radius:10px;border:1px solid rgba(0,232,155,.1)">Olá! Sou o analista financeiro de <strong style="color:#eef4ff">'+empresa+'</strong>. Score atual: <strong style="color:var(--teal)">'+score+'/100</strong>. Pode me perguntar sobre qualquer KPI, tendência ou estratégia.</div>';
-  }
-  setTimeout(function(){document.getElementById('chatInp').focus();},100);
+  if(!out||out.children.length)return;
+  const empresa=S.company||'sua empresa';
+  const score=_chatCtx?_chatCtx.score:'?';
+  out.innerHTML='<div style="font-size:12px;color:#8aabce;line-height:1.6;padding:8px 10px;background:rgba(0,232,155,.05);border-radius:10px;border:1px solid rgba(0,232,155,.1)">Olá! Sou o analista financeiro de <strong style="color:#eef4ff">'+empresa+'</strong>. Score atual: <strong style="color:var(--teal)">'+score+'/100</strong>. Pode me perguntar sobre qualquer KPI, tendência ou estratégia.</div>';
+  setTimeout(function(){var inp=document.getElementById('chatInp');if(inp)inp.focus();},100);
 }
 function closeChat(){document.getElementById('chatPopup').style.display='none';}
 async function sendChat(){

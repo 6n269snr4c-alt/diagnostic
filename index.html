@@ -419,8 +419,13 @@
     <div class="m-btns"><button class="btn-cancel" onclick="closeMod()">Cancelar</button><button class="btn-ok" onclick="confirmMod()">Adicionar</button></div>
   </div>
 </div>
-<div class="kpi-modal-bg" id="kpiModal">
-  <div class="kpi-modal"><div id="kpiModalBody"></div><button class="btn-cancel" style="margin-top:14px;width:100%;text-align:center" onclick="closeKpi()">Fechar</button></div>
+<div class="kpi-modal-bg" id="kpiModal" onclick="if(event.target===this)closeKpi()">
+  <div class="kpi-modal">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="btn-cancel" onclick="closeKpi()" style="padding:4px 12px;font-size:12px">✕ Fechar</button>
+    </div>
+    <div id="kpiModalBody"></div>
+  </div>
 </div>
 <div class="scrollpage" id="page-actions">
   <div class="ph">

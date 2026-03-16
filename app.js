@@ -2607,12 +2607,16 @@ function openMeeting(){
   }
   document.getElementById('meetingOverlay').classList.add('open');
   document.addEventListener('keydown',meetKey);
+  // Entra em tela cheia automaticamente ao abrir a apresentação
+  document.documentElement.requestFullscreen().catch(()=>{});
   meetGo(0);
 }
 function closeMeeting(){
   saveMeetActions();
   document.getElementById('meetingOverlay').classList.remove('open');
   document.removeEventListener('keydown',meetKey);
+  // Sai da tela cheia ao fechar a apresentação
+  if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
 }
 function meetKey(e){
   if(e.key==='Escape')closeMeeting();

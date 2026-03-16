@@ -1046,8 +1046,30 @@ function rDash(){
     const low=res.details.filter(d=>d.conf!=='high');
     document.getElementById('rConfWarn').textContent=low.length?`⚠️ Verifique: ${low.map(d=>d.ind.short).join(', ')}`:'';}
   rIndList(res.details);
-  rDiag(res); // API call only here — fechamento only
-  rBullets(res); // AI bullet points for dashboard
+  rDiag(res);    // API call — diagnóstico completo
+  rBullets(res); // API call — bullet points dashboard
+}
+function rDashNoApi(){
+  // Atualiza score, roda, lista de KPIs e gaps sem chamar a API de diagnóstico.
+  // Usado quando apenas metas ou configurações mudam, não os dados brutos.
+  document.getElementById('coName').textContent=S.company;
+  rPills();rTrend();
+  const res=S.sel?calcScore(S.sel):null;
+  if(!res)return;
+  const g=grade(res.score);
+  document.getElementById('sn').textContent=res.score;
+  document.getElementById('sn').style.color=g.c;
+  const sg=document.getElementById('sg');sg.textContent=g.l;
+  sg.style.cssText=`color:${g.c};background:${g.c}20;border:1px solid ${g.c}50`;
+  document.getElementById('rScore').textContent=res.score;
+  document.getElementById('rScore').style.color=g.c;
+  document.getElementById('rScoreBar').style.cssText=`width:${res.score}%;background:${g.c}`;
+  const cf=calcConf(res.details);
+  if(cf){const cc=cf.p>=80?'var(--green)':cf.p>=60?'var(--amber)':'var(--red)';
+    document.getElementById('rConf').textContent=cf.p+'%';document.getElementById('rConf').style.color=cc;
+    document.getElementById('rConfBar').style.cssText=`width:${cf.p}%;background:${cc}`;}
+  rIndList(res.details);
+  sizeWheel();
 }
 function rIndList(dets){
   const el=document.getElementById('indList');el.innerHTML='';
@@ -1972,8 +1994,8 @@ function saveConfig(){
   sv();
   document.getElementById('coName').textContent=S.company;
   toast('✓ Configurações salvas!');
-  // Refresh goals table to show saved values
   rGoalsTable();
+  rDash(); // atualiza dashboard e regenera diagnóstico com as novas metas
 }
 function fetchBench(){
   const prompt='Setor "'+S.sector+'". JSON só: {"receita":100000,"cac":10,"churn":3,"margem":40,"ebitda":15,"despop":30,"caixa":10000,"ciclo":0,"runway":6,"reccolab":10000,"estoque":45,"turnover":2}';

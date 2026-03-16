@@ -212,6 +212,8 @@
       </div>
 
       <button class="bs" id="dreProcessBtn" style="display:none" onclick="dreProcess()">🤖 Classificar com IA →</button>
+
+      <div id="dreMappingsPreview" style="display:none;width:100%"></div>
     </div>
 
     <!-- ── STEP 2: PROCESSING ── -->
@@ -289,7 +291,13 @@
         </div>
       </div>
 
-      <div class="cfg-row"><label>Dados</label><button class="bs ghost" onclick="clearAllData()" style="font-size:11px;padding:5px 10px">🗑 Limpar todos os dados</button></div>
+      <div class="cfg-row"><label>Dados</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="bs ghost" onclick="clearAllData()" style="font-size:11px;padding:5px 10px">🗑 Limpar todos os dados</button>
+          <button class="bs ghost" onclick="clearMappings()" style="font-size:11px;padding:5px 10px" id="clearMappingsBtn">🧠 Limpar aprendizado do DRE</button>
+        </div>
+        <div id="mappingsCount" style="font-size:10px;color:var(--mut);margin-top:4px"></div>
+      </div>
     </div>
     <div class="cfg-sec">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">

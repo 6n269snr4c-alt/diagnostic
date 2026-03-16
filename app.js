@@ -86,20 +86,21 @@ function calcKPIs(r){
                    : cv_agg !== null ? cv_agg - ded
                    : null;
 
-  // ── Despesas Pessoal+Adm: usa granular se disponível, senão usa agregado ──
-  // IMPORTANTE: df_agg = pess+adm, NÃO inclui dc
+  // ── Custo Variável Comercial (comissões, frete s/venda, embalagens) ──
+  const cvc = v('f_cvc')||0;
+
+  // ── Despesas Pessoal+Adm ──
   const dfEfetivo = (pess > 0 || adm > 0) ? pess + adm
                   : df_agg !== null ? df_agg
                   : null;
 
-  // ── Cadeia de resultados (fluxo DRE) ──────────────────────────────
-  // Lucro Bruto = Receita Líquida − CMV
+  // ── Cadeia de resultados ───────────────────────────────────────────
+  // Lucro Bruto = Receita Líquida − CMV  (base da Margem Bruta)
   const lucBruto = cmvEfetivo !== null ? recLiq - cmvEfetivo : null;
 
-  // Margem de Contribuição R$ = Lucro Bruto (sem DC — DC é fixo, não variável)
-  // Nota: pela convenção brasileira de PME, MC = Rec.Líq − Custos Variáveis
-  // DC entra nas despesas operacionais, não nos custos variáveis
-  const mc_r = lucBruto;
+  // Margem de Contribuição R$ = Lucro Bruto − Custo Variável Comercial
+  // (comissões, frete sobre vendas, embalagens — custos que variam com volume)
+  const mc_r = lucBruto !== null ? lucBruto - cvc : null;
 
   // EBITDA R$ = MC − Desp.Comercial − Desp.Pessoal − Desp.Adm
   const ebitda_r = mc_r !== null && dfEfetivo !== null
@@ -1126,6 +1127,7 @@ function _openKpiModal(id, raw){
   const fat    = fv('f_fat');
   const ded    = fv('f_ded');
   const cmv    = raw.f_cmv != null ? fv('f_cmv') : Math.max(0, fv('f_cv') - ded);
+  const cvc    = fv('f_cvc');  // Custo Variável Comercial (comissões, frete)
   const dc     = fv('f_dc');
   const pess   = fv('f_pessoal');
   const adm    = fv('f_adm');
@@ -1134,8 +1136,9 @@ function _openKpiModal(id, raw){
   const recLiq = fat - ded;
   const base   = recLiq > 0 ? recLiq : fat;
   const lucBruto = fat ? recLiq - cmv : 0;
+  const mc_r     = lucBruto - cvc;
   const dfEfetivo = (pess > 0 || adm > 0) ? pess + adm : fv('f_df');
-  const ebitda_r = lucBruto - dc - dfEfetivo;
+  const ebitda_r = mc_r - dc - dfEfetivo;
   const lucro_r  = ebitda_r - dep - depfin;
   const fmt = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
   const fmtP = v => v !== null && !isNaN(v) ? v.toFixed(1)+'%' : '—';
@@ -1152,22 +1155,26 @@ function _openKpiModal(id, raw){
     ],
     margbruta: [
       {op:'',  label:'Receita Líquida',    val:fmt(base), sub:'Rec.Bruta − Deduções'},
-      {op:'−', label:'CMV',                val:fmt(cmv)},
+      {op:'−', label:'CMV / Custo do Produto', val:fmt(cmv)},
       {op:'=', label:'Lucro Bruto',        val:fmt(lucBruto)},
       {op:'÷', label:'Receita Líquida',    val:fmt(base)},
       {op:'=', label:'Margem Bruta %',     val:fmtP(base?lucBruto/base*100:null), bold:true, color:col},
     ],
     margem: [
       {op:'',  label:'Receita Líquida',    val:fmt(base), sub:'Rec.Bruta − Deduções'},
-      {op:'−', label:'CMV',                val:fmt(cmv)},
-      {op:'=', label:'Lucro Bruto / MC',   val:fmt(lucBruto)},
+      {op:'−', label:'CMV / Custo do Produto', val:fmt(cmv)},
+      {op:'=', label:'Lucro Bruto',        val:fmt(lucBruto)},
+      {op:'−', label:'Custo Variável Comercial', val:fmt(cvc), sub: cvc > 0 ? 'Comissões, frete s/vendas, embalagens' : 'Nenhum lançado'},
+      {op:'=', label:'Margem de Contribuição R$', val:fmt(mc_r)},
       {op:'÷', label:'Receita Líquida',    val:fmt(base)},
-      {op:'=', label:'Margem de Contribuição %', val:fmtP(base?lucBruto/base*100:null), bold:true, color:col},
+      {op:'=', label:'Margem de Contribuição %', val:fmtP(base?mc_r/base*100:null), bold:true, color:col},
     ],
     ebitda: [
       {op:'',  label:'Receita Líquida',    val:fmt(base), sub:'Rec.Bruta − Deduções'},
-      {op:'−', label:'CMV',                val:fmt(cmv)},
+      {op:'−', label:'CMV / Custo do Produto', val:fmt(cmv)},
       {op:'=', label:'Lucro Bruto',        val:fmt(lucBruto)},
+      {op:'−', label:'Custo Variável Comercial', val:fmt(cvc), sub: cvc > 0 ? 'Comissões, frete, embalagens' : 'Nenhum lançado'},
+      {op:'=', label:'Margem de Contribuição', val:fmt(mc_r)},
       {op:'−', label:'Despesa Comercial',  val:fmt(dc)},
       {op:'−', label:'Despesas Pessoal',   val:fmt(pess)},
       {op:'−', label:'Despesas Adm.',      val:fmt(adm)},
@@ -1761,6 +1768,13 @@ function saveForecast(){
 function rConfig(){
   document.getElementById('cfgCo').value=S.company;
   document.getElementById('cfgSec').value=S.sector||'';
+
+  // Show mappings count
+  const mc = Object.keys(S.dreMappings||{}).length;
+  const mcEl = document.getElementById('mappingsCount');
+  if(mcEl) mcEl.textContent = mc > 0
+    ? `${mc} classificações de contas aprendidas para ${S.company||'esta empresa'}`
+    : 'Nenhum aprendizado salvo ainda — será criado após a primeira importação';
 
   const btn=document.getElementById('lockBtn');btn.textContent=S.locked?'🔒 Clique para editar':'🔓 Editando';btn.className='lock-btn'+(S.locked?' locked':'');
   document.getElementById('cfgSaveBtn').style.display=S.locked?'none':'inline-block';
@@ -3177,16 +3191,17 @@ let _dreLines = [];
 let _dreClassified = [];
 
 const DRE_CATS = [
-  {id:'receita_bruta',          label:'Receita Bruta',           color:'#00e89b', icon:'💰'},
-  {id:'deducao_receita',        label:'Dedução de Receita',      color:'#f59e0b', icon:'➖'},
-  {id:'custo_variavel',         label:'Custo Variável / CMV',    color:'#ef4444', icon:'📦'},
-  {id:'despesa_comercial',      label:'Despesa Comercial',       color:'#3b82f6', icon:'📣'},
-  {id:'despesa_pessoal',        label:'Despesa com Pessoal',     color:'#a855f7', icon:'👥'},
-  {id:'despesa_administrativa', label:'Despesa Administrativa',  color:'#f59e0b', icon:'🏢'},
-  {id:'despesa_financeira',     label:'Despesa Financeira',      color:'#ef4444', icon:'🏦'},
-  {id:'imposto_lucro',          label:'Imposto s/ Lucro (IR/CSLL)',color:'#dc2626',icon:'🏛'},
-  {id:'depreciacao',            label:'Depreciação / Amortização',color:'#64748b',icon:'📉'},
-  {id:'ignorar',                label:'Ignorar (total/subtotal)',  color:'#374151',icon:'🚫'},
+  {id:'receita_bruta',            label:'Receita Bruta',                color:'#00e89b', icon:'💰'},
+  {id:'deducao_receita',          label:'Dedução de Receita',           color:'#f59e0b', icon:'➖'},
+  {id:'custo_variavel',           label:'CMV / Custo do Produto',       color:'#ef4444', icon:'📦'},
+  {id:'custo_variavel_comercial', label:'Custo Variável Comercial',     color:'#f97316', icon:'🤝'},
+  {id:'despesa_comercial',        label:'Despesa Comercial',            color:'#3b82f6', icon:'📣'},
+  {id:'despesa_pessoal',          label:'Despesa com Pessoal',          color:'#a855f7', icon:'👥'},
+  {id:'despesa_administrativa',   label:'Despesa Administrativa',       color:'#f59e0b', icon:'🏢'},
+  {id:'despesa_financeira',       label:'Despesa Financeira',           color:'#ef4444', icon:'🏦'},
+  {id:'imposto_lucro',            label:'Imposto s/ Lucro (IR/CSLL)',   color:'#dc2626', icon:'🏛'},
+  {id:'depreciacao',              label:'Depreciação / Amortização',    color:'#64748b', icon:'📉'},
+  {id:'ignorar',                  label:'Ignorar (total/subtotal)',     color:'#374151', icon:'🚫'},
 ];
 
 function dreInitPage() {
@@ -3218,6 +3233,8 @@ function dreInitPage() {
   document.getElementById('dreStep1').style.display = 'flex';
   document.getElementById('dreStep2').style.display = 'none';
   document.getElementById('dreStep3').style.display = 'none';
+  const prev = document.getElementById('dreMappingsPreview');
+  if (prev) prev.style.display = 'none';
   dreSetStep(1);
 }
 
@@ -3258,6 +3275,8 @@ function dreHandleFile(input) {
       document.getElementById('dreLineCount').textContent = '· ' + lines.length + ' linhas encontradas';
       document.getElementById('dreFileBadge').style.display = 'flex';
       document.getElementById('dreProcessBtn').style.display = 'inline-block';
+      // Show mappings preview
+      dreMappingsPreview(lines);
       input.value = '';
     } catch(err) {
       toast('❌ Erro ao ler o arquivo: ' + err.message);
@@ -3270,6 +3289,73 @@ function dreClearFile() {
   _dreLines = [];
   document.getElementById('dreFileBadge').style.display = 'none';
   document.getElementById('dreProcessBtn').style.display = 'none';
+  const prev = document.getElementById('dreMappingsPreview');
+  if (prev) prev.style.display = 'none';
+}
+
+function dreMappingsPreview(lines) {
+  const el = document.getElementById('dreMappingsPreview');
+  if (!el) return;
+  const mappings = S.dreMappings || {};
+  const total = Object.keys(mappings).length;
+  if (!total) { el.style.display = 'none'; return; }
+
+  // Find which uploaded lines have saved mappings
+  const matched = lines.filter(l => mappings[l.name.toLowerCase().trim()]);
+  const newLines = lines.filter(l => !mappings[l.name.toLowerCase().trim()]);
+
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="background:rgba(0,240,200,.04);border:1px solid rgba(0,240,200,.15);border-radius:12px;padding:14px 16px;width:100%">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--teal)">🧠 Aprendizado aplicado</div>
+          <div style="font-size:11px;color:var(--mut);margin-top:2px">
+            ${matched.length} de ${lines.length} contas já classificadas anteriormente
+            ${newLines.length ? ` · ${newLines.length} novas serão classificadas pela IA` : ' · nenhuma conta nova'}
+          </div>
+        </div>
+        <button onclick="clearMappings()" style="background:none;border:1px solid rgba(255,61,90,.25);color:rgba(255,61,90,.6);border-radius:6px;font-size:10px;padding:4px 10px;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap"
+          onmouseover="this.style.borderColor='#ff3d5a';this.style.color='#ff3d5a'"
+          onmouseout="this.style.borderColor='rgba(255,61,90,.25)';this.style.color='rgba(255,61,90,.6)'">
+          🗑 Limpar aprendizado
+        </button>
+      </div>
+      ${matched.length ? `
+        <div style="max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:3px">
+          ${matched.map(l => {
+            const cat = DRE_CATS.find(c => c.id === mappings[l.name.toLowerCase().trim()]);
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(255,255,255,.03);border-radius:6px;font-size:11px">
+              <span style="color:rgba(255,255,255,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%">${l.name}</span>
+              <span style="flex-shrink:0;font-size:10px;padding:2px 8px;border-radius:5px;background:${cat?.color||'#64748b'}18;color:${cat?.color||'#64748b'};border:1px solid ${cat?.color||'#64748b'}33">
+                ${cat?.icon||''} ${cat?.label||mappings[l.name.toLowerCase().trim()]}
+              </span>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+      <div style="margin-top:10px;font-size:10px;color:rgba(255,255,255,.25);line-height:1.5">
+        💡 As classificações acima serão aplicadas automaticamente. Você poderá revisar e corrigir no passo seguinte antes de confirmar.
+      </div>
+    </div>`;
+}
+
+function clearMappings() {
+  const count = Object.keys(S.dreMappings || {}).length;
+  if (!count) { toast('Nenhum aprendizado salvo'); return; }
+  showDelDialog(
+    '🧠 Limpar Aprendizado',
+    `Remover ${count} classificações aprendidas? A IA voltará a classificar todas as contas do zero nas próximas importações.`,
+    () => {
+      S.dreMappings = {};
+      sv();
+      toast('✓ Aprendizado limpo — próxima importação será classificada do zero pela IA');
+      // Refresh preview if file already loaded
+      if (_dreLines.length) dreMappingsPreview(_dreLines);
+      // Refresh config page counter
+      const el = document.getElementById('mappingsCount');
+      if (el) el.textContent = '';
+    }
+  );
 }
 
 async function dreProcess() {
@@ -3378,18 +3464,19 @@ function dreUpdateCat(idx, newCat) {
 }
 
 function dreAggregate() {
-  const a = { f_fat:0, f_ded:0, f_cmv:0, f_pessoal:0, f_adm:0, f_dep:0, f_dc:0, f_depfin:0 };
+  const a = { f_fat:0, f_ded:0, f_cmv:0, f_cvc:0, f_pessoal:0, f_adm:0, f_dep:0, f_dc:0, f_depfin:0 };
   _dreClassified.forEach(l => {
     const v = l.value;
-    if      (l.category === 'receita_bruta')          a.f_fat     += v;
-    else if (l.category === 'deducao_receita')        a.f_ded     += v;
-    else if (l.category === 'custo_variavel')         a.f_cmv     += v;
-    else if (l.category === 'despesa_comercial')      a.f_dc      += v;
-    else if (l.category === 'despesa_pessoal')        a.f_pessoal += v;
-    else if (l.category === 'despesa_administrativa') a.f_adm     += v;
-    else if (l.category === 'depreciacao')            a.f_dep     += v; // separado — não entra no EBITDA
-    else if (l.category === 'despesa_financeira')     a.f_depfin  += v;
-    else if (l.category === 'imposto_lucro')          a.f_depfin  += v;
+    if      (l.category === 'receita_bruta')            a.f_fat     += v;
+    else if (l.category === 'deducao_receita')          a.f_ded     += v;
+    else if (l.category === 'custo_variavel')           a.f_cmv     += v; // CMV puro → Margem Bruta
+    else if (l.category === 'custo_variavel_comercial') a.f_cvc     += v; // comissões, frete → MC
+    else if (l.category === 'despesa_comercial')        a.f_dc      += v;
+    else if (l.category === 'despesa_pessoal')          a.f_pessoal += v;
+    else if (l.category === 'despesa_administrativa')   a.f_adm     += v;
+    else if (l.category === 'depreciacao')              a.f_dep     += v;
+    else if (l.category === 'despesa_financeira')       a.f_depfin  += v;
+    else if (l.category === 'imposto_lucro')            a.f_depfin  += v;
   });
   return a;
 }
@@ -3411,13 +3498,14 @@ function dreRenderSummary() {
   const lucroP = a.f_fat > 0 ? (lucroR / a.f_fat * 100) : null;
   const fmt = v => 'R$ ' + dreFormatNum(v);
   const items = [
-    { label: '💰 Receita Bruta',      val: a.f_fat,     color: '#00e89b' },
-    { label: '➖ Deduções',           val: a.f_ded,     color: '#64748b', hide: !a.f_ded },
-    { label: '📦 CMV / Custo Var.',   val: a.f_cmv,     color: '#ef4444', hide: !a.f_cmv },
-    { label: '📣 Despesa Comercial',  val: a.f_dc,      color: '#3b82f6', hide: !a.f_dc },
-    { label: '👥 Despesa Pessoal',    val: a.f_pessoal, color: '#a855f7', hide: !a.f_pessoal },
-    { label: '🏢 Despesa Adm.',       val: a.f_adm,     color: '#f59e0b', hide: !a.f_adm },
-    { label: '🏦 Desp. Fin. + IR',    val: a.f_depfin,  color: '#ef4444', hide: !a.f_depfin },
+    { label: '💰 Receita Bruta',           val: a.f_fat,     color: '#00e89b' },
+    { label: '➖ Deduções',                val: a.f_ded,     color: '#64748b', hide: !a.f_ded },
+    { label: '📦 CMV / Custo do Produto',  val: a.f_cmv,     color: '#ef4444', hide: !a.f_cmv },
+    { label: '🤝 Custo Var. Comercial',    val: a.f_cvc,     color: '#f97316', hide: !a.f_cvc },
+    { label: '📣 Despesa Comercial',       val: a.f_dc,      color: '#3b82f6', hide: !a.f_dc },
+    { label: '👥 Despesa Pessoal',         val: a.f_pessoal, color: '#a855f7', hide: !a.f_pessoal },
+    { label: '🏢 Despesa Adm.',            val: a.f_adm,     color: '#f59e0b', hide: !a.f_adm },
+    { label: '🏦 Desp. Fin. + IR',         val: a.f_depfin,  color: '#ef4444', hide: !a.f_depfin },
   ];
   let html = `<div class="dre-sum-title">Resumo de valores</div>`;
   items.forEach(it => {
@@ -3496,6 +3584,7 @@ function _dreGetLiveRaw() {
     f_df:      (a.f_pessoal + a.f_adm) || undefined,
     f_depfin:  a.f_depfin  || undefined,
     f_cmv:     a.f_cmv     || undefined,
+    f_cvc:     a.f_cvc     || undefined,
     f_ded:     a.f_ded     || undefined,
     f_pessoal: a.f_pessoal || undefined,
     f_adm:     a.f_adm     || undefined,
@@ -3532,6 +3621,7 @@ function dreConfirm() {
     f_df:      (agg.f_pessoal + agg.f_adm) || undefined,
     f_depfin:  agg.f_depfin           || undefined,
     f_cmv:     agg.f_cmv              || undefined,
+    f_cvc:     agg.f_cvc              || undefined,
     f_ded:     agg.f_ded              || undefined,
     f_pessoal: agg.f_pessoal          || undefined,
     f_adm:     agg.f_adm              || undefined,
@@ -3873,18 +3963,19 @@ function lancSaveEdits() {
   });
 
   // Recalculate aggregation
-  const agg = { f_fat:0, f_ded:0, f_cmv:0, f_pessoal:0, f_adm:0, f_dep:0, f_dc:0, f_depfin:0 };
+  const agg = { f_fat:0, f_ded:0, f_cmv:0, f_cvc:0, f_pessoal:0, f_adm:0, f_dep:0, f_dc:0, f_depfin:0 };
   _lancEditLines.forEach(l => {
     const v = l.value;
-    if      (l.category === 'receita_bruta')          agg.f_fat     += v;
-    else if (l.category === 'deducao_receita')        agg.f_ded     += v;
-    else if (l.category === 'custo_variavel')         agg.f_cmv     += v;
-    else if (l.category === 'despesa_comercial')      agg.f_dc      += v;
-    else if (l.category === 'despesa_pessoal')        agg.f_pessoal += v;
-    else if (l.category === 'despesa_administrativa') agg.f_adm     += v;
-    else if (l.category === 'depreciacao')            agg.f_dep     += v;
-    else if (l.category === 'despesa_financeira')     agg.f_depfin  += v;
-    else if (l.category === 'imposto_lucro')          agg.f_depfin  += v;
+    if      (l.category === 'receita_bruta')            agg.f_fat     += v;
+    else if (l.category === 'deducao_receita')          agg.f_ded     += v;
+    else if (l.category === 'custo_variavel')           agg.f_cmv     += v;
+    else if (l.category === 'custo_variavel_comercial') agg.f_cvc     += v;
+    else if (l.category === 'despesa_comercial')        agg.f_dc      += v;
+    else if (l.category === 'despesa_pessoal')          agg.f_pessoal += v;
+    else if (l.category === 'despesa_administrativa')   agg.f_adm     += v;
+    else if (l.category === 'depreciacao')              agg.f_dep     += v;
+    else if (l.category === 'despesa_financeira')       agg.f_depfin  += v;
+    else if (l.category === 'imposto_lucro')            agg.f_depfin  += v;
   });
 
   const raw = {
@@ -3894,6 +3985,7 @@ function lancSaveEdits() {
     f_df:      (agg.f_pessoal + agg.f_adm)    || undefined,
     f_depfin:  agg.f_depfin                   || undefined,
     f_cmv:     agg.f_cmv                      || undefined,
+    f_cvc:     agg.f_cvc                      || undefined,
     f_ded:     agg.f_ded                      || undefined,
     f_pessoal: agg.f_pessoal                  || undefined,
     f_adm:     agg.f_adm                      || undefined,

@@ -1988,6 +1988,7 @@ function saveConfig(){
   const yr=parseInt(document.getElementById('goalsYear')?.value)||new Date().getFullYear();
   IND.forEach(ind=>{
     if(!S.goals[ind.id])S.goals[ind.id]={default:ind.goalDef};
+    if(!S.cfg[ind.id])S.cfg[ind.id]={weight:1,benchGoal:null,hb:ind.hb};
     const def=document.getElementById('goaldef_'+ind.id);
     if(def&&def.value!=='')S.goals[ind.id].default=parseFloat(def.value);
     for(let m=1;m<=12;m++){
@@ -3236,6 +3237,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   auth.onAuthStateChanged(async(user)=>{
     if(user){
       await loadUserData(user.uid);
+      // Garante que todos os KPIs do IND têm entrada em S.cfg e S.goals
+      // (necessário quando novos KPIs são adicionados ao produto)
+      IND.forEach(function(ind){
+        if(!S.cfg[ind.id])S.cfg[ind.id]={weight:1,benchGoal:null,hb:ind.hb};
+        if(!S.goals[ind.id])S.goals[ind.id]={default:ind.goalDef};
+      });
       // Ensure S.sel points to a month with data, or most recent known
       // Clean up benchGoal from non-benchable KPIs
       IND.forEach(function(ind){

@@ -2591,6 +2591,7 @@ function openMeeting(){
   // Build slides
   _meetSlideBuilders=[
     function(){return buildSlide0(res);},  // capa
+    function(){return buildSlideDiag(res);}, // roda + diagnóstico
     function(){return buildSlide1(res);},  // KPIs
     function(){return buildSlide2(res);},  // forecast
     function(){return buildSlide3(res);},  // planos de ação
@@ -2808,6 +2809,58 @@ function buildSlide0(res){
     +'</div></div>';
 }
 
+
+// ── SLIDE DIAG: Roda + Diagnóstico ───────────────────────────────────
+function buildSlideDiag(res){
+  var g=grade(res.score);var col=g.c;
+  var parts=S.sel.split('-');var y=parts[0];var mo=parts[1];
+  var period=MES[parseInt(mo)-1]+'/'+y;
+
+  // Build wheel SVG inline
+  var sz=320;
+  var wheelId='meetDiagWheel';
+  var wheelHtml='<svg id="'+wheelId+'" width="'+sz+'" height="'+sz+'" viewBox="0 0 '+sz+' '+sz+'"></svg>';
+
+  // Get diagnosis from cache
+  var diagHtml='';
+  var cached=S.diagCache&&S.diagCache[S.sel];
+  if(cached&&cached.html){
+    // Extract just situacao + alertas from cached HTML (strip action items for brevity)
+    diagHtml=cached.html;
+  } else {
+    diagHtml='<div class="diag-box" style="color:var(--mut);font-size:13px;line-height:1.8">'
+      +'<div style="font-size:11px;letter-spacing:2px;color:var(--mut);margin-bottom:12px">DIAGNÓSTICO</div>'
+      +'Abra o Dashboard primeiro para gerar o diagnóstico de IA deste período.'
+      +'</div>';
+  }
+
+  var html='<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:0;overflow:hidden">'
+    // Left: wheel
+    +'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;border-right:1px solid rgba(255,255,255,.07)">'
+    +'<div style="font-size:10px;letter-spacing:4px;color:var(--teal);font-weight:700;text-transform:uppercase">Score de Saúde · '+period+'</div>'
+    +'<div style="position:relative;width:'+sz+'px;height:'+sz+'px">'
+    +wheelHtml
+    +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">'
+    +'<div style="font-family:\'Bebas Neue\',sans-serif;font-size:72px;line-height:.85;color:'+col+'">'+res.score+'</div>'
+    +'<div style="font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.4);margin-top:4px">SCORE</div>'
+    +'<div style="font-size:18px;font-weight:700;color:'+col+';margin-top:4px;background:'+col+'15;border:1px solid '+col+'30;border-radius:8px;padding:2px 12px">'+g.l+'</div>'
+    +'</div></div>'
+    +'</div>'
+    // Right: diagnosis
+    +'<div style="overflow-y:auto;padding:32px 28px;display:flex;flex-direction:column;gap:0">'
+    +'<div style="font-size:10px;letter-spacing:4px;color:rgba(255,255,255,.3);font-weight:700;text-transform:uppercase;margin-bottom:20px">Diagnóstico Executivo</div>'
+    +diagHtml
+    +'</div>'
+    +'</div>';
+
+  // Schedule wheel render after DOM insert
+  setTimeout(function(){
+    var svg=document.getElementById(wheelId);
+    if(svg)rWheel(res.details,sz,wheelId);
+  },60);
+
+  return html;
+}
 
 // ── SLIDE 1: KPIs ────────────────────────────────────────────────────
 function buildSlide1(res){

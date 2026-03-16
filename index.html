@@ -263,8 +263,8 @@
   <div class="cfg-body">
     <div class="cfg-sec">
       <div class="cfg-sec-t">Empresa &amp; Identidade</div>
-      <div class="cfg-row"><label>Nome da Empresa</label><input class="cfg-inp" id="cfgCo"></div>
-      <div class="cfg-row"><label>Setor</label><input class="cfg-inp" id="cfgSec" placeholder="Ex: Varejo, SaaS, Serviços..."></div>
+      <div class="cfg-row"><label>Nome da Empresa</label><input class="cfg-inp" id="cfgCo" oninput="_cfgMarkDirty()"></div>
+      <div class="cfg-row"><label>Setor</label><input class="cfg-inp" id="cfgSec" placeholder="Ex: Varejo, SaaS, Serviços..." oninput="_cfgMarkDirty()"></div>
       <div class="cfg-row"><label>Logo</label>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div class="logo-area-cfg" id="logoArea" onclick="document.getElementById('logoFile').click()">

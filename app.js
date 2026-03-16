@@ -1835,8 +1835,9 @@ function rConfig(){
   // Show DRE model status
   dreModelRenderStatus();
 
-  // Always open config in edit mode (unlocked) for better UX
-  if(S.locked===undefined)S.locked=false;
+  // Config sempre abre bloqueado — usuário clica para editar
+  S.locked = true;
+  _cfgDirty = false;
   _applyLockState();
 
   const rmBtn=document.getElementById('rmLogoBtn');
@@ -1854,7 +1855,7 @@ function rGoalsTable(){
   const yr=parseInt(document.getElementById('goalsYear')?.value)||new Date().getFullYear();
   const table=document.getElementById('goalsTable');table.innerHTML='';
   const dis=S.locked?'disabled':'';
-  // header
+  const onchg=S.locked?'':'oninput="_cfgMarkDirty()"';
   let hhtml=`<thead><tr><th>KPI</th>`;
   MES.forEach((m,i)=>hhtml+=`<th>${m}<br><span style="font-size:8px">${yr}</span></th>`);
   hhtml+=`<th>Padrão</th></tr></thead>`;
@@ -1865,9 +1866,9 @@ function rGoalsTable(){
     for(let m=1;m<=12;m++){
       const mk=`${yr}-${String(m).padStart(2,'0')}`;
       const val=g[mk]!==undefined?g[mk]:'';
-      bhtml+=`<td><input class="gi" type="number" step="any" id="goal_${ind.id}_${yr}_${m}" value="${val}" placeholder="${g.default||ind.goalDef}" ${dis}></td>`;
+      bhtml+=`<td><input class="gi" type="number" step="any" id="goal_${ind.id}_${yr}_${m}" value="${val}" placeholder="${g.default||ind.goalDef}" ${dis} ${onchg}></td>`;
     }
-    bhtml+=`<td><input class="gi" type="number" step="any" id="goaldef_${ind.id}" value="${g.default||ind.goalDef}" ${dis}></td></tr>`;
+    bhtml+=`<td><input class="gi" type="number" step="any" id="goaldef_${ind.id}" value="${g.default!==undefined?g.default:ind.goalDef}" ${dis} ${onchg}></td></tr>`;
   });
   bhtml+='</tbody>';
   table.innerHTML=hhtml+bhtml;
@@ -1953,49 +1954,77 @@ function setKpiBM(id,mode){
   }
 }
 function setBM(mode,btn){if(S.locked)return;S.benchMode=mode;} // legacy global fallback
+let _cfgDirty=false;
 function toggleLock(){
-  S.locked=!S.locked;sv();
+  S.locked=!S.locked;
+  _cfgDirty=false;
+  sv();
   _applyLockState();
 }
 function _applyLockState(){
   const locked=S.locked;
   const btn=document.getElementById('lockBtn');
   if(btn){
-    btn.textContent=locked?'🔒 Clique para editar':'🔓 Editando';
-    btn.className='lock-btn'+(locked?' locked':'');
+    btn.textContent=locked?'🔓 Clique para editar':'🔒 Cancelar edição';
+    btn.className='lock-btn'+(locked?'':' locked');
   }
+  // Save button: only show when unlocked AND dirty
   const saveBtn=document.getElementById('cfgSaveBtn');
-  if(saveBtn)saveBtn.style.display=locked?'none':'inline-block';
+  if(saveBtn)saveBtn.style.display=(locked||!_cfgDirty)?'none':'inline-block';
   ['cfgCo','cfgSec'].forEach(function(id){
     var el=document.getElementById(id);
     if(el){el.disabled=!!locked;el.style.opacity=locked?'.45':'1';el.style.cursor=locked?'not-allowed':'text';}
   });
-  if(!locked){var co=document.getElementById('cfgCo');if(co)setTimeout(function(){co.focus&&co.blur();},50);}
-  rGoalsTable();rCfgKpiTable();
+  rGoalsTable();
+  rCfgKpiTable();
+}
+function _cfgMarkDirty(){
+  if(S.locked)return;
+  _cfgDirty=true;
+  const saveBtn=document.getElementById('cfgSaveBtn');
+  if(saveBtn)saveBtn.style.display='inline-block';
 }
 function saveConfig(){
-  if(S.locked){toast('⚠️ Desbloqueie para salvar');return;}
+  if(S.locked){toast('⚠️ Clique em "Editar" para fazer alterações');return;}
   S.company=document.getElementById('cfgCo').value||'Minha Empresa';
   S.sector=document.getElementById('cfgSec').value||'';
   const yr=parseInt(document.getElementById('goalsYear')?.value)||new Date().getFullYear();
   IND.forEach(ind=>{
     if(!S.goals[ind.id])S.goals[ind.id]={default:ind.goalDef};
-    const def=document.getElementById('goaldef_'+ind.id);if(def&&def.value!=='')S.goals[ind.id].default=parseFloat(def.value);
+    // Padrão anual
+    const def=document.getElementById('goaldef_'+ind.id);
+    if(def&&def.value!=='')S.goals[ind.id].default=parseFloat(def.value);
+    // Metas mensais
     for(let m=1;m<=12;m++){
       const mk=`${yr}-${String(m).padStart(2,'0')}`;
       const el=document.getElementById(`goal_${ind.id}_${yr}_${m}`);
       if(el&&el.value!=='')S.goals[ind.id][mk]=parseFloat(el.value);
       else if(el&&el.value===''&&S.goals[ind.id][mk]!==undefined)delete S.goals[ind.id][mk];
     }
+    // Peso e benchmark
     const we=document.getElementById('cw_'+ind.id),be=document.getElementById('cb_'+ind.id);
-    if(we)S.cfg[ind.id].weight=parseFloat(we.value)||1;
+    if(we&&we.value!=='')S.cfg[ind.id].weight=parseFloat(we.value)||1;
     if(be)S.cfg[ind.id].benchGoal=be.value?parseFloat(be.value):null;
   });
+  // Volta para bloqueado após salvar
+  S.locked=true;
+  _cfgDirty=false;
   sv();
   document.getElementById('coName').textContent=S.company;
-  toast('✓ Configurações salvas!');
-  rGoalsTable();
-  rDash(); // atualiza dashboard e regenera diagnóstico com as novas metas
+  // Feedback no botão salvar
+  const saveBtn=document.getElementById('cfgSaveBtn');
+  if(saveBtn){
+    const orig=saveBtn.textContent;
+    saveBtn.textContent='✓ Salvo!';
+    saveBtn.style.background='#059669';
+    setTimeout(()=>{
+      saveBtn.style.display='none';
+      saveBtn.textContent=orig;
+      saveBtn.style.background='';
+    },1800);
+  }
+  _applyLockState();
+  rDash();
 }
 function fetchBench(){
   const prompt='Setor "'+S.sector+'". JSON só: {"receita":100000,"cac":10,"churn":3,"margem":40,"ebitda":15,"despop":30,"caixa":10000,"ciclo":0,"runway":6,"reccolab":10000,"estoque":45,"turnover":2}';

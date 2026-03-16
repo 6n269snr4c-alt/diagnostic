@@ -56,56 +56,75 @@ const FCAST_FIELDS=[
 function calcKPIs(r){
   const v=k=>{const x=parseFloat(r[k]);return isNaN(x)?null:x;};
   const pct=(n,d)=>(d&&d!==0)?n/d*100:null;
-  const fat   = v('f_fat');        // Receita Bruta
-  const ded   = v('f_ded')||0;     // Deduções (impostos sobre venda, devoluções)
-  const cmv   = v('f_cmv');        // CMV puro
-  const dc    = v('f_dc')||0;      // Despesa Comercial
-  const pess  = v('f_pessoal')||0; // Despesas com Pessoal
-  const adm   = v('f_adm')||0;     // Despesas Administrativas
-  const dep   = v('f_dep')||0;     // Depreciação/Amortização (fora do EBITDA)
-  const depfin= v('f_depfin');     // Despesas Financeiras + IR/CSLL
 
-  // Campos agregados — compatibilidade com forecast/simulador
-  const cv = v('f_cv');  // f_cv = cmv + ded (raw agregado)
-  const df = v('f_df');  // f_df = pess + adm (raw agregado)
+  // ── Leitura dos campos brutos ──────────────────────────────────────
+  const fat    = v('f_fat');         // Receita Bruta
+  const ded    = v('f_ded')||0;      // Deduções (impostos sobre venda)
+  const cmv    = v('f_cmv');         // CMV puro (granular)
+  const dc     = v('f_dc')||0;       // Despesa Comercial
+  const pess   = v('f_pessoal')||0;  // Despesas com Pessoal
+  const adm    = v('f_adm')||0;      // Despesas Administrativas
+  const dep    = v('f_dep')||0;      // Depreciação/Amortização
+  const depfin = v('f_depfin')||0;   // Despesas Financeiras + IR/CSLL
 
-  // ── Receita Líquida (base de todos os percentuais — convenção mercado de capitais)
-  const recLiq = fat !== null ? fat - ded : null;
+  // Campos agregados — fallback para forecast/simulador que não tem granular
+  const cv_agg = v('f_cv');  // = cmv + ded
+  const df_agg = v('f_df');  // = pess + adm (SEM dc)
 
-  // Usa campos granulares se disponíveis, senão usa agregados
-  const cvEfetivo = cmv !== null ? cmv : (cv !== null ? cv - ded : null);
-  const dfEfetivo = (pess || adm) ? pess + adm : (df !== null ? df : null);
+  if(fat === null) return {
+    receita:null,cac:null,margbruta:null,margem:null,
+    ebitda:null,despop:null,lucroliq:null,pessoal:null,admperc:null
+  };
 
-  // ── Lucro Bruto = Receita Líquida − CMV
-  const lucBruto = recLiq !== null && cvEfetivo !== null ? recLiq - cvEfetivo : null;
+  // ── Receita Líquida — BASE de todos os percentuais (convenção CVM/B3) ──
+  const recLiq = fat - ded;
+  const base   = recLiq > 0 ? recLiq : fat; // fallback se sem deduções
 
-  // ── EBITDA (bottom-up): Lucro Bruto − Desp.Comercial − Pessoal − Adm
-  //    Depreciação NÃO entra — é adicionada de volta no cálculo do EBITDA
-  const ebitda_r = lucBruto !== null && dfEfetivo !== null
-    ? lucBruto - dc - dfEfetivo
+  // ── CMV efetivo: usa granular se disponível, senão desagrega do agregado ──
+  // f_cv foi salvo como cmv+ded, então cmv = f_cv − ded
+  const cmvEfetivo = cmv !== null ? cmv
+                   : cv_agg !== null ? cv_agg - ded
+                   : null;
+
+  // ── Despesas Pessoal+Adm: usa granular se disponível, senão usa agregado ──
+  // IMPORTANTE: df_agg = pess+adm, NÃO inclui dc
+  const dfEfetivo = (pess > 0 || adm > 0) ? pess + adm
+                  : df_agg !== null ? df_agg
+                  : null;
+
+  // ── Cadeia de resultados (fluxo DRE) ──────────────────────────────
+  // Lucro Bruto = Receita Líquida − CMV
+  const lucBruto = cmvEfetivo !== null ? recLiq - cmvEfetivo : null;
+
+  // Margem de Contribuição R$ = Lucro Bruto (sem DC — DC é fixo, não variável)
+  // Nota: pela convenção brasileira de PME, MC = Rec.Líq − Custos Variáveis
+  // DC entra nas despesas operacionais, não nos custos variáveis
+  const mc_r = lucBruto;
+
+  // EBITDA R$ = MC − Desp.Comercial − Desp.Pessoal − Desp.Adm
+  const ebitda_r = mc_r !== null && dfEfetivo !== null
+    ? mc_r - dc - dfEfetivo
     : null;
 
-  // ── Lucro Líquido = EBITDA − Depreciação − Desp.Financeiras − IR/CSLL
-  const lucro_r = ebitda_r !== null && depfin !== null
+  // Lucro Líquido R$ = EBITDA − Depreciação − Desp.Financeiras − IR/CSLL
+  const lucro_r = ebitda_r !== null
     ? ebitda_r - dep - depfin
     : null;
 
-  // ── Desp. Operacionais totais = Desp.Comercial + Pessoal + Adm
+  // Despesas Operacionais Totais = DC + Pessoal + Adm
   const despOpTotal = dfEfetivo !== null ? dc + dfEfetivo : null;
 
-  // Denominador: Receita Líquida (convenção mercado). Fallback para Bruta se Líquida = 0
-  const base = recLiq && recLiq > 0 ? recLiq : fat;
-
+  // ── KPIs — todos sobre Receita Líquida (base) ─────────────────────
   return {
     receita:   fat,
-    cac:       base ? pct(dc,           base) : null,
-    margbruta: base && lucBruto  !== null ? pct(lucBruto,  base) : null,
-    margem:    base && lucBruto  !== null ? pct(lucBruto - dc, base) : null,
-    ebitda:    base && ebitda_r  !== null ? pct(ebitda_r, base) : null,
-    despop:    base && despOpTotal !== null ? pct(despOpTotal, base) : null,
-    lucroliq:  base && lucro_r   !== null ? pct(lucro_r,  base) : null,
-    pessoal:   base && pess ? pct(pess, base) : null,
-    admperc:   base && adm  ? pct(adm,  base) : null,
+    cac:       pct(dc,           base),                              // DC / Rec.Líq
+    margbruta: lucBruto  !== null ? pct(lucBruto,  base) : null,     // Lucro Bruto / Rec.Líq
+    margem:    mc_r      !== null ? pct(mc_r,      base) : null,     // MC / Rec.Líq (= Margem Bruta aqui pois DC é fixo)
+    ebitda:    ebitda_r  !== null ? pct(ebitda_r,  base) : null,     // EBITDA / Rec.Líq
+    despop:    despOpTotal !== null ? pct(despOpTotal, base) : null, // Desp.Op. / Rec.Líq
+    lucroliq:  lucro_r   !== null ? pct(lucro_r,   base) : null,     // LL / Rec.Líq
+    pessoal:   pess > 0 ? pct(pess, base) : null,                   // Pessoal / Rec.Líq
+    admperc:   adm  > 0 ? pct(adm,  base) : null,                   // Adm / Rec.Líq
   };
 }
 

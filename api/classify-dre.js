@@ -9,16 +9,17 @@ export default async function handler(req, res) {
   }
 
   const categories = [
-    { id: 'receita_bruta',           desc: 'Faturamento, vendas brutas, receita de serviços' },
-    { id: 'deducao_receita',         desc: 'Impostos sobre venda (PIS, COFINS, ISS, ICMS), devoluções, abatimentos' },
-    { id: 'custo_variavel',          desc: 'CMV, custo dos serviços prestados, matéria-prima' },
-    { id: 'despesa_comercial',       desc: 'Marketing, publicidade, propaganda, vendas' },
-    { id: 'despesa_pessoal',         desc: 'Salários, pró-labore, encargos, benefícios, folha de pagamento' },
-    { id: 'despesa_administrativa',  desc: 'Aluguel, software, utilidades, serviços gerais, telefone, escritório' },
-    { id: 'despesa_financeira',      desc: 'Juros, IOF, tarifas bancárias, despesas com empréstimos' },
-    { id: 'imposto_lucro',           desc: 'Imposto de Renda (IR/IRPJ), CSLL' },
-    { id: 'depreciacao',             desc: 'Depreciação de ativos fixos, amortização' },
-    { id: 'ignorar',                 desc: 'TOTAIS, subtotais, linhas de resultado (Lucro Bruto, EBITDA, Resultado Líquido), linhas zeradas, cabeçalhos' },
+    { id: 'receita_bruta',            desc: 'Faturamento, vendas brutas, receita de serviços' },
+    { id: 'deducao_receita',          desc: 'Impostos sobre venda (PIS, COFINS, ISS, ICMS), devoluções, abatimentos' },
+    { id: 'custo_variavel',           desc: 'CMV, custo dos serviços prestados, matéria-prima, custo direto do produto' },
+    { id: 'custo_variavel_comercial', desc: 'Comissões de venda, frete sobre vendas, embalagens — custos que variam com o volume de vendas mas não são o produto em si' },
+    { id: 'despesa_comercial',        desc: 'Marketing, publicidade, propaganda — custos fixos de venda' },
+    { id: 'despesa_pessoal',          desc: 'Salários, pró-labore, encargos, benefícios, folha de pagamento' },
+    { id: 'despesa_administrativa',   desc: 'Aluguel, software, utilidades, serviços gerais, telefone, escritório' },
+    { id: 'despesa_financeira',       desc: 'Juros, IOF, tarifas bancárias, despesas com empréstimos' },
+    { id: 'imposto_lucro',            desc: 'Imposto de Renda (IR/IRPJ), CSLL — impostos sobre o LUCRO' },
+    { id: 'depreciacao',              desc: 'Depreciação de ativos fixos, amortização' },
+    { id: 'ignorar',                  desc: 'TOTAIS, subtotais, linhas de resultado (Lucro Bruto, EBITDA, Margem Bruta, Margem Contribuição, Resultado Líquido), linhas zeradas, cabeçalhos, percentuais' },
   ];
 
   const mappingsHint = savedMappings && Object.keys(savedMappings).length
@@ -34,11 +35,15 @@ CATEGORIAS DISPONÍVEIS:
 ${categories.map(c => `• ${c.id}: ${c.desc}`).join('\n')}
 
 REGRAS CRÍTICAS:
-1. Linhas de TOTAL ou RESULTADO (ex: "Total Receitas", "Lucro Bruto", "EBITDA", "Resultado do Exercício", "Total Despesas") → SEMPRE "ignorar"
+1. Linhas de TOTAL ou RESULTADO (ex: "Total Receitas", "Lucro Bruto", "EBITDA", "Margem Bruta", "Margem Contribuição", "Resultado do Exercício", "Total Despesas") → SEMPRE "ignorar"
 2. Receita líquida já calculada → "ignorar" (evitar dupla contagem)
 3. Linhas com valor zero mencionadas → "ignorar"
-4. Em caso de dúvida entre pessoal e administrativa: pessoal tem salário/folha; administrativa é tudo mais
-5. Comissões de vendedores → despesa_comercial
+4. Percentuais (%) → SEMPRE "ignorar"
+5. COFINS, PIS, ISS, ICMS → SEMPRE "deducao_receita" (são impostos sobre FATURAMENTO, não sobre lucro)
+6. IR, IRPJ, CSLL → "imposto_lucro" (são impostos sobre LUCRO)
+7. Comissões de representantes/vendedores externos, frete sobre vendas, embalagens → "custo_variavel_comercial"
+8. Em caso de dúvida entre pessoal e administrativa: pessoal tem salário/folha; administrativa é tudo mais
+9. CMV, custo de mercadoria, custo dos serviços → "custo_variavel" (custo do produto em si)
 ${mappingsHint}
 
 LINHAS DO DRE (índice | nome da conta | valor):

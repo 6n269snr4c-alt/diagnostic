@@ -2911,9 +2911,8 @@ function dreHandleFile(input) {
         if (!name || name.length < 2) return;
         let value = null;
         for (let c = 1; c < row.length; c++) {
-          const raw = String(row[c]).replace(/[R$\s]/g, '').replace('.', '').replace(',', '.');
-          const v = parseFloat(raw);
-          if (!isNaN(v) && Math.abs(v) > 0) { value = Math.abs(v); break; }
+          const v = dreParseNum(row[c]);
+          if (v !== null && v > 0) { value = v; break; }
         }
         if (value !== null) lines.push({ name, value });
       });
@@ -3192,7 +3191,72 @@ function lancDelete(mk) {
     }
   );
 }
-function dreFormatNum(n) {
+function dreParseNum(raw) {
+  // Handle numbers that come as actual JS numbers from XLSX (already parsed)
+  if (typeof raw === 'number') return isNaN(raw) ? null : Math.abs(raw);
+
+  let s = String(raw).trim();
+  if (!s || s === '-' || s === '') return null;
+
+  // Remove currency symbols, spaces, and common wrappers
+  s = s.replace(/R\$\s*/g, '').replace(/\s/g, '');
+
+  // Handle negatives in parentheses: (1.234,56) → -1234.56
+  const negative = s.startsWith('(') && s.endsWith(')');
+  if (negative) s = s.slice(1, -1);
+
+  // Detect format by analyzing separators
+  // Count dots and commas
+  const dots   = (s.match(/\./g) || []).length;
+  const commas = (s.match(/,/g) || []).length;
+
+  let normalized;
+
+  if (dots > 0 && commas > 0) {
+    // Has both separators — identify which is decimal
+    const lastDot   = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      // Format: 40.090.143,39 (BR) → remove dots, comma→period
+      normalized = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Format: 40,090,143.39 (US) → remove commas
+      normalized = s.replace(/,/g, '');
+    }
+  } else if (commas === 1 && dots === 0) {
+    // Only a comma — could be decimal: 143,39 → 143.39
+    // or thousands: 40,000 → check if after comma has exactly 3 digits
+    const afterComma = s.split(',')[1];
+    if (afterComma && afterComma.length === 3 && !afterComma.includes('.')) {
+      // Likely thousands separator: 40,000
+      normalized = s.replace(',', '');
+    } else {
+      // Decimal comma: 143,39
+      normalized = s.replace(',', '.');
+    }
+  } else if (dots === 1 && commas === 0) {
+    // Only a dot — standard decimal or thousands
+    const afterDot = s.split('.')[1];
+    if (afterDot && afterDot.length === 3) {
+      // Could be thousands: 40.000 → treat as integer
+      normalized = s.replace('.', '');
+    } else {
+      // Standard decimal: 40090143.39
+      normalized = s;
+    }
+  } else if (dots > 1 && commas === 0) {
+    // Multiple dots, no comma: 40.090.143 (BR thousands, integer)
+    normalized = s.replace(/\./g, '');
+  } else if (commas > 1 && dots === 0) {
+    // Multiple commas, no dot: 40,090,143 (US thousands, integer)
+    normalized = s.replace(/,/g, '');
+  } else {
+    normalized = s;
+  }
+
+  const v = parseFloat(normalized);
+  return isNaN(v) ? null : Math.abs(v);
+}
   return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 

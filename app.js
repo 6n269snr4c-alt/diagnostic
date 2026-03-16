@@ -30,6 +30,15 @@ const IND = [
   {id:'admperc',   name:'Peso Administrativo %',         short:'Adm%',       group:'rentab', icon:'🏢', unit:'%',  goalDef:12,     hb:false,
    formula:'Despesas Administrativas ÷ Receita Líquida × 100',
    desc:'Percentual da receita líquida consumido por despesas administrativas. Overhead elevado reduz a rentabilidade.'},
+  {id:'spread',    name:'Spread Financeiro %',            short:'Spread Fin.', group:'rentab', icon:'🏦', unit:'%',  goalDef:5,      hb:false,
+   formula:'Desp. Financeiras + IR ÷ Receita Líquida × 100',
+   desc:'Peso do endividamento e carga tributária sobre o resultado. Acima de 5% sinaliza pressão financeira relevante.'},
+  {id:'eficiencia',name:'Índice de Eficiência Op. %',     short:'Eficiência', group:'rentab', icon:'⚙️', unit:'%',  goalDef:65,     hb:false,
+   formula:'Desp. Operacionais ÷ Lucro Bruto × 100',
+   desc:'Quanto do Lucro Bruto é consumido pelas despesas operacionais. Acima de 100% significa que as despesas superaram o lucro bruto.'},
+  {id:'margseg',   name:'Margem de Segurança Op. %',      short:'Mg.Segurança', group:'rentab', icon:'🛡️', unit:'%',  goalDef:20,     hb:true,
+   formula:'(Receita Bruta − Ponto de Equilíbrio) ÷ Receita Bruta × 100',
+   desc:'O quanto a receita pode cair antes de a empresa entrar no prejuízo operacional. Meta mínima de 20% para conforto operacional.'},
 ];
 const GC={tracao:'#3b82f6',rentab:'#10d4a8'};
 const GN={tracao:'Tração e Receita',rentab:'Rentabilidade'};
@@ -73,7 +82,8 @@ function calcKPIs(r){
 
   if(fat === null) return {
     receita:null,cac:null,margbruta:null,margem:null,
-    ebitda:null,despop:null,lucroliq:null,pessoal:null,admperc:null
+    ebitda:null,despop:null,lucroliq:null,pessoal:null,admperc:null,
+    spread:null,eficiencia:null,margseg:null
   };
 
   // ── Receita Líquida — BASE de todos os percentuais (convenção CVM/B3) ──
@@ -115,17 +125,40 @@ function calcKPIs(r){
   // Despesas Operacionais Totais = DC + Pessoal + Adm
   const despOpTotal = dfEfetivo !== null ? dc + dfEfetivo : null;
 
+  // ── Spread Financeiro = Desp.Fin+IR / Rec.Líq ─────────────────────
+  const spread_r = depfin;
+
+  // ── Índice de Eficiência = Desp.Op / Lucro Bruto ──────────────────
+  const efic_r = despOpTotal !== null && lucBruto !== null ? despOpTotal : null;
+
+  // ── Ponto de Equilíbrio e Margem de Segurança ─────────────────────
+  // PE = Custos Fixos / Margem de Contribuição Unitária (%)
+  // Custos Fixos = Pessoal + Adm + DC + Depfin + Dep
+  // Índice MC% = MC_r / Rec.Líq  (quanto cada R$1 de receita contribui)
+  let margseg_r = null;
+  if(lucBruto !== null && fat > 0){
+    const custosFixos = (dfEfetivo||0) + dc + depfin + dep;
+    const mcPct = mc_r !== null ? mc_r / fat : lucBruto / fat; // MC sobre receita bruta
+    if(mcPct > 0){
+      const pe = custosFixos / mcPct;  // Ponto de Equilíbrio em R$
+      margseg_r = (fat - pe) / fat * 100; // Margem de Segurança %
+    }
+  }
+
   // ── KPIs — todos sobre Receita Líquida (base) ─────────────────────
   return {
-    receita:   fat,
-    cac:       pct(dc,           base),                              // DC / Rec.Líq
-    margbruta: lucBruto  !== null ? pct(lucBruto,  base) : null,     // Lucro Bruto / Rec.Líq
-    margem:    mc_r      !== null ? pct(mc_r,      base) : null,     // MC / Rec.Líq (= Margem Bruta aqui pois DC é fixo)
-    ebitda:    ebitda_r  !== null ? pct(ebitda_r,  base) : null,     // EBITDA / Rec.Líq
-    despop:    despOpTotal !== null ? pct(despOpTotal, base) : null, // Desp.Op. / Rec.Líq
-    lucroliq:  lucro_r   !== null ? pct(lucro_r,   base) : null,     // LL / Rec.Líq
-    pessoal:   pess > 0 ? pct(pess, base) : null,                   // Pessoal / Rec.Líq
-    admperc:   adm  > 0 ? pct(adm,  base) : null,                   // Adm / Rec.Líq
+    receita:    fat,
+    cac:        pct(dc,            base),
+    margbruta:  lucBruto  !== null ? pct(lucBruto,   base) : null,
+    margem:     mc_r      !== null ? pct(mc_r,       base) : null,
+    ebitda:     ebitda_r  !== null ? pct(ebitda_r,   base) : null,
+    despop:     despOpTotal !== null ? pct(despOpTotal, base) : null,
+    lucroliq:   lucro_r   !== null ? pct(lucro_r,    base) : null,
+    pessoal:    pess > 0 ? pct(pess, base) : null,
+    admperc:    adm  > 0 ? pct(adm,  base) : null,
+    spread:     pct(spread_r, base),
+    eficiencia: efic_r !== null && lucBruto > 0 ? pct(efic_r, lucBruto) : null,
+    margseg:    margseg_r,
   };
 }
 
@@ -535,20 +568,20 @@ function rWheel(dets,sz,svgId){
     const pctColor=pct>=80?'#07101c':pct>=60?'#f4a522':'#ff5470';
     const pctOnColor=pct>=80; // white arc → dark text; low pct → colored warning text
     // icon
-    const ico=ns('text');ico.setAttribute('x',tx);ico.setAttribute('y',ty-sz*.028);
+    const ico=ns('text');ico.setAttribute('x',tx);ico.setAttribute('y',ty-sz*.026);
     ico.setAttribute('text-anchor','middle');ico.setAttribute('dominant-baseline','middle');
-    ico.setAttribute('font-size',sz*.038+'');ico.textContent=ind.icon;svg.appendChild(ico);
+    ico.setAttribute('font-size',sz*.032+'');ico.textContent=ind.icon;svg.appendChild(ico);
     // short name
-    const lt=ns('text');lt.setAttribute('x',tx);lt.setAttribute('y',ty+sz*.008);
+    const lt=ns('text');lt.setAttribute('x',tx);lt.setAttribute('y',ty+sz*.006);
     lt.setAttribute('text-anchor','middle');lt.setAttribute('dominant-baseline','middle');
-    lt.setAttribute('font-size',sz*.028+'');lt.setAttribute('fill',textCol);
+    lt.setAttribute('font-size',sz*.024+'');lt.setAttribute('fill',textCol);
     lt.setAttribute('font-family','Outfit,sans-serif');lt.setAttribute('font-weight','700');
     lt.textContent=ind.short;svg.appendChild(lt);
     // pct
     if(pct>0){
-      const pc=ns('text');pc.setAttribute('x',tx);pc.setAttribute('y',ty+sz*.038);
+      const pc=ns('text');pc.setAttribute('x',tx);pc.setAttribute('y',ty+sz*.034);
       pc.setAttribute('text-anchor','middle');pc.setAttribute('dominant-baseline','middle');
-      pc.setAttribute('font-size',sz*.030+'');
+      pc.setAttribute('font-size',sz*.026+'');
       pc.setAttribute('fill',pct>=80?'#07101c':pct>=60?'#f4a522':'#ff5470');
       pc.setAttribute('font-family','JetBrains Mono,monospace');pc.setAttribute('font-weight','800');
       pc.textContent=Math.round(pct)+'%';svg.appendChild(pc);
@@ -1272,6 +1305,38 @@ function _openKpiModal(id, raw){
       {op:'÷', label:'Receita Líquida',           val:fmt(base)},
       {op:'=', label:'Peso Adm. %',               val:fmtP(base?adm/base*100:null), bold:true, color:col},
     ],
+    spread: [
+      {op:'',  label:'Despesas Financeiras + IR/CSLL', val:fmt(depfin), sub:'Juros, IOF, empréstimos, IR e CSLL'},
+      {op:'÷', label:'Receita Líquida',                val:fmt(base)},
+      {op:'=', label:'Spread Financeiro %',            val:fmtP(base?depfin/base*100:null), bold:true, color:col},
+    ],
+    eficiencia: (()=>{
+      const despOp = dc + dfEfetivo;
+      return [
+        {op:'',  label:'Despesa Comercial',  val:fmt(dc)},
+        {op:'+', label:'Despesas Pessoal',   val:fmt(pess)},
+        {op:'+', label:'Despesas Adm.',      val:fmt(adm)},
+        {op:'=', label:'Total Desp. Op.',    val:fmt(despOp)},
+        {op:'÷', label:'Lucro Bruto',        val:fmt(lucBruto), sub:'Base do índice — não Receita Líquida'},
+        {op:'=', label:'Índice de Eficiência %', val:fmtP(lucBruto>0?despOp/lucBruto*100:null), bold:true, color:col},
+      ];
+    })(),
+    margseg: (()=>{
+      const custosFixos = dfEfetivo + dc + depfin + dep;
+      const mcPct = fat > 0 ? mc_r / fat : 0;
+      const pe = mcPct > 0 ? custosFixos / mcPct : 0;
+      const ms = fat > 0 ? (fat - pe) / fat * 100 : null;
+      return [
+        {op:'',  label:'Custos Fixos Totais', val:fmt(custosFixos), sub:'Pessoal + Adm + DC + Desp.Fin + Dep.'},
+        {op:'÷', label:'Índice MC (MC ÷ Rec.Bruta)', val:fmtP(mcPct*100), sub:'Quanto cada R$1 de receita contribui'},
+        {op:'=', label:'Ponto de Equilíbrio R$', val:fmt(pe)},
+        {op:'',  label:'Receita Bruta', val:fmt(fat)},
+        {op:'−', label:'Ponto de Equilíbrio', val:fmt(pe)},
+        {op:'=', label:'Folga R$', val:fmt(fat - pe)},
+        {op:'÷', label:'Receita Bruta', val:fmt(fat)},
+        {op:'=', label:'Margem de Segurança %', val:fmtP(ms), bold:true, color:col},
+      ];
+    })(),
   };
 
   const steps = STEPS[id] || [];
@@ -1902,7 +1967,7 @@ function fillAllMonths(){
   toast('✓ Meses preenchidos com o valor padrão');
 }
 // KPIs onde benchmark de mercado faz sentido (métricas relativas)
-const _BENCHABLE=new Set(['cac','margem','ebitda','despop','lucroliq','margbruta','pessoal','admperc']);
+const _BENCHABLE=new Set(['cac','margem','ebitda','despop','lucroliq','margbruta','pessoal','admperc','spread','eficiencia','margseg']);
 function rCfgKpiTable(){
   const t=document.getElementById('cfgGrid');t.innerHTML='';
   const dis=S.locked?'disabled':'';
@@ -2520,8 +2585,29 @@ function rMeth(){
       id:'admperc', name:'Peso Administrativo %', icon:'🏢', group:'rentab',
       formula:'Despesas Administrativas ÷ Receita Líquida × 100',
       denominador:'Receita Líquida',
-      fonte:'Linhas "Despesa Administrativa" + "Depreciação" no DRE',
+      fonte:'Linhas "Despesa Administrativa" no DRE',
       hb:'Menor = melhor',
+    },
+    {
+      id:'spread', name:'Spread Financeiro %', icon:'🏦', group:'rentab',
+      formula:'Desp. Financeiras + IR ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'Linhas "Despesa Financeira" e "Imposto sobre Lucro" no DRE',
+      hb:'Menor = melhor',
+    },
+    {
+      id:'eficiencia', name:'Índice de Eficiência Op. %', icon:'⚙️', group:'rentab',
+      formula:'Desp. Operacionais ÷ Lucro Bruto × 100',
+      denominador:'Lucro Bruto',
+      fonte:'(DC + Pessoal + Adm) ÷ (Rec.Líq − CMV). Acima de 100% = despesas superam o Lucro Bruto',
+      hb:'Menor = melhor',
+    },
+    {
+      id:'margseg', name:'Margem de Segurança Op. %', icon:'🛡️', group:'rentab',
+      formula:'(Receita Bruta − Ponto de Equilíbrio) ÷ Receita Bruta × 100',
+      denominador:'Receita Bruta',
+      fonte:'PE = Custos Fixos ÷ (MC ÷ Rec.Bruta). Mostra quanto a receita pode cair antes do prejuízo',
+      hb:'Maior = melhor',
     },
   ];
 

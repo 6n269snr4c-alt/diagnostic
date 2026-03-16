@@ -1904,6 +1904,7 @@ function rConfig(){
     :'Nenhum aprendizado salvo ainda — será criado após a primeira importação';
 
   dreModelRenderStatus();
+  rMappingsTable();
 
   // Popula year select ANTES de chamar rGoalsTable
   const ys=document.getElementById('goalsYear');
@@ -4380,6 +4381,117 @@ function lancSaveEdits() {
 // DRE MODELO (Configuração)
 // ═══════════════════════════════════════════
 let _dreModelLines = []; // linhas carregadas do arquivo modelo
+
+// ═══════════════════════════════════════════
+// MAPPINGS EDITOR (Configuração)
+// ═══════════════════════════════════════════
+function rMappingsTable() {
+  const wrap = document.getElementById('mappingsTableWrap');
+  if (!wrap) return;
+  const mappings = S.dreMappings || {};
+  const entries = Object.entries(mappings).sort((a, b) => a[0].localeCompare(b[0]));
+
+  if (!entries.length) {
+    wrap.innerHTML = `<div style="font-size:11px;color:var(--mut);padding:12px 0">
+      Nenhum aprendizado salvo ainda. Importe e confirme um DRE para começar.
+    </div>`;
+    return;
+  }
+
+  // Group by category for easier scanning
+  const opts = DRE_CATS.map(c =>
+    `<option value="${c.id}">${c.icon} ${c.label}</option>`
+  ).join('');
+
+  // Search box + table
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <input id="mappingsSearch" type="text" placeholder="Filtrar por nome de conta..."
+        class="cfg-inp" style="flex:1;font-size:11px;padding:5px 10px"
+        oninput="filterMappings(this.value)">
+      <span id="mappingsCountBadge" style="font-size:10px;color:var(--mut);white-space:nowrap">${entries.length} contas</span>
+    </div>
+    <div style="max-height:360px;overflow-y:auto;border:1px solid var(--bdr);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse" id="mappingsTable">
+        <thead>
+          <tr style="position:sticky;top:0;background:#0a1728;z-index:1">
+            <th style="font-size:9px;letter-spacing:1.5px;color:var(--mut);text-align:left;padding:8px 12px;font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--bdr)">Conta do DRE</th>
+            <th style="font-size:9px;letter-spacing:1.5px;color:var(--mut);text-align:left;padding:8px 12px;font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--bdr)">Classificação</th>
+            <th style="width:40px;border-bottom:1px solid var(--bdr)"></th>
+          </tr>
+        </thead>
+        <tbody id="mappingsTbody">
+          ${entries.map(([name, cat]) => _mappingRow(name, cat)).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function _mappingRow(name, cat) {
+  const catObj = DRE_CATS.find(c => c.id === cat);
+  const col = catObj?.color || '#64748b';
+  const opts = DRE_CATS.map(c =>
+    `<option value="${c.id}"${c.id === cat ? ' selected' : ''}>${c.icon} ${c.label}</option>`
+  ).join('');
+  const key = name.replace(/"/g, '&quot;');
+  return `<tr class="mapping-row" data-name="${key}" style="border-bottom:1px solid rgba(255,255,255,.04)">
+    <td style="padding:7px 12px;font-size:11px;color:rgba(255,255,255,.7);font-family:'JetBrains Mono',monospace">${name}</td>
+    <td style="padding:5px 12px">
+      <select class="dre-cat-sel" style="border-color:${col}55;color:${col};font-size:11px;width:100%"
+        onchange="mappingUpdate('${key}',this.value,this)">
+        ${opts}
+      </select>
+    </td>
+    <td style="padding:5px 8px;text-align:center">
+      <button onclick="mappingDelete('${key}')"
+        style="background:none;border:none;color:rgba(255,61,90,.4);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px"
+        onmouseover="this.style.color='#ff3d5a'" onmouseout="this.style.color='rgba(255,61,90,.4)'">✕</button>
+    </td>
+  </tr>`;
+}
+
+function filterMappings(q) {
+  const rows = document.querySelectorAll('#mappingsTbody .mapping-row');
+  const ql = q.toLowerCase().trim();
+  let visible = 0;
+  rows.forEach(r => {
+    const name = r.dataset.name.toLowerCase();
+    const show = !ql || name.includes(ql);
+    r.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const badge = document.getElementById('mappingsCountBadge');
+  if (badge) badge.textContent = visible + ' contas';
+}
+
+function mappingUpdate(name, newCat, sel) {
+  if (!S.dreMappings) S.dreMappings = {};
+  S.dreMappings[name] = newCat;
+  sv();
+  // Update select color
+  const catObj = DRE_CATS.find(c => c.id === newCat);
+  const col = catObj?.color || '#64748b';
+  if (sel) { sel.style.borderColor = col + '55'; sel.style.color = col; }
+  toast('✓ Classificação de "' + name + '" atualizada');
+}
+
+function mappingDelete(name) {
+  if (!S.dreMappings || !S.dreMappings[name]) return;
+  delete S.dreMappings[name];
+  sv();
+  // Remove row from table
+  const row = document.querySelector(`[data-name="${name.replace(/"/g,'&quot;')}"]`);
+  if (row) row.remove();
+  // Update count
+  const remaining = Object.keys(S.dreMappings).length;
+  const badge = document.getElementById('mappingsCountBadge');
+  if (badge) badge.textContent = remaining + ' contas';
+  const mcEl = document.getElementById('mappingsCount');
+  if (mcEl) mcEl.textContent = remaining > 0
+    ? `${remaining} classificações de contas aprendidas para ${S.company||'esta empresa'}`
+    : 'Nenhum aprendizado salvo ainda — será criado após a primeira importação';
+  if (!remaining) rMappingsTable(); // show empty state
+}
 
 function dreModelRenderStatus() {
   const statusEl = document.getElementById('dreModelStatus');

@@ -3291,6 +3291,23 @@ function doLogin(){
     });
 }
 function doLogout(){auth.signOut();}
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  } else {
+    document.exitFullscreen().catch(()=>{});
+  }
+}
+// Update fullscreen button icon when state changes
+document.addEventListener('fullscreenchange',function(){
+  const full=!!document.fullscreenElement;
+  const icon=full?'✕ Sair tela cheia':'⛶ Tela cheia';
+  const iconShort=full?'✕':'⛶';
+  const s=document.getElementById('fsBtnSide');
+  const m=document.getElementById('fsBtn');
+  if(s)s.textContent=icon;
+  if(m)m.textContent=iconShort;
+});
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('loginScreen').style.display!=='none')doLogin();
 });

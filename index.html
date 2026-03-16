@@ -59,6 +59,7 @@
   </nav>
   <!-- Bottom: user + logout -->
   <div class="sidebar-bottom">
+    <button class="logout-btn" onclick="toggleFullscreen()" id="fsBtnSide" style="margin-bottom:6px;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);color:var(--mut)" title="Tela cheia (F11)">⛶ Tela cheia</button>
     <span id="userEmail"></span>
     <button class="logout-btn" onclick="doLogout()">Sair</button>
   </div>
@@ -494,6 +495,7 @@
     </div>
     <div class="mhdr-r">
       <div class="mdots" id="meetDots"></div>
+      <button class="mhdr-btn" onclick="toggleFullscreen()" id="fsBtn" title="Tela cheia">⛶</button>
       <button class="mhdr-btn mhdr-save" onclick="saveMeetAndToast()">💾 Salvar</button>
       <button class="mhdr-btn mhdr-pdf" onclick="exportMeetingPDF()">📄 PDF</button>
       <button class="mhdr-btn mclose" onclick="closeMeeting()" style="border-color:rgba(255,255,255,.1)">✕ ESC</button>

@@ -1849,7 +1849,7 @@ function rConfig(){
   const ys=document.getElementById('goalsYear');ys.innerHTML='';
   const cur=new Date().getFullYear();
   for(let y=cur-1;y<=cur+2;y++){const o=document.createElement('option');o.value=y;o.textContent=y;if(y===cur)o.selected=true;ys.appendChild(o);}
-  rGoalsTable();rCfgKpiTable();
+  // _applyLockState() já chama rGoalsTable() e rCfgKpiTable() — não chamar de novo
 }
 function rGoalsTable(){
   const yr=parseInt(document.getElementById('goalsYear')?.value)||new Date().getFullYear();
@@ -1965,12 +1965,11 @@ function _applyLockState(){
   const locked=S.locked;
   const btn=document.getElementById('lockBtn');
   if(btn){
-    btn.textContent=locked?'🔓 Clique para editar':'🔒 Cancelar edição';
+    btn.textContent=locked?'🔓 Editar':'✕ Cancelar';
     btn.className='lock-btn'+(locked?'':' locked');
   }
-  // Save button: only show when unlocked AND dirty
   const saveBtn=document.getElementById('cfgSaveBtn');
-  if(saveBtn)saveBtn.style.display=(locked||!_cfgDirty)?'none':'inline-block';
+  if(saveBtn)saveBtn.style.display=(!locked&&_cfgDirty)?'inline-block':'none';
   ['cfgCo','cfgSec'].forEach(function(id){
     var el=document.getElementById(id);
     if(el){el.disabled=!!locked;el.style.opacity=locked?'.45':'1';el.style.cursor=locked?'not-allowed':'text';}
@@ -1985,64 +1984,30 @@ function _cfgMarkDirty(){
   if(saveBtn)saveBtn.style.display='inline-block';
 }
 function saveConfig(){
-  if(S.locked){toast('⚠️ Clique em "Editar" para fazer alterações');return;}
+  if(S.locked){toast('⚠️ Clique em "🔓 Editar" para fazer alterações');return;}
   S.company=document.getElementById('cfgCo').value||'Minha Empresa';
   S.sector=document.getElementById('cfgSec').value||'';
   const yr=parseInt(document.getElementById('goalsYear')?.value)||new Date().getFullYear();
   IND.forEach(ind=>{
     if(!S.goals[ind.id])S.goals[ind.id]={default:ind.goalDef};
-    // Padrão anual
     const def=document.getElementById('goaldef_'+ind.id);
     if(def&&def.value!=='')S.goals[ind.id].default=parseFloat(def.value);
-    // Metas mensais
     for(let m=1;m<=12;m++){
       const mk=`${yr}-${String(m).padStart(2,'0')}`;
       const el=document.getElementById(`goal_${ind.id}_${yr}_${m}`);
       if(el&&el.value!=='')S.goals[ind.id][mk]=parseFloat(el.value);
       else if(el&&el.value===''&&S.goals[ind.id][mk]!==undefined)delete S.goals[ind.id][mk];
     }
-    // Peso e benchmark
     const we=document.getElementById('cw_'+ind.id),be=document.getElementById('cb_'+ind.id);
     if(we&&we.value!=='')S.cfg[ind.id].weight=parseFloat(we.value)||1;
     if(be)S.cfg[ind.id].benchGoal=be.value?parseFloat(be.value):null;
   });
-  // Volta para bloqueado após salvar
   S.locked=true;
   _cfgDirty=false;
   sv();
   document.getElementById('coName').textContent=S.company;
-
-  // Feedback visual: mostra "✓ Salvo!" no botão por 2s antes de sumir
-  const saveBtn=document.getElementById('cfgSaveBtn');
-  if(saveBtn){
-    saveBtn.textContent='✓ Configurações salvas!';
-    saveBtn.style.display='inline-block'; // força visível durante feedback
-    saveBtn.style.background='#059669';
-    saveBtn.style.color='#fff';
-    saveBtn.style.pointerEvents='none';
-  }
-
-  // Atualiza estado visual dos campos (bloqueia inputs) SEM chamar _applyLockState
-  // para não sumir o botão de feedback prematuramente
-  const lockBtn=document.getElementById('lockBtn');
-  if(lockBtn){lockBtn.textContent='🔓 Clique para editar';lockBtn.className='lock-btn';}
-  ['cfgCo','cfgSec'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(el){el.disabled=true;el.style.opacity='.45';el.style.cursor='not-allowed';}
-  });
-  rGoalsTable(); // reconstrói tabela com valores salvos (campos bloqueados)
-
-  // Após 2s, esconde botão e restaura estado normal
-  setTimeout(()=>{
-    if(saveBtn){
-      saveBtn.style.display='none';
-      saveBtn.textContent='SALVAR';
-      saveBtn.style.background='';
-      saveBtn.style.color='';
-      saveBtn.style.pointerEvents='';
-    }
-  },2000);
-
+  toast('✓ Configurações salvas!');
+  _applyLockState();
   rDash();
 }
 function fetchBench(){

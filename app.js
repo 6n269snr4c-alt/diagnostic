@@ -599,10 +599,11 @@ function sizeSimWheel(){
   const box=document.getElementById('simWheelBox');if(!box)return;
   const left=document.querySelector('.sim-left');
   if(!left)return;
-  const W=left.offsetWidth||left.clientWidth||300;
-  const H=left.offsetHeight||left.clientHeight||500;
-  const avail=Math.min(W-48, H-100);
-  const sz=Math.max(220,Math.min(avail,520));
+  const W=left.offsetWidth||left.clientWidth||400;
+  const H=left.offsetHeight||left.clientHeight||600;
+  // Use most of the available space — subtract space for score bar + lucro card
+  const avail=Math.min(W-32, H-140);
+  const sz=Math.max(260,Math.min(avail,680));
   const svg=document.getElementById('simHw');
   svg.setAttribute('width',sz);svg.setAttribute('height',sz);svg.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
   box.style.width=sz+'px';box.style.height=sz+'px';

@@ -55,25 +55,57 @@ const FCAST_FIELDS=[
 
 function calcKPIs(r){
   const v=k=>{const x=parseFloat(r[k]);return isNaN(x)?null:x;};
-  const sd=(n,d)=>(d&&d!==0)?n/d:null;
-  const pct=(n,d)=>{const x=sd(n,d);return x!==null?x*100:null;};
-  const fat=v('f_fat'),dc=v('f_dc');
-  const cv=v('f_cv'),df=v('f_df'),depfin=v('f_depfin');
-  const cmv=v('f_cmv');        // CMV puro — para Margem Bruta
-  const pessoal=v('f_pessoal');// Despesas com Pessoal — para Peso do Pessoal
-  const adm=v('f_adm');        // Despesas Adm — para Peso Administrativo
-  const mc=(fat!==null&&cv!==null)?fat-cv:null;
-  const ebitda_r=mc!==null&&df!==null?mc-df:null;
-  return{
-    receita:fat,
-    cac:pct(dc,fat),
-    margem:pct(mc,fat),
-    ebitda:ebitda_r!==null&&fat?pct(ebitda_r,fat):null,
-    despop:pct(df,fat),
-    lucroliq:ebitda_r!==null&&depfin!==null&&fat?((ebitda_r-depfin)/fat)*100:null,
-    margbruta:cmv!==null&&fat?pct(fat-cmv,fat):null,
-    pessoal:pct(pessoal,fat),
-    admperc:pct(adm,fat),
+  const pct=(n,d)=>(d&&d!==0)?n/d*100:null;
+  const fat   = v('f_fat');        // Receita Bruta
+  const ded   = v('f_ded')||0;     // Deduções (impostos sobre venda, devoluções)
+  const cmv   = v('f_cmv');        // CMV puro
+  const dc    = v('f_dc')||0;      // Despesa Comercial
+  const pess  = v('f_pessoal')||0; // Despesas com Pessoal
+  const adm   = v('f_adm')||0;     // Despesas Administrativas
+  const dep   = v('f_dep')||0;     // Depreciação/Amortização (fora do EBITDA)
+  const depfin= v('f_depfin');     // Despesas Financeiras + IR/CSLL
+
+  // Campos agregados — compatibilidade com forecast/simulador
+  const cv = v('f_cv');  // f_cv = cmv + ded (raw agregado)
+  const df = v('f_df');  // f_df = pess + adm (raw agregado)
+
+  // ── Receita Líquida (base de todos os percentuais — convenção mercado de capitais)
+  const recLiq = fat !== null ? fat - ded : null;
+
+  // Usa campos granulares se disponíveis, senão usa agregados
+  const cvEfetivo = cmv !== null ? cmv : (cv !== null ? cv - ded : null);
+  const dfEfetivo = (pess || adm) ? pess + adm : (df !== null ? df : null);
+
+  // ── Lucro Bruto = Receita Líquida − CMV
+  const lucBruto = recLiq !== null && cvEfetivo !== null ? recLiq - cvEfetivo : null;
+
+  // ── EBITDA (bottom-up): Lucro Bruto − Desp.Comercial − Pessoal − Adm
+  //    Depreciação NÃO entra — é adicionada de volta no cálculo do EBITDA
+  const ebitda_r = lucBruto !== null && dfEfetivo !== null
+    ? lucBruto - dc - dfEfetivo
+    : null;
+
+  // ── Lucro Líquido = EBITDA − Depreciação − Desp.Financeiras − IR/CSLL
+  const lucro_r = ebitda_r !== null && depfin !== null
+    ? ebitda_r - dep - depfin
+    : null;
+
+  // ── Desp. Operacionais totais = Desp.Comercial + Pessoal + Adm
+  const despOpTotal = dfEfetivo !== null ? dc + dfEfetivo : null;
+
+  // Denominador: Receita Líquida (convenção mercado). Fallback para Bruta se Líquida = 0
+  const base = recLiq && recLiq > 0 ? recLiq : fat;
+
+  return {
+    receita:   fat,
+    cac:       base ? pct(dc,           base) : null,
+    margbruta: base && lucBruto  !== null ? pct(lucBruto,  base) : null,
+    margem:    base && lucBruto  !== null ? pct(lucBruto - dc, base) : null,
+    ebitda:    base && ebitda_r  !== null ? pct(ebitda_r, base) : null,
+    despop:    base && despOpTotal !== null ? pct(despOpTotal, base) : null,
+    lucroliq:  base && lucro_r   !== null ? pct(lucro_r,  base) : null,
+    pessoal:   base && pess ? pct(pess, base) : null,
+    admperc:   base && adm  ? pct(adm,  base) : null,
   };
 }
 
@@ -2056,25 +2088,163 @@ function handleImport(input){
 // METODOLOGIA
 // ═══════════════════════════════════════════
 function rMeth(){
-  const grid=document.getElementById('methGrid');grid.innerHTML='';
-  const intro=document.createElement('div');intro.className='mc2';intro.style.gridColumn='1/-1';
-  intro.innerHTML=`<div class="mt">Como o Vital Diagnostic funciona</div><div class="mb">O sistema coleta <strong>15 dados financeiros brutos</strong> mensais e os transforma em <strong>${IND.length} KPIs estratégicos</strong> em 4 grupos. Cada KPI é pontuado 0–100% com base em metas mensais configuráveis, ponderado por importância e ajustado pela confiabilidade do dado. O resultado é um <strong>Score de Saúde 0–100</strong> que resume o estado do negócio.</div>`;
+  const grid=document.getElementById('methGrid');
+  grid.innerHTML='';
+
+  // ── INTRO ──────────────────────────────────────────────────────────
+  const intro=document.createElement('div');
+  intro.className='mc2';intro.style.gridColumn='1/-1';
+  intro.innerHTML=`
+    <div class="mt">Como o Vital Diagnostic funciona</div>
+    <div class="mb">O sistema processa o DRE mensal da empresa e o transforma em <strong>${IND.length} KPIs estratégicos</strong>.
+    Cada KPI é pontuado 0–100% com base em metas configuráveis, ponderado por importância e ajustado pela confiabilidade do dado.
+    O resultado é um <strong>Score de Saúde 0–100</strong> que resume o estado financeiro do negócio em um único número.</div>
+    <div style="background:rgba(0,240,200,.06);border:1px solid rgba(0,240,200,.15);border-radius:12px;padding:14px 18px;margin-top:8px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.8">
+      <strong style="color:var(--teal)">Convenção adotada:</strong> todos os percentuais de margem e eficiência são calculados sobre a
+      <strong style="color:#c8dff5">Receita Líquida</strong> (Receita Bruta − Deduções de impostos sobre venda),
+      seguindo a convenção do mercado de capitais brasileiro (CVM / B3).
+    </div>`;
   grid.appendChild(intro);
+
+  // ── FLUXO DO DRE ───────────────────────────────────────────────────
+  const fluxo=document.createElement('div');
+  fluxo.className='mc2';fluxo.style.gridColumn='1/-1';
+  fluxo.innerHTML=`
+    <div class="mt">Fluxo de Cálculo — do DRE aos KPIs</div>
+    <div style="display:flex;flex-direction:column;gap:0;margin-top:8px">
+      ${[
+        {label:'Receita Bruta',     color:'#00e89b', desc:'Total de vendas brutas do período'},
+        {label:'( − ) Deduções',    color:'#64748b', desc:'Impostos sobre venda (PIS, COFINS, ISS, ICMS), devoluções e abatimentos'},
+        {label:'= Receita Líquida', color:'#00f0c8', desc:'Base para todos os cálculos de percentual — convenção CVM/B3', bold:true},
+        {label:'( − ) CMV',         color:'#ef4444', desc:'Custo da mercadoria vendida ou custo dos serviços prestados'},
+        {label:'= Lucro Bruto',     color:'#10d4a8', desc:'Resultado após os custos diretos do produto/serviço', bold:true},
+        {label:'( − ) Desp. Comercial', color:'#3b82f6', desc:'Marketing, publicidade, comissões de venda'},
+        {label:'( − ) Desp. Pessoal',   color:'#a855f7', desc:'Salários, pró-labore, encargos e benefícios'},
+        {label:'( − ) Desp. Adm.',      color:'#f59e0b', desc:'Aluguel, software, utilidades, serviços gerais'},
+        {label:'= EBITDA',          color:'#10d4a8', desc:'Lucro antes de juros, impostos, depreciação e amortização', bold:true},
+        {label:'( − ) Depreciação', color:'#64748b', desc:'Depreciação e amortização de ativos — excluída do EBITDA por definição'},
+        {label:'( − ) Desp. Financeiras + IR', color:'#ef4444', desc:'Juros, IOF, empréstimos, IR/CSLL sobre o lucro'},
+        {label:'= Lucro Líquido',   color:'#00e89b', desc:'Resultado final após todas as despesas e impostos', bold:true},
+      ].map(r=>`
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:12px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);align-items:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:${r.bold?'700':'500'};color:${r.color}">${r.label}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45)">${r.desc}</div>
+        </div>`).join('')}
+    </div>`;
+  grid.appendChild(fluxo);
+
+  // ── KPIs por grupo ─────────────────────────────────────────────────
+  const KPIDEFS = [
+    {
+      id:'receita', name:'Receita Bruta', icon:'💰', group:'tracao',
+      formula:'Valor total das vendas brutas do período',
+      denominador:'—',
+      fonte:'Linha "Receita de Vendas" ou equivalente no DRE',
+      hb:'Maior = melhor',
+    },
+    {
+      id:'cac', name:'CAC — Despesa Comercial %', icon:'🎯', group:'tracao',
+      formula:'Despesa Comercial ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'Linhas classificadas como "Despesa Comercial" no DRE',
+      hb:'Menor = melhor',
+    },
+    {
+      id:'margbruta', name:'Margem Bruta %', icon:'📦', group:'rentab',
+      formula:'(Receita Líquida − CMV) ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'CMV: linhas "Custo Variável / CMV" no DRE',
+      hb:'Maior = melhor',
+    },
+    {
+      id:'margem', name:'Margem de Contribuição %', icon:'💹', group:'rentab',
+      formula:'(Lucro Bruto − Despesa Comercial) ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'Lucro Bruto − Desp. Comercial',
+      hb:'Maior = melhor',
+    },
+    {
+      id:'ebitda', name:'EBITDA %', icon:'📊', group:'rentab',
+      formula:'(Margem de Contribuição − Desp. Pessoal − Desp. Adm.) ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'Excluí depreciação/amortização por definição (EBITDA = antes da D&A)',
+      hb:'Maior = melhor',
+    },
+    {
+      id:'despop', name:'Desp. Operacionais %', icon:'📋', group:'rentab',
+      formula:'(Desp. Comercial + Pessoal + Adm.) ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'Soma das despesas operacionais classificadas no DRE',
+      hb:'Menor = melhor',
+    },
+    {
+      id:'lucroliq', name:'Lucro Líquido %', icon:'💰', group:'rentab',
+      formula:'(EBITDA − Depreciação − Desp. Financeiras − IR/CSLL) ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'Resultado final após todas as deduções',
+      hb:'Maior = melhor',
+    },
+    {
+      id:'pessoal', name:'Peso do Pessoal %', icon:'👥', group:'rentab',
+      formula:'Despesas com Pessoal ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'Linhas "Despesa com Pessoal" no DRE (salários, encargos, pró-labore)',
+      hb:'Menor = melhor',
+    },
+    {
+      id:'admperc', name:'Peso Administrativo %', icon:'🏢', group:'rentab',
+      formula:'Despesas Administrativas ÷ Receita Líquida × 100',
+      denominador:'Receita Líquida',
+      fonte:'Linhas "Despesa Administrativa" + "Depreciação" no DRE',
+      hb:'Menor = melhor',
+    },
+  ];
+
   ['tracao','rentab'].forEach(grp=>{
-    const card=document.createElement('div');card.className='mc2';const col=GC[grp];
-    const inds=IND.filter(i=>i.group===grp);
-    card.innerHTML=`<span class="mpill" style="background:${col}22;color:${col}">${GI[grp]} ${GN[grp]}</span>
-      <div class="mkg">${inds.map(ind=>`<div class="mkc"><div class="mkn">${ind.icon} ${ind.name}</div><div class="mkf">${ind.formula}</div><div class="mkd">${ind.desc}</div></div>`).join('')}</div>`;
+    const card=document.createElement('div');card.className='mc2';
+    const col=GC[grp];
+    const kpis=KPIDEFS.filter(k=>k.group===grp);
+    card.innerHTML=`
+      <span class="mpill" style="background:${col}22;color:${col}">${GI[grp]} ${GN[grp]}</span>
+      <div class="mkg">
+        ${kpis.map(k=>`
+          <div class="mkc">
+            <div class="mkn">${k.icon} ${k.name}</div>
+            <div class="mkf">${k.formula}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+              <span style="font-size:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px;color:rgba(255,255,255,.4)">Base: ${k.denominador}</span>
+              <span style="font-size:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:2px 8px;color:rgba(255,255,255,.4)">${k.hb}</span>
+            </div>
+            <div class="mkd" style="margin-top:5px;color:rgba(255,255,255,.35);font-style:italic">${k.fonte}</div>
+          </div>`).join('')}
+      </div>`;
     grid.appendChild(card);
   });
-  const sc=document.createElement('div');sc.className='mc2';
-  sc.innerHTML=`<div class="mt">Sistema de Pontuação</div><div class="mb">Cada KPI → pontuação 0–100% baseada na distância para a meta mensal × fator de confiabilidade (Alta=100%, Média=88%, Baixa=70%) × peso do KPI. Score final = média ponderada.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
-      <span class="mpill" style="background:rgba(0,232,155,.12);color:var(--green)">90–100: Excelente</span>
-      <span class="mpill" style="background:rgba(0,240,200,.1);color:var(--teal)">75–89: Saudável</span>
-      <span class="mpill" style="background:rgba(244,165,34,.12);color:var(--amber)">55–74: Atenção</span>
-      <span class="mpill" style="background:rgba(255,61,90,.1);color:var(--red)">35–54: Crítico</span>
-      <span class="mpill" style="background:rgba(255,0,64,.12);color:#ff0040">0–34: Em Crise</span>
+
+  // ── SCORE ──────────────────────────────────────────────────────────
+  const sc=document.createElement('div');sc.className='mc2';sc.style.gridColumn='1/-1';
+  sc.innerHTML=`
+    <div class="mt">Sistema de Pontuação — Score de Saúde 0–100</div>
+    <div class="mb">Cada KPI recebe uma pontuação 0–100% baseada na distância para a meta mensal configurada.
+    A pontuação é multiplicada pelo fator de confiabilidade do dado e pelo peso do KPI.
+    O Score final é a média ponderada de todos os KPIs com dados disponíveis.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:12px 14px">
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Confiabilidade do Dado</div>
+        <div style="font-size:12px;line-height:2;color:rgba(255,255,255,.6)">
+          ✅ Alta → 100% do peso<br>⚠️ Média → 88% do peso<br>❌ Baixa → 70% do peso
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:12px 14px">
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Faixas do Score</div>
+        <div style="font-size:12px;line-height:2">
+          <span style="color:var(--green)">90–100 Excelente</span><br>
+          <span style="color:var(--teal)">75–89 Saudável</span><br>
+          <span style="color:var(--amber)">55–74 Atenção</span><br>
+          <span style="color:var(--red)">35–54 Crítico</span><br>
+          <span style="color:#ff0040">0–34 Em Crise</span>
+        </div>
+      </div>
     </div>`;
   grid.appendChild(sc);
 }
@@ -3042,7 +3212,7 @@ function dreUpdateCat(idx, newCat) {
 }
 
 function dreAggregate() {
-  const a = { f_fat:0, f_ded:0, f_cmv:0, f_pessoal:0, f_adm:0, f_dc:0, f_depfin:0 };
+  const a = { f_fat:0, f_ded:0, f_cmv:0, f_pessoal:0, f_adm:0, f_dep:0, f_dc:0, f_depfin:0 };
   _dreClassified.forEach(l => {
     const v = l.value;
     if      (l.category === 'receita_bruta')          a.f_fat     += v;
@@ -3051,7 +3221,7 @@ function dreAggregate() {
     else if (l.category === 'despesa_comercial')      a.f_dc      += v;
     else if (l.category === 'despesa_pessoal')        a.f_pessoal += v;
     else if (l.category === 'despesa_administrativa') a.f_adm     += v;
-    else if (l.category === 'depreciacao')            a.f_adm     += v;
+    else if (l.category === 'depreciacao')            a.f_dep     += v; // separado — não entra no EBITDA
     else if (l.category === 'despesa_financeira')     a.f_depfin  += v;
     else if (l.category === 'imposto_lucro')          a.f_depfin  += v;
   });
@@ -3157,7 +3327,7 @@ function dreConfirm() {
   // Build raw for calcKPIs
   // f_cv = CMV + deduções (para Margem de Contribuição)
   // f_df = pessoal + adm (para EBITDA e Desp.Op%)
-  // f_cmv, f_pessoal, f_adm salvos separadamente para novos KPIs
+  // f_cmv, f_ded, f_pessoal, f_adm, f_dep salvos separadamente para KPIs granulares
   const raw = {
     f_fat:     agg.f_fat              || undefined,
     f_cv:      (agg.f_cmv + agg.f_ded) || undefined,
@@ -3165,8 +3335,10 @@ function dreConfirm() {
     f_df:      (agg.f_pessoal + agg.f_adm) || undefined,
     f_depfin:  agg.f_depfin           || undefined,
     f_cmv:     agg.f_cmv              || undefined,
+    f_ded:     agg.f_ded              || undefined,
     f_pessoal: agg.f_pessoal          || undefined,
     f_adm:     agg.f_adm              || undefined,
+    f_dep:     agg.f_dep              || undefined,
   };
   Object.keys(raw).forEach(k => { if (!raw[k]) delete raw[k]; });
 
@@ -3504,7 +3676,7 @@ function lancSaveEdits() {
   });
 
   // Recalculate aggregation
-  const agg = { f_fat:0, f_ded:0, f_cmv:0, f_pessoal:0, f_adm:0, f_dc:0, f_depfin:0 };
+  const agg = { f_fat:0, f_ded:0, f_cmv:0, f_pessoal:0, f_adm:0, f_dep:0, f_dc:0, f_depfin:0 };
   _lancEditLines.forEach(l => {
     const v = l.value;
     if      (l.category === 'receita_bruta')          agg.f_fat     += v;
@@ -3513,7 +3685,7 @@ function lancSaveEdits() {
     else if (l.category === 'despesa_comercial')      agg.f_dc      += v;
     else if (l.category === 'despesa_pessoal')        agg.f_pessoal += v;
     else if (l.category === 'despesa_administrativa') agg.f_adm     += v;
-    else if (l.category === 'depreciacao')            agg.f_adm     += v;
+    else if (l.category === 'depreciacao')            agg.f_dep     += v;
     else if (l.category === 'despesa_financeira')     agg.f_depfin  += v;
     else if (l.category === 'imposto_lucro')          agg.f_depfin  += v;
   });
@@ -3525,8 +3697,10 @@ function lancSaveEdits() {
     f_df:      (agg.f_pessoal + agg.f_adm)    || undefined,
     f_depfin:  agg.f_depfin                   || undefined,
     f_cmv:     agg.f_cmv                      || undefined,
+    f_ded:     agg.f_ded                      || undefined,
     f_pessoal: agg.f_pessoal                  || undefined,
     f_adm:     agg.f_adm                      || undefined,
+    f_dep:     agg.f_dep                      || undefined,
   };
   Object.keys(raw).forEach(k => { if (!raw[k]) delete raw[k]; });
   if (!S.raw) S.raw = {};

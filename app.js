@@ -1813,13 +1813,10 @@ function rConfig(){
   // Show DRE model status
   dreModelRenderStatus();
 
-  const btn=document.getElementById('lockBtn');btn.textContent=S.locked?'🔒 Clique para editar':'🔓 Editando';btn.className='lock-btn'+(S.locked?' locked':'');
-  document.getElementById('cfgSaveBtn').style.display=S.locked?'none':'inline-block';
-  // Disable/enable text inputs based on lock state
-  ['cfgCo','cfgSec'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(el){el.disabled=!!S.locked;el.style.opacity=S.locked?'.45':'1';el.style.cursor=S.locked?'not-allowed':'text';}
-  });
+  // Always open config in edit mode (unlocked) for better UX
+  if(S.locked===undefined)S.locked=false;
+  _applyLockState();
+
   const rmBtn=document.getElementById('rmLogoBtn');
   if(S.logo){document.getElementById('logoPlaceholder').style.display='none';
     let img=document.querySelector('#logoArea img');
@@ -1936,16 +1933,22 @@ function setKpiBM(id,mode){
 function setBM(mode,btn){if(S.locked)return;S.benchMode=mode;} // legacy global fallback
 function toggleLock(){
   S.locked=!S.locked;sv();
+  _applyLockState();
+}
+function _applyLockState(){
+  const locked=S.locked;
   const btn=document.getElementById('lockBtn');
-  btn.textContent=S.locked?'🔒 Clique para editar':'🔓 Editando';
-  btn.className='lock-btn'+(S.locked?' locked':'');
+  if(btn){
+    btn.textContent=locked?'🔒 Clique para editar':'🔓 Editando';
+    btn.className='lock-btn'+(locked?' locked':'');
+  }
   const saveBtn=document.getElementById('cfgSaveBtn');
-  if(saveBtn)saveBtn.style.display=S.locked?'none':'inline-block';
+  if(saveBtn)saveBtn.style.display=locked?'none':'inline-block';
   ['cfgCo','cfgSec'].forEach(function(id){
     var el=document.getElementById(id);
-    if(el){el.disabled=!!S.locked;el.style.opacity=S.locked?'.45':'1';el.style.cursor=S.locked?'not-allowed':'text';}
+    if(el){el.disabled=!!locked;el.style.opacity=locked?'.45':'1';el.style.cursor=locked?'not-allowed':'text';}
   });
-  if(!S.locked){var co=document.getElementById('cfgCo');if(co)setTimeout(function(){co.focus();co.select();},50);}
+  if(!locked){var co=document.getElementById('cfgCo');if(co)setTimeout(function(){co.focus&&co.blur();},50);}
   rGoalsTable();rCfgKpiTable();
 }
 function saveConfig(){
@@ -1966,7 +1969,11 @@ function saveConfig(){
     if(we)S.cfg[ind.id].weight=parseFloat(we.value)||1;
     if(be)S.cfg[ind.id].benchGoal=be.value?parseFloat(be.value):null;
   });
-  sv();document.getElementById('coName').textContent=S.company;toast('✓ Configurações salvas!');
+  sv();
+  document.getElementById('coName').textContent=S.company;
+  toast('✓ Configurações salvas!');
+  // Refresh goals table to show saved values
+  rGoalsTable();
 }
 function fetchBench(){
   const prompt='Setor "'+S.sector+'". JSON só: {"receita":100000,"cac":10,"churn":3,"margem":40,"ebitda":15,"despop":30,"caixa":10000,"ciclo":0,"runway":6,"reccolab":10000,"estoque":45,"turnover":2}';

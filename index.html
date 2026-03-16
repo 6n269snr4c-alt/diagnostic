@@ -182,14 +182,6 @@
 
     <!-- ── STEP 1: UPLOAD ── -->
     <div class="dre-content" id="dreStep1">
-      <div class="dre-upload-zone" id="dreDropZone" onclick="document.getElementById('dreFileInput').click()">
-        <div class="dre-upload-icon">📊</div>
-        <div class="dre-upload-title">Arraste seu DRE aqui</div>
-        <div class="dre-upload-sub">ou clique para selecionar o arquivo</div>
-        <div class="dre-upload-hint">Excel exportado do ContaAzul, Omie, Totvs e outros ERPs</div>
-      </div>
-      <input type="file" id="dreFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="dreHandleFile(this)">
-
       <div class="dre-month-row">
         <span class="dre-month-label">A qual mês este DRE se refere?</span>
         <div style="display:flex;gap:8px">
@@ -204,6 +196,14 @@
           <select class="m-sel" id="dreAno" style="width:90px"></select>
         </div>
       </div>
+
+      <div class="dre-upload-zone" id="dreDropZone" onclick="document.getElementById('dreFileInput').click()">
+        <div class="dre-upload-icon">📊</div>
+        <div class="dre-upload-title">Arraste seu DRE aqui</div>
+        <div class="dre-upload-sub">ou clique para selecionar o arquivo</div>
+        <div class="dre-upload-hint">Excel exportado do ContaAzul, Omie, Totvs e outros ERPs</div>
+      </div>
+      <input type="file" id="dreFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="dreHandleFile(this)">
 
       <div class="dre-file-badge" id="dreFileBadge" style="display:none">
         <span style="font-size:20px">📄</span>

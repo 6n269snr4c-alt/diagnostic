@@ -3702,8 +3702,6 @@ async function dreProcess() {
   try {
     const savedMappings = S.dreMappings || {};
     const dreModel = S.dreModel || {};
-    console.log('[DRE Learn] dreMappings em memória:', Object.keys(savedMappings).length, 'entradas');
-    console.log('[DRE Learn] primeiras 5:', Object.entries(savedMappings).slice(0,5));
 
     // ── Pré-classificar localmente contas já conhecidas ──────────────
     // Ordem de prioridade: correção manual (dreMappings) > modelo base (dreModel)

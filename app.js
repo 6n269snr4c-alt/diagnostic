@@ -3773,21 +3773,18 @@ ${advisor.responseFormat}
 
 IMPORTANTE: Formate sua resposta usando markdown simples (negrito com **, listas com •, numeração). Seja específico, use os números reais fornecidos.`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/advisor', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
         system: systemPrompt,
-        messages: [
-          { role: 'user', content: `${context}\n\nPERGUNTA DO USUÁRIO:\n${question}` }
-        ]
+        prompt: `${context}\n\nPERGUNTA DO USUÁRIO:\n${question}`
       })
     });
 
     const data = await res.json();
-    const text = data.content?.[0]?.text || 'Não foi possível obter resposta.';
+    if (!res.ok) throw new Error(data.error || 'Erro na API');
+    const text = data.text || 'Não foi possível obter resposta.';
 
     // Format the response
     const formatted = _formatAdvisorResponse(text, advisor);

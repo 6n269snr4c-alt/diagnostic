@@ -2788,43 +2788,57 @@ function saveMeetActions(){
   if(!S.sel)return;
   if(!S.meetActions)S.meetActions={};
   if(!S.meetActions[S.sel])S.meetActions[S.sel]={fechamento:[],forecast:[],adicionais:[]};
-  // Ações adicionais
-  var _adic=[];
-  document.querySelectorAll('#actAdicBody tr').forEach(function(tr){
-    var t=(tr.querySelector('.act-text')||{}).value||'';t=t.trim();
-    var r=(tr.querySelector('.act-resp')||{}).value||'';r=r.trim();
-    var p=(tr.querySelector('.act-prazo')||{}).value||'';p=p.trim();
-    if(t||r||p)_adic.push({text:t,resp:r,prazo:p,kpi:'Adicional'});
-  });
-  S.meetActions[S.sel].adicionais=_adic;
-  // KPI inline actions (no data-type)
+
+  // Lê apenas os inputs do slide atualmente visível no DOM
+  // (slides são renderizados um por vez — só o atual existe no DOM)
+
+  // Ações adicionais (slide de planos extras, se visível)
+  var adicBody=document.getElementById('actAdicBody');
+  if(adicBody){
+    var _adic=[];
+    adicBody.querySelectorAll('tr').forEach(function(tr){
+      var t=(tr.querySelector('.act-text')||{}).value||'';t=t.trim();
+      var r=(tr.querySelector('.act-resp')||{}).value||'';r=r.trim();
+      var p=(tr.querySelector('.act-prazo')||{}).value||'';p=p.trim();
+      if(t||r||p)_adic.push({text:t,resp:r,prazo:p,kpi:'Adicional'});
+    });
+    S.meetActions[S.sel].adicionais=_adic;
+  }
+
+  // KPI inline actions — fechamento (se visíveis)
   var texts=document.querySelectorAll('.kcard-act .act-text:not([data-type])');
-  var resps=document.querySelectorAll('.kcard-act .act-resp:not([data-type])');
-  var prazos=document.querySelectorAll('.kcard-act .act-prazo:not([data-type])');
-  var fech=[];
-  for(var i=0;i<texts.length;i++){
-    fech.push({
-      text:(texts[i].value||'').trim(),
-      resp:(resps[i]?resps[i].value||'':'').trim(),
-      prazo:(prazos[i]?prazos[i].value||'':'').trim(),
-      kpi:texts[i].dataset.kpi||''
-    });
+  if(texts.length){
+    var resps=document.querySelectorAll('.kcard-act .act-resp:not([data-type])');
+    var prazos=document.querySelectorAll('.kcard-act .act-prazo:not([data-type])');
+    var fech=[];
+    for(var i=0;i<texts.length;i++){
+      fech.push({
+        text:(texts[i].value||'').trim(),
+        resp:(resps[i]?resps[i].value||'':'').trim(),
+        prazo:(prazos[i]?prazos[i].value||'':'').trim(),
+        kpi:texts[i].dataset.kpi||''
+      });
+    }
+    S.meetActions[S.sel].fechamento=fech;
   }
-  S.meetActions[S.sel].fechamento=fech;
-  // Forecast actions
+
+  // Forecast actions (se visíveis)
   var ftexts=document.querySelectorAll('.act-text[data-type="forecast"]');
-  var fresps=document.querySelectorAll('.act-resp[data-type="forecast"]');
-  var fprazos=document.querySelectorAll('.act-prazo[data-type="forecast"]');
-  var farr=[];
-  for(var j=0;j<ftexts.length;j++){
-    farr.push({
-      text:(ftexts[j].value||'').trim(),
-      resp:(fresps[j]?fresps[j].value||'':'').trim(),
-      prazo:(fprazos[j]?fprazos[j].value||'':'').trim(),
-      kpi:ftexts[j].dataset.kpi||''
-    });
+  if(ftexts.length){
+    var fresps=document.querySelectorAll('.act-resp[data-type="forecast"]');
+    var fprazos=document.querySelectorAll('.act-prazo[data-type="forecast"]');
+    var farr=[];
+    for(var j=0;j<ftexts.length;j++){
+      farr.push({
+        text:(ftexts[j].value||'').trim(),
+        resp:(fresps[j]?fresps[j].value||'':'').trim(),
+        prazo:(fprazos[j]?fprazos[j].value||'':'').trim(),
+        kpi:ftexts[j].dataset.kpi||''
+      });
+    }
+    S.meetActions[S.sel].forecast=farr;
   }
-  S.meetActions[S.sel].forecast=farr;
+
   syncActionsFromMeeting(S.sel);
   sv();
 }

@@ -3815,13 +3815,20 @@ IMPORTANTE: Formate sua resposta usando markdown simples (negrito com **, listas
           </div>
           <div style="font-size:10px;color:var(--mut);margin-bottom:12px">Marque as ações que quer salvar. Você pode desmarcar aquelas com que não concorda.</div>
           <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px" id="advisorActionsList">
-            ${actions.map((a,i) => `
+            ${actions.map((a,i) => {
+              const aText = typeof a === 'string' ? a : a.text;
+              const aPrazo = typeof a === 'string' ? '' : a.prazo;
+              return `
             <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.06);cursor:pointer"
               onmouseover="this.style.borderColor='${advisor.color}44'" onmouseout="this.style.borderColor='rgba(255,255,255,.06)'">
               <input type="checkbox" data-action-idx="${i}" checked
                 style="margin-top:2px;flex-shrink:0;accent-color:${advisor.color};width:14px;height:14px;cursor:pointer">
-              <span style="font-size:12px;color:#c8dff5;line-height:1.6">${a}</span>
-            </label>`).join('')}
+              <div>
+                <div style="font-size:12px;color:#c8dff5;line-height:1.6">${aText}</div>
+                ${aPrazo ? `<div style="font-size:10px;color:${advisor.color};margin-top:2px">⏱ ${aPrazo}</div>` : ''}
+              </div>
+            </label>`;
+            }).join('')}
           </div>
           <button onclick="advisorSaveActions()" class="bs" style="font-size:12px;padding:8px 20px;background:${advisor.color};color:#07101c;border-color:${advisor.color}">
             ✓ Salvar ações selecionadas
@@ -3878,13 +3885,33 @@ function _formatAdvisorResponse(text, advisor) {
 
 function _extractAdvisorActions(text, advisorId) {
   const actions = [];
-  // Extract numbered action items from PLANO DE AÇÃO section
   const planMatch = text.match(/PLANO DE AÇÃO[\s\S]*?(?=\n[A-Z\[{]|$)/i);
   if (planMatch) {
     const lines = planMatch[0].split('\n');
     lines.forEach(line => {
       const m = line.match(/^\s*(\d+)\.\s+(.+)/);
-      if (m) actions.push(m[2].trim());
+      if (!m) return;
+      let full = m[2].trim();
+      // Extract prazo — patterns like "30 dias", "2 semanas", "até março", "prazo: X"
+      let prazo = '';
+      let actionText = full;
+      const prazoPatterns = [
+        /[\—\-–]\s*prazo[:\s]+([^.]+)/i,
+        /[\—\-–]\s*(\d+\s*(?:dias?|semanas?|meses?))/i,
+        /\((\d+\s*(?:dias?|semanas?|meses?))\)/i,
+        /\bno prazo de ([^,.]+)/i,
+        /\bem até ([^,.]+)/i,
+        /\baté (\w+ de \d{4}|\d{1,2}\/\d{1,2}(?:\/\d{4})?)/i,
+      ];
+      for (const pat of prazoPatterns) {
+        const pm = full.match(pat);
+        if (pm) {
+          prazo = pm[1].trim();
+          actionText = full.replace(pm[0], '').replace(/\s+/g, ' ').trim();
+          break;
+        }
+      }
+      actions.push({ text: actionText, prazo });
     });
   }
   return actions.slice(0, 5);
@@ -3909,16 +3936,20 @@ function advisorSaveActions() {
   const mk = S.sel || null;
   const [y, mo] = mk ? mk.split('-') : [new Date().getFullYear(), String(new Date().getMonth()+1).padStart(2,'0')];
   const mesLabel = MES[parseInt(mo)-1] + '/' + y;
+  const userName = S.userName || '';
 
-  selected.forEach(text => {
+  selected.forEach(action => {
+    // action is now {text, prazo} object
+    const actionText = typeof action === 'string' ? action : action.text;
+    const actionPrazo = typeof action === 'string' ? '' : (action.prazo || '');
     S.actions.push({
       id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
       mk: mk || '',
       mes: mesLabel,
       kpi: 'Conselheiro',
-      text: text.trim(),
-      resp: '',
-      prazo: '',
+      text: actionText.trim(),
+      resp: userName,
+      prazo: actionPrazo,
       status: 'open',
       obs: `Gerado pelo ${advisor.name}`,
       criadoEm: new Date().toISOString()
@@ -3934,7 +3965,6 @@ function advisorSaveActions() {
     btn.disabled = true;
     btn.style.opacity = '.6';
   }
-  // Disable checkboxes too
   checkboxes.forEach(cb => cb.disabled = true);
   window._pendingAdvisorActions = [];
 }

@@ -3655,20 +3655,50 @@ function rAdvisorPage() {
 function _renderAdvisorCards(containerId, isConfig) {
   const el = document.getElementById(containerId);
   if (!el) return;
+  // isConfig → compara com S.advisor (padrão salvo)
+  // página → compara com _currentAdvisor (seleção da sessão)
+  const selectedId = isConfig ? S.advisor : (_currentAdvisor || S.advisor || 'analytics');
+
   el.innerHTML = Object.values(ADVISORS).map(a => {
-    const isSelected = S.advisor === a.id;
-    const border = isSelected ? `2px solid ${a.color}` : '1px solid var(--bdr)';
-    const bg = isSelected ? `background:${a.color}12` : 'background:var(--glass)';
-    return `<div onclick="${isConfig ? 'cfgSetAdvisor' : 'advisorSelect'}('${a.id}')"
-      id="${isConfig ? 'cfg' : ''}advisor-card-${a.id}"
-      style="cursor:pointer;border-radius:14px;padding:16px;${bg};border:${border};transition:all .2s;position:relative">
-      ${isSelected ? `<div style="position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:${a.color}"></div>` : ''}
-      <div style="font-size:28px;margin-bottom:8px">${a.icon}</div>
-      <div style="font-size:13px;font-weight:700;color:#e8f0ff;margin-bottom:4px">${a.name}</div>
-      <div style="font-size:10px;color:${a.color};font-style:italic;margin-bottom:8px">"${a.tagline}"</div>
-      <div style="font-size:11px;color:var(--mut);line-height:1.6">${a.desc}</div>
-      ${isConfig ? '' : `<div style="margin-top:10px;font-size:10px;color:${isSelected?a.color:'var(--mut)'};font-weight:${isSelected?'700':'400'}">${isSelected?'✓ Selecionado':'Clique para selecionar'}</div>`}
-    </div>`;
+    const isSelected = selectedId === a.id;
+    const col = a.color;
+
+    if (isConfig) {
+      // Config card: expandido, com personalidade e estrutura de resposta
+      return `<div onclick="cfgSetAdvisor('${a.id}')"
+        id="cfgadvisor-card-${a.id}"
+        style="cursor:pointer;border-radius:14px;padding:18px;background:${isSelected?col+'10':'var(--glass)'};
+               border:${isSelected?`2px solid ${col}`:'1px solid var(--bdr)'};transition:all .2s;position:relative">
+        ${isSelected ? `<div style="position:absolute;top:12px;right:12px;font-size:10px;font-weight:700;color:${col};background:${col}20;border:1px solid ${col}40;border-radius:10px;padding:2px 8px">✓ Padrão</div>` : ''}
+        <div style="font-size:26px;margin-bottom:6px">${a.icon}</div>
+        <div style="font-size:13px;font-weight:700;color:#e8f0ff;margin-bottom:3px">${a.name}</div>
+        <div style="font-size:10px;color:${col};font-style:italic;margin-bottom:10px">"${a.tagline}"</div>
+        <div style="font-size:11px;color:var(--mut);line-height:1.6;margin-bottom:12px">${a.desc}</div>
+        <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:10px">
+          <div style="font-size:9px;letter-spacing:1.5px;color:${col};font-weight:700;text-transform:uppercase;margin-bottom:6px">Personalidade</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.45);line-height:1.7;white-space:pre-wrap">${a.personality}</div>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:10px;margin-top:10px">
+          <div style="font-size:9px;letter-spacing:1.5px;color:${col};font-weight:700;text-transform:uppercase;margin-bottom:6px">Estrutura de resposta</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.45);line-height:1.7;white-space:pre-wrap;font-family:'JetBrains Mono',monospace">${a.responseFormat}</div>
+        </div>
+      </div>`;
+    } else {
+      // Página conselheiro: card compacto
+      return `<div onclick="advisorSelect('${a.id}')"
+        id="advisor-card-${a.id}"
+        style="cursor:pointer;border-radius:14px;padding:16px;background:${isSelected?col+'12':'var(--glass)'};
+               border:${isSelected?`2px solid ${col}`:'1px solid var(--bdr)'};transition:all .2s;position:relative">
+        ${isSelected ? `<div style="position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:${col}"></div>` : ''}
+        <div style="font-size:28px;margin-bottom:8px">${a.icon}</div>
+        <div style="font-size:13px;font-weight:700;color:#e8f0ff;margin-bottom:4px">${a.name}</div>
+        <div style="font-size:10px;color:${col};font-style:italic;margin-bottom:8px">"${a.tagline}"</div>
+        <div style="font-size:11px;color:var(--mut);line-height:1.6">${a.desc}</div>
+        <div style="margin-top:10px;font-size:10px;color:${isSelected?col:'var(--mut)'};font-weight:${isSelected?'700':'400'}">
+          ${isSelected ? '✓ Selecionado' : 'Clique para selecionar'}
+        </div>
+      </div>`;
+    }
   }).join('');
 }
 

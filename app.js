@@ -3588,10 +3588,10 @@ function _buildAdvisorContext() {
       const g = grade(res.score);
       situacaoAtual = `Período mais recente: ${label} — Score ${res.score}/100 (${g.l})\n`;
       situacaoAtual += `KPIs ATUAIS (apenas os ${IND.length} indicadores do sistema — ignore qualquer outro):\n`;
-      // Filter strictly to current IND — exclude zero values that are likely stale data
+      // Filter strictly to current IND — exclude zero/null values (no data or stale)
       const validIds = new Set(IND.map(i => i.id));
       res.details
-        .filter(d => validIds.has(d.ind.id) && d.val !== null && d.val !== undefined)
+        .filter(d => validIds.has(d.ind.id) && d.val !== null && d.val !== undefined && d.val !== 0)
         .forEach(d => {
           const gap = d.ind.unit === '%'
             ? `gap: ${(d.val - d.goal).toFixed(1)}pp`
@@ -3643,7 +3643,7 @@ ${situacaoAtual}${historicoTxt}${actionsTxt}
 INSTRUÇÕES CRÍTICAS:
 1. Chame o usuário pelo nome "${userName}" — obrigatoriamente na abertura e no fechamento
 2. NUNCA dê conselho sem ancorar nos números acima — cite os valores exatos
-3. Use APENAS os KPIs listados acima — ignore qualquer indicador com valor zero ou não listado
+3. Os únicos KPIs disponíveis são os listados acima. Para qualquer outro indicador (ex: CAC, churn, LTV, turnover) que NÃO esteja na lista: você PODE sugerir que seria útil medi-lo, mas NUNCA presuma seu valor nem diga que ele é zero — simplesmente não há esse dado.
 4. Se os dados forem insuficientes, diga e peça o que falta
 5. Se a situação for ruim, diga — sem suavizar
 6. Fundamente cada ponto: explique o raciocínio, não apenas liste fatos
@@ -3995,12 +3995,38 @@ document.addEventListener('DOMContentLoaded',()=>{
   auth.onAuthStateChanged(async(user)=>{
     if(user){
       await loadUserData(user.uid);
-      // Garante que todos os KPIs do IND têm entrada em S.cfg e S.goals
-      // (necessário quando novos KPIs são adicionados ao produto)
+
+      // ── Garante que todos os KPIs do IND têm entrada em S.cfg e S.goals ──
       IND.forEach(function(ind){
         if(!S.cfg[ind.id])S.cfg[ind.id]={weight:1,benchGoal:null,hb:ind.hb};
         if(!S.goals[ind.id])S.goals[ind.id]={default:ind.goalDef};
       });
+
+      // ── Remove KPIs antigos que não existem mais no IND atual ──────────
+      // Isso limpa entradas de versões anteriores (ex: churn, turnover, ciclo)
+      // que ficaram salvas no Firebase e poderiam confundir o conselheiro ou o score.
+      const validKpiIds = new Set(IND.map(i => i.id));
+      let staleFound = false;
+      if(S.data){
+        Object.keys(S.data).forEach(mk => {
+          if(!S.data[mk]) return;
+          Object.keys(S.data[mk]).forEach(kpiId => {
+            if(!validKpiIds.has(kpiId)){
+              delete S.data[mk][kpiId];
+              staleFound = true;
+            }
+          });
+        });
+      }
+      if(S.cfg){
+        Object.keys(S.cfg).forEach(kpiId => {
+          if(!validKpiIds.has(kpiId)){
+            delete S.cfg[kpiId];
+            staleFound = true;
+          }
+        });
+      }
+      if(staleFound) sv(); // persiste a limpeza no Firebase
       // Ensure S.sel points to a month with data, or most recent known
       // Clean up benchGoal from non-benchable KPIs
       IND.forEach(function(ind){

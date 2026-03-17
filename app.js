@@ -177,6 +177,9 @@ const db=firebase.firestore();
 let S={
   company:'Minha Empresa',
   sector:'',
+  userName:'',
+  advisor:'analytics', // 'analytics' | 'growth' | 'strategist'
+  advisorHistory:{analytics:[],growth:[],strategist:[]},
   benchMode:'ai',
   locked:false,
   logo:null,
@@ -223,6 +226,9 @@ async function loadUserData(uid){
       if(d.dreMappings)S.dreMappings=d.dreMappings;
       if(d.dreLines)S.dreLines=d.dreLines;
       if(d.dreModel)S.dreModel=d.dreModel;
+      if(d.userName)S.userName=d.userName;
+      if(d.advisor)S.advisor=d.advisor;
+      if(d.advisorHistory)S.advisorHistory=d.advisorHistory;
     }
   }catch(e){console.warn('Load error:',e);}
 }
@@ -505,6 +511,7 @@ function go(name,btn){
   if(name==='actions')rActions();
   if(name==='lancamentos')rLancamentos();
   if(name==='meth')rMeth();
+  if(name==='advisor'){_currentAdvisor=_currentAdvisor||S.advisor||'analytics';rAdvisorPage();}
 }
 
 // ═══════════════════════════════════════════
@@ -1896,6 +1903,8 @@ function saveForecast(){
 function rConfig(){
   document.getElementById('cfgCo').value=S.company;
   document.getElementById('cfgSec').value=S.sector||'';
+  const unEl=document.getElementById('cfgUserName');
+  if(unEl)unEl.value=S.userName||'';
 
   const mc=Object.keys(S.dreMappings||{}).length;
   const mcEl=document.getElementById('mappingsCount');
@@ -1905,6 +1914,7 @@ function rConfig(){
 
   dreModelRenderStatus();
   rMappingsTable();
+  rAdvisorCfgCards();
 
   // Popula year select ANTES de chamar rGoalsTable
   const ys=document.getElementById('goalsYear');
@@ -2058,6 +2068,8 @@ function saveConfig(){
   if(S.locked){toast('⚠️ Clique em "🔓 Editar" primeiro');return;}
   S.company=document.getElementById('cfgCo').value||'Minha Empresa';
   S.sector=document.getElementById('cfgSec').value||'';
+  const unEl=document.getElementById('cfgUserName');
+  if(unEl)S.userName=unEl.value.trim();
   const yr=parseInt(document.getElementById('goalsYear')?.value)||new Date().getFullYear();
   IND.forEach(ind=>{
     if(!S.goals[ind.id])S.goals[ind.id]={default:ind.goalDef};
@@ -3445,6 +3457,472 @@ function doLogin(){
       btn.disabled=false;btn.textContent='Entrar';
     });
 }
+// ═══════════════════════════════════════════
+// CONSELHEIRO IA
+// ═══════════════════════════════════════════
+
+const ADVISORS = {
+  analytics: {
+    id: 'analytics',
+    icon: '📊',
+    name: 'O Analítico',
+    tagline: 'Se não tem número, não tem conversa.',
+    color: '#3b82f6',
+    desc: 'CFO de dados. Diagnóstico preciso, linguagem direta, zero achismo.',
+    personality: `Você é O Analítico — um CFO com 25 anos de experiência em grandes empresas brasileiras. 
+Formação em contabilidade e finanças. Fala curto e certeiro. Cada afirmação que você faz tem um número por trás.
+Não tolera achismo. Se o dado não existe, você diz que não existe.
+Quando a situação é ruim, você diz que é ruim — sem rodeios e sem suavizar.
+Tom: direto, objetivo, confiante. Sem floreios.`,
+    responseFormat: `ESTRUTURA OBRIGATÓRIA DA SUA RESPOSTA:
+
+[Nome do usuário], [uma frase direta sobre o que os números mostram — máx 2 linhas]
+
+**SITUAÇÃO:**
+• [dado real com número exato]
+• [dado real com número exato]
+• [comparação com histórico ou benchmark de mercado se relevante]
+
+**CONCLUSÃO:** [1-2 frases no máximo. Resposta direta à pergunta.]
+
+**PLANO DE AÇÃO:**
+1. [ação específica, mensurável, com prazo]
+2. [ação específica, mensurável, com prazo]
+3. [ação específica, mensurável, com prazo]
+
+[Nome], concorda com este plano?`
+  },
+  growth: {
+    id: 'growth',
+    icon: '🚀',
+    name: 'O Growth',
+    tagline: 'Crescimento sustentável é o único que importa.',
+    color: '#10d4a8',
+    desc: 'Pensa em alavancagem e oportunidades. Celebra o que funciona, aponta o que trava.',
+    personality: `Você é O Growth — ex-consultor de estratégia que foi CPO de startup de alto crescimento.
+Você pensa primeiro em alavancagem, receita e oportunidades de expansão.
+É entusiasta mas brutalmente honesto: celebra o que funciona e aponta com clareza o que está travando o crescimento.
+Usa analogias de mercado e benchmarks de setor para contextualizar.
+Você vê os números como indicadores de onde a empresa pode ir, não só de onde está.
+Tom: energético, analítico, otimista com base em dados — mas sem ilusões.`,
+    responseFormat: `ESTRUTURA OBRIGATÓRIA DA SUA RESPOSTA:
+
+[Nome do usuário], [abertura que conecta a pergunta com o momento atual da empresa — 1-2 linhas]
+
+**O QUE OS NÚMEROS DIZEM:**
+• [insight de crescimento ou trava com dado exato]
+• [comparação com histórico próprio — tendência]
+• [referência de mercado ou benchmark do setor]
+
+**OPORTUNIDADE / RISCO:**
+[parágrafo curto — o que você pode ganhar atuando aqui, ou o que pode perder ignorando]
+
+**PLANO DE AÇÃO:**
+1. [ação com prazo sugerido e resultado esperado]
+2. [ação com prazo sugerido e resultado esperado]
+3. [ação com prazo sugerido e resultado esperado]
+
+[Nome do usuário], este é o caminho que eu seguiria. Concorda com este plano?`
+  },
+  strategist: {
+    id: 'strategist',
+    icon: '🎯',
+    name: 'O Estrategista',
+    tagline: 'Tática sem estratégia é só desperdício bem executado.',
+    color: '#a855f7',
+    desc: 'Visão de longo prazo. Conecta os números de hoje com onde a empresa precisa chegar.',
+    personality: `Você é O Estrategista — consultor sênior de board com passagem por empresas de médio e grande porte.
+Você pensa em posicionamento, decisões estruturais e movimentos de 12-24 meses.
+É mais didático: explica o raciocínio por trás das suas recomendações.
+Quando necessário, faz perguntas de volta para entender melhor o contexto antes de opinar.
+Conecta sempre o operacional (os KPIs do dia a dia) com o estratégico (para onde a empresa deve ir).
+Tom: reflexivo, experiente, direto quando tem convicção, cauteloso quando os dados são insuficientes.`,
+    responseFormat: `ESTRUTURA OBRIGATÓRIA DA SUA RESPOSTA:
+
+[Nome do usuário], [frase de enquadramento estratégico — o contexto maior em que essa pergunta se insere]
+
+**ANÁLISE ESTRATÉGICA:**
+• [ponto estratégico ancorado em dado real]
+• [ponto estratégico ancorado em dado real]  
+• [tendência de mercado ou benchmark relevante]
+
+**O QUE ISSO SIGNIFICA PARA [empresa]:**
+[parágrafo — conecta os dados com a decisão de médio/longo prazo. Explica o raciocínio.]
+
+**PLANO DE AÇÃO:**
+1. [ação estratégica — o quê + por quê + prazo]
+2. [ação estratégica — o quê + por quê + prazo]
+3. [ação estratégica — o quê + por quê + prazo]
+
+[Nome do usuário], esta é minha leitura. Concorda com este plano?`
+  }
+};
+
+const ADVISOR_SUGGESTIONS = [
+  'Posso contratar mais funcionários agora?',
+  'Faz sentido subir o meu preço?',
+  'Onde estou perdendo mais dinheiro?',
+  'Estou pronto para buscar crédito?',
+  'O que eu precisaria mudar para dobrar o lucro?',
+  'Qual KPI devo atacar primeiro?',
+  'Minha estrutura de custos está adequada para o meu setor?',
+  'Como está minha tendência nos últimos meses?',
+];
+
+function _buildAdvisorContext() {
+  const userName = S.userName || 'você';
+  const empresa = S.company || 'a empresa';
+  const setor = S.sector || 'não informado';
+
+  // ── Situação atual ────────────────────────────────────────────────
+  const knownMonths = getKnownMonths().filter(m => S.raw && S.raw[m] && Object.keys(S.raw[m]).length > 0);
+  const latestMk = knownMonths[knownMonths.length - 1];
+  let situacaoAtual = '';
+  let historicoTxt = '';
+
+  if (latestMk) {
+    const [y, mo] = latestMk.split('-');
+    const label = MES[parseInt(mo)-1] + '/' + y;
+    const res = calcScore(latestMk);
+    if (res) {
+      const g = grade(res.score);
+      situacaoAtual = `Período mais recente: ${label} — Score ${res.score}/100 (${g.l})\n`;
+      situacaoAtual += `KPIs (use como base principal da análise):\n`;
+      res.details.forEach(d => {
+        const gap = d.ind.unit === '%'
+          ? `gap: ${(d.val - d.goal).toFixed(1)}pp`
+          : `gap: ${((d.val - d.goal)/d.goal*100).toFixed(1)}%`;
+        situacaoAtual += `  • ${d.ind.name}: ${fmtV(d.val, d.ind.unit)} (meta ${fmtV(d.goal, d.ind.unit)}, ${Math.round(d.pct)}% da meta, ${gap})\n`;
+      });
+    }
+  } else {
+    situacaoAtual = 'Nenhum período com dados importados ainda.';
+  }
+
+  // ── Histórico completo ────────────────────────────────────────────
+  if (knownMonths.length > 1) {
+    historicoTxt = '\nHISTÓRICO COMPLETO (todos os meses — use para identificar tendências):\n';
+    knownMonths.slice(0, -1).reverse().forEach(mk => {
+      const [y, mo] = mk.split('-');
+      const label = MES[parseInt(mo)-1] + '/' + y;
+      const res = calcScore(mk);
+      if (res) {
+        const g = grade(res.score);
+        historicoTxt += `  ${label}: Score ${res.score} (${g.l})`;
+        // Key KPIs summary
+        const ll = res.details.find(d => d.ind.id === 'lucroliq');
+        const rec = res.details.find(d => d.ind.id === 'receita');
+        const ebitda = res.details.find(d => d.ind.id === 'ebitda');
+        if (ll) historicoTxt += ` | LL: ${ll.val?.toFixed(1)}%`;
+        if (ebitda) historicoTxt += ` | EBITDA: ${ebitda.val?.toFixed(1)}%`;
+        if (rec) historicoTxt += ` | Receita: ${fmtV(rec.val, 'R$')}`;
+        historicoTxt += '\n';
+      }
+    });
+  }
+
+  // ── Planos de ação em aberto ──────────────────────────────────────
+  const openActions = (S.actions || []).filter(a => a.status === 'open');
+  const actionsTxt = openActions.length
+    ? `\nPLANOS DE AÇÃO EM ABERTO (${openActions.length}):\n` +
+      openActions.slice(0, 5).map(a => `  • [${a.kpi}] ${a.text}${a.resp ? ' — Resp: ' + a.resp : ''}`).join('\n')
+    : '';
+
+  return `DADOS DA EMPRESA (use sempre — nunca dê conselho genérico):
+Empresa: ${empresa}
+Setor: ${setor}
+Usuário: ${userName}
+
+SITUAÇÃO ATUAL:
+${situacaoAtual}${historicoTxt}${actionsTxt}
+
+INSTRUÇÕES CRÍTICAS:
+1. Chame o usuário pelo nome "${userName}" — obrigatoriamente na abertura e no fechamento
+2. NUNCA dê conselho sem ancorar nos números acima
+3. Se os dados forem insuficientes, diga e peça o que falta
+4. Se a situação for ruim, diga — sem suavizar
+5. Toda resposta termina com um plano de ação numerado
+6. Use web search para buscar benchmarks de mercado quando a pergunta exigir contexto externo
+7. O período mais recente é a realidade de hoje — pese mais. O histórico serve para tendências.`;
+}
+
+function rAdvisorPage() {
+  _renderAdvisorCards('advisorCards', false);
+  _renderAdvisorSuggestions();
+  _renderAdvisorHistory();
+}
+
+function _renderAdvisorCards(containerId, isConfig) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = Object.values(ADVISORS).map(a => {
+    const isSelected = S.advisor === a.id;
+    const border = isSelected ? `2px solid ${a.color}` : '1px solid var(--bdr)';
+    const bg = isSelected ? `background:${a.color}12` : 'background:var(--glass)';
+    return `<div onclick="${isConfig ? 'cfgSetAdvisor' : 'advisorSelect'}('${a.id}')"
+      id="${isConfig ? 'cfg' : ''}advisor-card-${a.id}"
+      style="cursor:pointer;border-radius:14px;padding:16px;${bg};border:${border};transition:all .2s;position:relative">
+      ${isSelected ? `<div style="position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:${a.color}"></div>` : ''}
+      <div style="font-size:28px;margin-bottom:8px">${a.icon}</div>
+      <div style="font-size:13px;font-weight:700;color:#e8f0ff;margin-bottom:4px">${a.name}</div>
+      <div style="font-size:10px;color:${a.color};font-style:italic;margin-bottom:8px">"${a.tagline}"</div>
+      <div style="font-size:11px;color:var(--mut);line-height:1.6">${a.desc}</div>
+      ${isConfig ? '' : `<div style="margin-top:10px;font-size:10px;color:${isSelected?a.color:'var(--mut)'};font-weight:${isSelected?'700':'400'}">${isSelected?'✓ Selecionado':'Clique para selecionar'}</div>`}
+    </div>`;
+  }).join('');
+}
+
+function advisorSelect(id) {
+  // Update selected advisor for this session (not default)
+  _currentAdvisor = id;
+  // Re-render cards
+  _renderAdvisorCards('advisorCards', false);
+  // Update send button
+  const a = ADVISORS[id];
+  const btn = document.getElementById('advisorSendBtn');
+  if (btn) btn.textContent = `Consultar ${a.name} →`;
+  // Show history for this advisor
+  _renderAdvisorHistory();
+}
+
+function cfgSetAdvisor(id) {
+  S.advisor = id;
+  sv();
+  _renderAdvisorCards('cfgAdvisorCards', true);
+  toast(`✓ ${ADVISORS[id].name} definido como conselheiro padrão`);
+}
+
+function _renderAdvisorSuggestions() {
+  const el = document.getElementById('advisorSuggestions');
+  if (!el) return;
+  // Pick 4 random suggestions
+  const shuffled = [...ADVISOR_SUGGESTIONS].sort(() => Math.random() - 0.5).slice(0, 4);
+  el.innerHTML = shuffled.map(s =>
+    `<button onclick="document.getElementById('advisorQuestion').value='${s.replace(/'/g,"\\'")}'"
+      style="background:rgba(255,255,255,.04);border:1px solid var(--bdr);border-radius:20px;color:var(--mut);font-size:11px;padding:5px 12px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .15s"
+      onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'"
+      onmouseout="this.style.borderColor='var(--bdr)';this.style.color='var(--mut)'">${s}</button>`
+  ).join('');
+}
+
+let _currentAdvisor = null;
+let _advisorLoading = false;
+
+async function advisorAsk() {
+  if (_advisorLoading) return;
+  const question = document.getElementById('advisorQuestion')?.value?.trim();
+  if (!question) { toast('⚠️ Digite sua pergunta'); return; }
+
+  const advisorId = _currentAdvisor || S.advisor || 'analytics';
+  const advisor = ADVISORS[advisorId];
+  const context = _buildAdvisorContext();
+
+  _advisorLoading = true;
+  const sendBtn = document.getElementById('advisorSendBtn');
+  if (sendBtn) { sendBtn.textContent = 'Consultando...'; sendBtn.disabled = true; }
+
+  const respEl = document.getElementById('advisorResponse');
+  respEl.style.display = 'block';
+  respEl.innerHTML = `
+    <div style="background:var(--glass);border:1px solid ${advisor.color}33;border-radius:14px;padding:20px 24px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="font-size:24px">${advisor.icon}</span>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:${advisor.color}">${advisor.name}</div>
+          <div style="font-size:10px;color:var(--mut)">Analisando seus dados...</div>
+        </div>
+        <div class="spin" style="margin-left:auto;width:18px;height:18px;border-width:2px"></div>
+      </div>
+      <div style="font-size:12px;color:var(--mut)">Consultando histórico completo da empresa e benchmarks de mercado...</div>
+    </div>`;
+
+  try {
+    const systemPrompt = `${advisor.personality}
+
+${advisor.responseFormat}
+
+IMPORTANTE: Formate sua resposta usando markdown simples (negrito com **, listas com •, numeração). Seja específico, use os números reais fornecidos.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [
+          { role: 'user', content: `${context}\n\nPERGUNTA DO USUÁRIO:\n${question}` }
+        ]
+      })
+    });
+
+    const data = await res.json();
+    const text = data.content?.[0]?.text || 'Não foi possível obter resposta.';
+
+    // Format the response
+    const formatted = _formatAdvisorResponse(text, advisor);
+
+    // Extract action items from response
+    const actions = _extractAdvisorActions(text, advisorId);
+
+    respEl.innerHTML = `
+      <div style="background:var(--glass);border:1px solid ${advisor.color}33;border-radius:14px;overflow:hidden">
+        <div style="padding:16px 24px;border-bottom:1px solid ${advisor.color}22;display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">${advisor.icon}</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:${advisor.color}">${advisor.name}</div>
+            <div style="font-size:10px;color:var(--mut);font-style:italic">"${advisor.tagline}"</div>
+          </div>
+        </div>
+        <div style="padding:20px 24px;font-size:13px;color:#c8dff5;line-height:1.8" id="advisorRespText">${formatted}</div>
+        ${actions.length ? `
+        <div style="padding:16px 24px;border-top:1px solid ${advisor.color}22;background:${advisor.color}06">
+          <div style="font-size:10px;letter-spacing:2px;color:${advisor.color};font-weight:700;text-transform:uppercase;margin-bottom:10px">
+            Plano de ação identificado (${actions.length} ações)
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px" id="advisorActionsList">
+            ${actions.map((a,i) => `
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.06)">
+              <span style="font-size:11px;font-weight:700;color:${advisor.color};flex-shrink:0;margin-top:1px">${i+1}.</span>
+              <span style="font-size:12px;color:#c8dff5;line-height:1.5">${a}</span>
+            </div>`).join('')}
+          </div>
+          <button onclick="advisorSaveActions()" class="bs" style="font-size:12px;padding:8px 20px;background:${advisor.color};color:#07101c;border-color:${advisor.color}">
+            ✓ Concordo — Salvar plano de ação
+          </button>
+        </div>` : ''}
+      </div>`;
+
+    // Save to history
+    if (!S.advisorHistory) S.advisorHistory = { analytics:[], growth:[], strategist:[] };
+    if (!S.advisorHistory[advisorId]) S.advisorHistory[advisorId] = [];
+    S.advisorHistory[advisorId].unshift({
+      ts: new Date().toISOString(),
+      question,
+      answer: text,
+      actions,
+      advisor: advisorId
+    });
+    // Keep last 20 per advisor
+    S.advisorHistory[advisorId] = S.advisorHistory[advisorId].slice(0, 20);
+    sv();
+
+    // Clear question
+    const qEl = document.getElementById('advisorQuestion');
+    if (qEl) qEl.value = '';
+    _renderAdvisorHistory();
+
+    // Store actions for saving
+    window._pendingAdvisorActions = actions;
+    window._pendingAdvisorId = advisorId;
+
+  } catch(e) {
+    respEl.innerHTML = `<div style="background:var(--glass);border:1px solid rgba(255,61,90,.3);border-radius:14px;padding:20px 24px;color:var(--red)">
+      Erro ao consultar o conselheiro: ${e.message}
+    </div>`;
+  }
+
+  _advisorLoading = false;
+  if (sendBtn) {
+    const a = ADVISORS[_currentAdvisor || S.advisor || 'analytics'];
+    sendBtn.textContent = `Consultar ${a.name} →`;
+    sendBtn.disabled = false;
+  }
+}
+
+function _formatAdvisorResponse(text, advisor) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, `<strong style="color:#e8f0ff">$1</strong>`)
+    .replace(/^#{1,3}\s(.+)$/gm, `<div style="font-size:11px;letter-spacing:2px;color:${advisor.color};font-weight:700;text-transform:uppercase;margin:14px 0 6px">$1</div>`)
+    .replace(/^[•\-]\s(.+)$/gm, `<div style="display:flex;gap:8px;margin:4px 0"><span style="color:${advisor.color};flex-shrink:0">•</span><span>$1</span></div>`)
+    .replace(/^\d+\.\s(.+)$/gm, `<div style="display:flex;gap:8px;margin:4px 0"><span style="color:${advisor.color};font-weight:700;flex-shrink:0;min-width:16px">·</span><span>$1</span></div>`)
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+
+function _extractAdvisorActions(text, advisorId) {
+  const actions = [];
+  // Extract numbered action items from PLANO DE AÇÃO section
+  const planMatch = text.match(/PLANO DE AÇÃO[\s\S]*?(?=\n[A-Z\[{]|$)/i);
+  if (planMatch) {
+    const lines = planMatch[0].split('\n');
+    lines.forEach(line => {
+      const m = line.match(/^\s*(\d+)\.\s+(.+)/);
+      if (m) actions.push(m[2].trim());
+    });
+  }
+  return actions.slice(0, 5);
+}
+
+function advisorSaveActions() {
+  const actions = window._pendingAdvisorActions || [];
+  const advisorId = window._pendingAdvisorId || S.advisor || 'analytics';
+  const advisor = ADVISORS[advisorId];
+  if (!actions.length) { toast('Nenhuma ação para salvar'); return; }
+
+  if (!S.actions) S.actions = [];
+  const mk = S.sel || null;
+  const [y, mo] = mk ? mk.split('-') : [new Date().getFullYear(), String(new Date().getMonth()+1).padStart(2,'0')];
+  const mesLabel = MES[parseInt(mo)-1] + '/' + y;
+
+  actions.forEach(text => {
+    S.actions.push({
+      id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      mk: mk || '',
+      mes: mesLabel,
+      kpi: 'Conselheiro',
+      text: text.trim(),
+      resp: '',
+      prazo: '',
+      status: 'open',
+      obs: `Gerado pelo ${advisor.name}`,
+      criadoEm: new Date().toISOString()
+    });
+  });
+
+  sv();
+  toast(`✓ ${actions.length} ações salvas em Planos de Ação`);
+
+  // Update button
+  const btn = document.querySelector('[onclick="advisorSaveActions()"]');
+  if (btn) {
+    btn.textContent = `✓ ${actions.length} ações salvas!`;
+    btn.disabled = true;
+    btn.style.opacity = '.6';
+  }
+  window._pendingAdvisorActions = [];
+}
+
+function _renderAdvisorHistory() {
+  const advisorId = _currentAdvisor || S.advisor || 'analytics';
+  const history = (S.advisorHistory?.[advisorId] || []);
+  const wrap = document.getElementById('advisorHistory');
+  const list = document.getElementById('advisorHistoryList');
+  if (!wrap || !list) return;
+  if (!history.length) { wrap.style.display = 'none'; return; }
+
+  wrap.style.display = 'block';
+  const advisor = ADVISORS[advisorId];
+  list.innerHTML = history.slice(0, 5).map((h, i) => {
+    const d = new Date(h.ts);
+    const dateStr = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    return `<div style="background:var(--glass);border:1px solid var(--bdr);border-radius:10px;overflow:hidden">
+      <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid transparent"
+        onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <div style="font-size:12px;color:#c8dff5;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.question}</div>
+        <div style="font-size:10px;color:var(--mut);flex-shrink:0;margin-left:12px">${dateStr}</div>
+      </div>
+      <div style="display:none;padding:14px 16px;font-size:12px;color:var(--mut);line-height:1.7;border-top:1px solid var(--bdr)">
+        ${_formatAdvisorResponse(h.answer, advisor)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function rAdvisorCfgCards() {
+  _renderAdvisorCards('cfgAdvisorCards', true);
+}
+
 function doLogout(){auth.signOut();}
 function toggleFullscreen(){
   if(!document.fullscreenElement){

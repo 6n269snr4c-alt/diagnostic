@@ -51,6 +51,7 @@
     <button class="tb" data-page="input" onclick="go('input',this)"><span class="tb-icon">📥</span><span class="tb-label">Importar DRE</span></button>
     <button class="tb active" data-page="dashboard" onclick="go('dashboard',this)"><span class="tb-icon">📊</span><span class="tb-label">Dashboard</span></button>
     <button class="tb" data-page="diag" onclick="go('diag',this)"><span class="tb-icon">🤖</span><span class="tb-label">Diagnóstico</span></button>
+    <button class="tb" data-page="advisor" onclick="go('advisor',this)"><span class="tb-icon">🧠</span><span class="tb-label">Conselheiro</span></button>
     <button class="tb" data-page="sim" onclick="go('sim',this)"><span class="tb-icon">🧪</span><span class="tb-label">Simulador</span></button>
     <button class="tb" data-page="actions" onclick="go('actions',this)"><span class="tb-icon">📋</span><span class="tb-label">Planos de Ação</span></button>
     <button class="tb" data-page="lancamentos" onclick="go('lancamentos',this)"><span class="tb-icon">🗂️</span><span class="tb-label">Lançamentos</span></button>
@@ -265,6 +266,7 @@
     <div class="cfg-sec">
       <div class="cfg-sec-t">Empresa &amp; Identidade</div>
       <div class="cfg-row"><label>Nome da Empresa</label><input class="cfg-inp" id="cfgCo"></div>
+      <div class="cfg-row"><label>Seu nome</label><input class="cfg-inp" id="cfgUserName" placeholder="Como o conselheiro deve te chamar"></div>
       <div class="cfg-row"><label>Setor</label><input class="cfg-inp" id="cfgSec" placeholder="Ex: Varejo, SaaS, Serviços..."></div>
       <div class="cfg-row"><label>Logo</label>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -322,6 +324,13 @@
         </div>
       </div>
       <div class="gtw"><table class="gt" id="goalsTable"></table></div>
+    </div>
+    <div class="cfg-sec">
+      <div class="cfg-sec-t">Conselheiro Padrão</div>
+      <div style="font-size:11px;color:var(--mut);line-height:1.7;margin-bottom:14px">
+        O conselheiro padrão é quem aparece no chat rápido do Dashboard. Na página Conselheiro você pode consultar qualquer um deles.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="cfgAdvisorCards"></div>
     </div>
     <div class="cfg-sec">
       <div class="cfg-sec-t">Modelo de DRE da Empresa</div>
@@ -425,6 +434,49 @@
     <button onclick="simSaveForecast()" style="font-size:12px;padding:6px 16px;border-radius:8px;border:1px solid rgba(168,85,247,.4);background:rgba(168,85,247,.2);color:#c084fc;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif">🔮 Salvar como Previsão</button>
   </div>
 </div>
+<!-- ══════════════ CONSELHEIRO ══════════════ -->
+<div class="scrollpage" id="page-advisor">
+  <div class="ph">
+    <div>
+      <div class="pt">Conselheiro</div>
+      <div class="ps">Consulte um dos seus conselheiros com base em todos os dados da empresa</div>
+    </div>
+  </div>
+  <div style="padding:0 24px 32px;display:flex;flex-direction:column;gap:20px">
+
+    <!-- Advisor cards -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" id="advisorCards"></div>
+
+    <!-- Question area -->
+    <div style="background:var(--glass);border:1px solid var(--bdr);border-radius:14px;padding:20px 24px">
+      <div style="font-size:10px;letter-spacing:2px;color:var(--mut);font-weight:700;text-transform:uppercase;margin-bottom:10px">Sua pergunta</div>
+      <textarea id="advisorQuestion" rows="3"
+        style="width:100%;background:#0a1828;border:1px solid var(--bdr);border-radius:10px;color:var(--text);padding:10px 14px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"
+        placeholder="Ex: Posso contratar mais funcionários agora? Faz sentido subir o preço? Onde estou perdendo mais dinheiro?"
+        onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))advisorAsk()"></textarea>
+
+      <!-- Sugestões -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px" id="advisorSuggestions"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+        <div style="font-size:10px;color:var(--mut)">Cmd+Enter para enviar</div>
+        <button class="bs" onclick="advisorAsk()" id="advisorSendBtn" style="padding:8px 24px">
+          Consultar Conselheiro →
+        </button>
+      </div>
+    </div>
+
+    <!-- Response area -->
+    <div id="advisorResponse" style="display:none"></div>
+
+    <!-- Conversation history -->
+    <div id="advisorHistory" style="display:none">
+      <div style="font-size:10px;letter-spacing:2px;color:var(--mut);font-weight:700;text-transform:uppercase;margin-bottom:10px">Consultas anteriores</div>
+      <div id="advisorHistoryList" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+  </div>
+</div>
+
 <div class="scrollpage" id="page-import">
   <div class="ph"><div><div class="pt">Importar Dados Históricos</div><div class="ps">Carregue múltiplos períodos via planilha Excel</div></div></div>
   <div class="import-body">

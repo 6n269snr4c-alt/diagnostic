@@ -3587,13 +3587,17 @@ function _buildAdvisorContext() {
     if (res) {
       const g = grade(res.score);
       situacaoAtual = `Período mais recente: ${label} — Score ${res.score}/100 (${g.l})\n`;
-      situacaoAtual += `KPIs (use como base principal da análise):\n`;
-      res.details.forEach(d => {
-        const gap = d.ind.unit === '%'
-          ? `gap: ${(d.val - d.goal).toFixed(1)}pp`
-          : `gap: ${((d.val - d.goal)/d.goal*100).toFixed(1)}%`;
-        situacaoAtual += `  • ${d.ind.name}: ${fmtV(d.val, d.ind.unit)} (meta ${fmtV(d.goal, d.ind.unit)}, ${Math.round(d.pct)}% da meta, ${gap})\n`;
-      });
+      situacaoAtual += `KPIs ATUAIS (apenas os ${IND.length} indicadores do sistema — ignore qualquer outro):\n`;
+      // Filter strictly to current IND — exclude zero values that are likely stale data
+      const validIds = new Set(IND.map(i => i.id));
+      res.details
+        .filter(d => validIds.has(d.ind.id) && d.val !== null && d.val !== undefined)
+        .forEach(d => {
+          const gap = d.ind.unit === '%'
+            ? `gap: ${(d.val - d.goal).toFixed(1)}pp`
+            : `gap: ${((d.val - d.goal)/d.goal*100).toFixed(1)}%`;
+          situacaoAtual += `  • ${d.ind.name}: ${fmtV(d.val, d.ind.unit)} (meta ${fmtV(d.goal, d.ind.unit)}, ${Math.round(d.pct)}% da meta, ${gap})\n`;
+        });
     }
   } else {
     situacaoAtual = 'Nenhum período com dados importados ainda.';
@@ -3638,12 +3642,14 @@ ${situacaoAtual}${historicoTxt}${actionsTxt}
 
 INSTRUÇÕES CRÍTICAS:
 1. Chame o usuário pelo nome "${userName}" — obrigatoriamente na abertura e no fechamento
-2. NUNCA dê conselho sem ancorar nos números acima
-3. Se os dados forem insuficientes, diga e peça o que falta
-4. Se a situação for ruim, diga — sem suavizar
-5. Toda resposta termina com um plano de ação numerado
-6. Use web search para buscar benchmarks de mercado quando a pergunta exigir contexto externo
-7. O período mais recente é a realidade de hoje — pese mais. O histórico serve para tendências.`;
+2. NUNCA dê conselho sem ancorar nos números acima — cite os valores exatos
+3. Use APENAS os KPIs listados acima — ignore qualquer indicador com valor zero ou não listado
+4. Se os dados forem insuficientes, diga e peça o que falta
+5. Se a situação for ruim, diga — sem suavizar
+6. Fundamente cada ponto: explique o raciocínio, não apenas liste fatos
+7. O plano de ação deve ter entre 2 e 4 ações — só inclua o que for realmente relevante e acionável
+8. Use web search para buscar benchmarks de mercado quando a pergunta exigir contexto externo
+9. O período mais recente é a realidade de hoje — pese mais. O histórico serve para tendências.`;
 }
 
 function rAdvisorPage() {
@@ -3804,18 +3810,21 @@ IMPORTANTE: Formate sua resposta usando markdown simples (negrito com **, listas
         <div style="padding:20px 24px;font-size:13px;color:#c8dff5;line-height:1.8" id="advisorRespText">${formatted}</div>
         ${actions.length ? `
         <div style="padding:16px 24px;border-top:1px solid ${advisor.color}22;background:${advisor.color}06">
-          <div style="font-size:10px;letter-spacing:2px;color:${advisor.color};font-weight:700;text-transform:uppercase;margin-bottom:10px">
-            Plano de ação identificado (${actions.length} ações)
+          <div style="font-size:10px;letter-spacing:2px;color:${advisor.color};font-weight:700;text-transform:uppercase;margin-bottom:6px">
+            Plano de ação (${actions.length} ações — selecione as que concorda)
           </div>
+          <div style="font-size:10px;color:var(--mut);margin-bottom:12px">Marque as ações que quer salvar. Você pode desmarcar aquelas com que não concorda.</div>
           <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px" id="advisorActionsList">
             ${actions.map((a,i) => `
-            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.06)">
-              <span style="font-size:11px;font-weight:700;color:${advisor.color};flex-shrink:0;margin-top:1px">${i+1}.</span>
-              <span style="font-size:12px;color:#c8dff5;line-height:1.5">${a}</span>
-            </div>`).join('')}
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.06);cursor:pointer"
+              onmouseover="this.style.borderColor='${advisor.color}44'" onmouseout="this.style.borderColor='rgba(255,255,255,.06)'">
+              <input type="checkbox" data-action-idx="${i}" checked
+                style="margin-top:2px;flex-shrink:0;accent-color:${advisor.color};width:14px;height:14px;cursor:pointer">
+              <span style="font-size:12px;color:#c8dff5;line-height:1.6">${a}</span>
+            </label>`).join('')}
           </div>
           <button onclick="advisorSaveActions()" class="bs" style="font-size:12px;padding:8px 20px;background:${advisor.color};color:#07101c;border-color:${advisor.color}">
-            ✓ Concordo — Salvar plano de ação
+            ✓ Salvar ações selecionadas
           </button>
         </div>` : ''}
       </div>`;
@@ -3882,17 +3891,26 @@ function _extractAdvisorActions(text, advisorId) {
 }
 
 function advisorSaveActions() {
-  const actions = window._pendingAdvisorActions || [];
+  const allActions = window._pendingAdvisorActions || [];
   const advisorId = window._pendingAdvisorId || S.advisor || 'analytics';
   const advisor = ADVISORS[advisorId];
-  if (!actions.length) { toast('Nenhuma ação para salvar'); return; }
+  if (!allActions.length) { toast('Nenhuma ação para salvar'); return; }
+
+  // Read which checkboxes are checked
+  const checkboxes = document.querySelectorAll('#advisorActionsList input[type="checkbox"]');
+  const selected = allActions.filter((_, i) => {
+    const cb = document.querySelector(`#advisorActionsList input[data-action-idx="${i}"]`);
+    return cb ? cb.checked : true;
+  });
+
+  if (!selected.length) { toast('⚠️ Selecione pelo menos uma ação'); return; }
 
   if (!S.actions) S.actions = [];
   const mk = S.sel || null;
   const [y, mo] = mk ? mk.split('-') : [new Date().getFullYear(), String(new Date().getMonth()+1).padStart(2,'0')];
   const mesLabel = MES[parseInt(mo)-1] + '/' + y;
 
-  actions.forEach(text => {
+  selected.forEach(text => {
     S.actions.push({
       id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
       mk: mk || '',
@@ -3908,15 +3926,16 @@ function advisorSaveActions() {
   });
 
   sv();
-  toast(`✓ ${actions.length} ações salvas em Planos de Ação`);
+  toast(`✓ ${selected.length} ${selected.length === 1 ? 'ação salva' : 'ações salvas'} em Planos de Ação`);
 
-  // Update button
   const btn = document.querySelector('[onclick="advisorSaveActions()"]');
   if (btn) {
-    btn.textContent = `✓ ${actions.length} ações salvas!`;
+    btn.textContent = `✓ ${selected.length} ${selected.length === 1 ? 'ação salva' : 'ações salvas'}!`;
     btn.disabled = true;
     btn.style.opacity = '.6';
   }
+  // Disable checkboxes too
+  checkboxes.forEach(cb => cb.disabled = true);
   window._pendingAdvisorActions = [];
 }
 

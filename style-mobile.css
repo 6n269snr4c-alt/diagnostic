@@ -2,36 +2,27 @@
  * ═══════════════════════════════════════════════════════
  * VITAL DIAGNOSTIC — MOBILE RESPONSIVE STYLESHEET
  * ═══════════════════════════════════════════════════════
- * SAFE STRATEGY:
- * - All rules are wrapped in @media (max-width: 768px)
- * - Desktop layout (style.css) is NEVER touched
- * - Meeting/presentation mode gets a "desktop only" notice
- * - File can be removed from index.html to instantly revert
+ * ALL rules inside @media (max-width: 768px)
+ * style.css is never touched — remove this file to revert
  * ═══════════════════════════════════════════════════════
  */
 
 @media (max-width: 768px) {
 
-  /* ─────────────────────────────────────────────────────
-     BASE
-  ───────────────────────────────────────────────────── */
-  html, body {
-    overflow: hidden;
-  }
+  /* ── BASE ─────────────────────────────────────────── */
+  html, body { overflow: hidden; }
 
-  /* ─────────────────────────────────────────────────────
-     SHELL — sidebar becomes a slide-over drawer
-  ───────────────────────────────────────────────────── */
+  /* ── SHELL ────────────────────────────────────────── */
   .shell {
-    flex-direction: row; /* keep row — sidebar still floats */
-    height: calc(100vh - 52px); /* subtract mobile top bar */
+    flex-direction: row;
+    height: calc(100vh - 52px);
     overflow: hidden;
   }
 
-  /* Sidebar hidden off-screen by default on mobile */
+  /* ── SIDEBAR — slide-over drawer ─────────────────── */
   .sidebar {
     position: fixed;
-    top: 52px; /* below top bar */
+    top: 52px;
     left: 0;
     height: calc(100% - 52px);
     width: 260px !important;
@@ -40,28 +31,7 @@
     transition: transform .3s ease;
     box-shadow: 4px 0 24px rgba(0,0,0,.6);
   }
-
-  /* When open (class toggled by JS) */
-  .sidebar.mob-open {
-    transform: translateX(0);
-  }
-
-  /* Overlay behind open sidebar */
-  #mobSidebarOverlay {
-    display: none;
-    position: fixed;
-    top: 52px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,.55);
-    z-index: 499;
-  }
-  #mobSidebarOverlay.open {
-    display: block;
-  }
-
-  /* Collapsed state has no meaning on mobile */
+  .sidebar.mob-open { transform: translateX(0); }
   .sidebar.collapsed {
     width: 260px !important;
     transform: translateX(-100%);
@@ -70,17 +40,20 @@
   .sidebar.collapsed .tb .tb-label,
   .sidebar.collapsed .cobadge-text,
   .sidebar.collapsed #userEmail,
-  .sidebar.collapsed .logout-btn {
-    display: block;
-  }
-  .sidebar.collapsed .tb {
-    justify-content: flex-start;
-    padding: 9px 14px;
-  }
+  .sidebar.collapsed .logout-btn { display: block; }
+  .sidebar.collapsed .tb { justify-content: flex-start; padding: 9px 14px; }
 
-  /* ─────────────────────────────────────────────────────
-     MOBILE TOP BAR
-  ───────────────────────────────────────────────────── */
+  /* ── SIDEBAR OVERLAY ──────────────────────────────── */
+  #mobSidebarOverlay {
+    display: none;
+    position: fixed;
+    top: 52px; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,.55);
+    z-index: 499;
+  }
+  #mobSidebarOverlay.open { display: block; }
+
+  /* ── MOBILE TOP BAR ───────────────────────────────── */
   #mobTopBar {
     display: flex !important;
     align-items: center;
@@ -93,7 +66,6 @@
     height: 52px;
     min-height: 52px;
   }
-
   #mobMenuBtn {
     background: none;
     border: 1px solid rgba(255,255,255,.1);
@@ -103,139 +75,80 @@
     padding: 5px 9px;
     cursor: pointer;
     line-height: 1;
-    transition: all .2s;
   }
-
   #mobTopTitle {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 16px;
     letter-spacing: 2px;
     color: #fff;
   }
-  #mobTopTitle em {
-    color: var(--teal);
-    font-style: normal;
-  }
+  #mobTopTitle em { color: var(--teal); font-style: normal; }
+  #mobTopRight { display: flex; align-items: center; gap: 8px; width: 40px; }
 
-  #mobTopRight {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 40px; /* balance the menu button */
-  }
-
-  /* ─────────────────────────────────────────────────────
-     MAIN CONTENT — fills remaining space
-  ───────────────────────────────────────────────────── */
+  /* ── MAIN CONTENT ─────────────────────────────────── */
   .main-content {
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    width: 100%; /* full width — sidebar is overlay, not in flow */
+    width: 100%;
   }
 
-  /* ─────────────────────────────────────────────────────
-     PAGE HEADERS — tighter on mobile
-  ───────────────────────────────────────────────────── */
-  .ph {
-    padding: 12px 14px 0;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  /* ── PAGE HEADERS ─────────────────────────────────── */
+  .ph { padding: 12px 14px 0; flex-wrap: wrap; gap: 8px; }
 
-  /* ─────────────────────────────────────────────────────
-     DASHBOARD — stack vertically
-  ───────────────────────────────────────────────────── */
+  /* ── DASHBOARD HEADER ─────────────────────────────── */
+  .dash-title { font-size: 10px !important; letter-spacing: 2px; }
+  #kpiToggleBtn { display: none; }
+  .adm { font-size: 11px !important; padding: 4px 8px !important; }
+  .mpills {
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .mp { padding: 4px 9px 4px 8px !important; flex-shrink: 0; }
+  .mp .mp-label { font-size: 12px; }
+
+  /* ── DASHBOARD LAYOUT ─────────────────────────────── */
   .dash-layout {
     grid-template-columns: 1fr;
     overflow-y: auto;
     overflow-x: hidden;
     height: 100%;
   }
-
   .dash-left {
     border-right: none;
     border-bottom: 1px solid var(--bdr);
     overflow: visible;
     padding: 10px 12px;
-    min-height: 0;
   }
-
-  .dash-right {
-    border-right: none;
-    overflow: visible;
-    min-height: 280px;
-  }
-
-  /* Wheel — constrain size on mobile */
-  .wheel-col {
-    min-height: 220px;
-    max-height: 280px;
-  }
-
-  /* Score progress bar area */
-  .sp-wrap {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 8px 12px 10px;
-  }
-
-  .tStats {
-    gap: 10px;
-  }
-
-  /* KPI list — reduce padding */
-  .ind-list {
-    padding: 4px 12px;
-  }
-
-  .ir {
-    grid-template-columns: 28px 1fr 64px 36px 8px;
-    gap: 6px;
-    padding: 7px 2px;
-  }
-
-  .ii {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
-  }
-
+  .dash-right { border-right: none; overflow: visible; min-height: 280px; }
+  .wheel-col { min-height: 220px; max-height: 280px; }
+  .sp-wrap { flex-wrap: wrap; gap: 8px; padding: 8px 12px 10px; }
+  .tStats { gap: 10px; }
+  .ind-list { padding: 4px 12px; }
+  .ir { grid-template-columns: 28px 1fr 64px 36px 8px; gap: 6px; padding: 7px 2px; }
+  .ii { width: 28px; height: 28px; font-size: 14px; }
   .inm { font-size: 12px; }
   .ip  { font-size: 12px; }
+  .dash-diag { min-height: 200px; }
 
-  .dash-diag {
-    min-height: 200px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     DIAGNÓSTICO PAGE
-  ───────────────────────────────────────────────────── */
+  /* ── DIAGNÓSTICO PAGE ─────────────────────────────── */
   .diag-layout {
     grid-template-columns: 1fr;
     overflow-y: auto;
     overflow-x: hidden;
   }
+  .diag-main { border-right: none; border-bottom: 1px solid var(--bdr); overflow: visible; }
+  .diag-side { min-height: 280px; }
 
-  .diag-main {
-    border-right: none;
-    border-bottom: 1px solid var(--bdr);
-    overflow: visible;
-  }
-
-  .diag-side {
-    min-height: 280px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     SIMULADOR — stack vertically
-  ───────────────────────────────────────────────────── */
+  /* ── SIMULADOR ────────────────────────────────────── */
   .sim-layout {
     grid-template-columns: 1fr;
     overflow-y: auto;
     overflow-x: hidden;
   }
-
   .sim-left {
     border-right: none;
     border-bottom: 1px solid var(--bdr);
@@ -244,707 +157,80 @@
     padding: 8px;
     overflow: visible;
   }
+  .sim-right { padding: 12px 14px; overflow: visible; }
+  .sim-row { grid-template-columns: 20px 1fr 90px 44px; gap: 5px; }
 
-  .sim-right {
-    padding: 12px 14px;
-    overflow: visible;
-    min-height: 0;
-  }
-
-  .sim-row {
-    grid-template-columns: 20px 1fr 90px 44px;
-    gap: 5px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     IMPORTAR DRE
-  ───────────────────────────────────────────────────── */
-  .dre-wrap {
-    padding: 16px 12px;
-    gap: 16px;
-  }
-
-  .dre-steps {
-    padding: 12px 16px;
-    gap: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
-
+  /* ── IMPORTAR DRE ─────────────────────────────────── */
+  .dre-wrap { padding: 16px 12px; gap: 16px; }
+  .dre-steps { padding: 12px 16px; flex-wrap: nowrap; overflow-x: auto; }
   .dre-step-lbl { font-size: 10px; }
+  .dre-step-line { width: 24px; margin: 0 8px; }
+  .dre-content { max-width: 100%; padding: 0; }
+  .dre-upload-zone { padding: 32px 16px; }
+  .dre-month-row { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 14px; }
+  .dre-review-body { grid-template-columns: 1fr; overflow-y: auto; gap: 12px; }
+  .dre-tbl-wrap { min-height: 280px; max-height: 50vh; }
+  .dre-summary { max-height: 40vh; }
 
-  .dre-step-line {
-    width: 24px;
-    margin: 0 8px;
-  }
+  /* ── CONFIGURAÇÃO ─────────────────────────────────── */
+  .cfg-body { padding: 12px; gap: 12px; }
+  .cfg-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .cfg-row label { width: auto; }
+  .cfg-inp { width: 100%; }
+  #cfgAdvisorCards { grid-template-columns: 1fr !important; }
+  .gtw { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-  .dre-content {
-    max-width: 100%;
-    padding: 0;
-  }
+  /* ── CONSELHEIRO ──────────────────────────────────── */
+  #advisorCards { grid-template-columns: 1fr !important; }
 
-  .dre-upload-zone {
-    padding: 32px 16px;
-  }
+  /* ── PLANOS DE AÇÃO ───────────────────────────────── */
+  #actionsTable { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #actionsTable table { min-width: 640px; }
 
-  .dre-month-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 12px 14px;
-  }
+  /* ── LANÇAMENTOS ──────────────────────────────────── */
+  .inp-2col { grid-template-columns: 1fr; overflow-y: auto; }
+  .inp-left { padding: 12px; overflow: visible; }
+  .inp-right { border-left: none; border-top: 1px solid var(--bdr); padding: 12px; overflow: visible; }
 
-  .dre-review-body {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-    overflow-x: hidden;
-    gap: 12px;
-  }
+  /* ── METODOLOGIA ──────────────────────────────────── */
+  .mg { grid-template-columns: 1fr; padding: 12px; }
+  .mkg { grid-template-columns: 1fr; }
 
-  .dre-tbl-wrap {
-    min-height: 280px;
-    max-height: 50vh;
-  }
+  /* ── MODAIS ───────────────────────────────────────── */
+  .modal-box { padding: 20px 16px; width: calc(100vw - 32px) !important; min-width: 0 !important; }
+  .kpi-modal { width: calc(100vw - 24px); max-width: none; max-height: 90vh; padding: 16px; }
+  .kpi-det-row { grid-template-columns: 1fr; }
 
-  .dre-summary {
-    max-height: 40vh;
-  }
+  /* ── MEETING MODE — desktop only notice ───────────── */
+  #mobMeetingNotice { display: none; }
 
-  /* ─────────────────────────────────────────────────────
-     CONFIGURAÇÃO
-  ───────────────────────────────────────────────────── */
-  .cfg-body {
-    padding: 12px 12px;
-    gap: 12px;
-  }
+  #meetingOverlay.open #meetSlides { display: none !important; }
+  #meetingOverlay.open .mnav       { display: none !important; }
+  #meetingOverlay.open .mhdr       { display: none !important; }
 
-  .cfg-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .cfg-row label {
-    width: auto;
-  }
-
-  .cfg-inp {
-    width: 100%;
-  }
-
-  #cfgAdvisorCards {
-    grid-template-columns: 1fr !important;
-  }
-
-  .gtw {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     CONSELHEIRO
-  ───────────────────────────────────────────────────── */
-  #advisorCards {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     PLANOS DE AÇÃO
-  ───────────────────────────────────────────────────── */
-  #actionsTable {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  #actionsTable table {
-    min-width: 640px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     LANÇAMENTOS
-  ───────────────────────────────────────────────────── */
-  .inp-2col {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .inp-left {
-    padding: 12px;
-    overflow: visible;
-  }
-
-  .inp-right {
-    border-left: none;
-    border-top: 1px solid var(--bdr);
-    padding: 12px;
-    overflow: visible;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     METODOLOGIA
-  ───────────────────────────────────────────────────── */
-  .mg {
-    grid-template-columns: 1fr;
-    padding: 12px;
-  }
-
-  .mkg {
-    grid-template-columns: 1fr;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     MODAIS
-  ───────────────────────────────────────────────────── */
-  .modal-box {
-    padding: 20px 16px;
-    width: calc(100vw - 32px) !important;
-    min-width: 0 !important;
-  }
-
-  .kpi-modal {
-    width: calc(100vw - 24px);
-    max-width: none;
-    max-height: 90vh;
-    padding: 16px;
-  }
-
-  .kpi-det-row {
-    grid-template-columns: 1fr;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     MEETING MODE — show notice, hide slides
-  ───────────────────────────────────────────────────── */
-
-  /* Notice hidden by default (desktop shows nothing) */
-  #mobMeetingNotice {
-    display: none;
-  }
-
-  /* When overlay is open on mobile — show notice, hide slides */
-  #meetingOverlay.open #meetSlides {
-    display: none !important;
-  }
-  #meetingOverlay.open .mnav {
-    display: none !important;
-  }
-  #meetingOverlay.open .mhdr {
-    display: none !important;
-  }
   #meetingOverlay.open #mobMeetingNotice {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 16px;
-    padding: 40px 28px;
+    padding: 48px 28px;
     text-align: center;
     max-width: 340px;
     margin: auto;
   }
-
-  #mobMeetingNotice .mob-notice-icon {
-    font-size: 52px;
-  }
-
+  #mobMeetingNotice .mob-notice-icon  { font-size: 52px; }
   #mobMeetingNotice .mob-notice-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 24px;
-    letter-spacing: 2px;
-    color: #e8f0ff;
+    font-size: 24px; letter-spacing: 2px; color: #e8f0ff;
   }
-
-  #mobMeetingNotice .mob-notice-desc {
-    font-size: 13px;
-    color: var(--mut);
-    line-height: 1.7;
-  }
-
+  #mobMeetingNotice .mob-notice-desc  { font-size: 13px; color: var(--mut); line-height: 1.7; }
   #mobMeetingNotice .mob-notice-close {
-    background: var(--teal);
-    color: #07101c;
-    font-weight: 700;
-    border: none;
-    border-radius: 9px;
-    padding: 11px 28px;
-    cursor: pointer;
-    font-family: 'Outfit', sans-serif;
-    font-size: 14px;
-    margin-top: 8px;
+    background: var(--teal); color: #07101c; font-weight: 700;
+    border: none; border-radius: 9px; padding: 11px 28px;
+    cursor: pointer; font-family: 'Outfit', sans-serif; font-size: 14px; margin-top: 8px;
   }
 
-  /* ─────────────────────────────────────────────────────
-     TOAST
-  ───────────────────────────────────────────────────── */
-  #toast {
-    white-space: normal;
-    max-width: calc(100vw - 32px);
-    text-align: center;
-    bottom: 16px;
-  }
-
-} /* end @media (max-width: 768px) */
-
-  /* Sidebar hidden off-screen by default on mobile */
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 260px !important;
-    z-index: 500;
-    transform: translateX(-100%);
-    transition: transform .3s ease;
-    box-shadow: 4px 0 24px rgba(0,0,0,.6);
-  }
-
-  /* When open (class toggled by JS) */
-  .sidebar.mob-open {
-    transform: translateX(0);
-  }
-
-  /* Overlay behind open sidebar */
-  #mobSidebarOverlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.55);
-    z-index: 499;
-  }
-  #mobSidebarOverlay.open {
-    display: block;
-  }
-
-  /* Collapsed state has no meaning on mobile */
-  .sidebar.collapsed {
-    width: 260px !important;
-    transform: translateX(-100%);
-  }
-  .sidebar.collapsed .logo,
-  .sidebar.collapsed .tb .tb-label,
-  .sidebar.collapsed .cobadge-text,
-  .sidebar.collapsed #userEmail,
-  .sidebar.collapsed .logout-btn {
-    display: block;
-  }
-  .sidebar.collapsed .tb {
-    justify-content: flex-start;
-    padding: 9px 14px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     MOBILE TOP BAR
-  ───────────────────────────────────────────────────── */
-  #mobTopBar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
-    background: rgba(5,12,25,.96);
-    border-bottom: 1px solid var(--bdr);
-    flex-shrink: 0;
-    z-index: 100;
-    height: 52px;
-  }
-
-  #mobMenuBtn {
-    background: none;
-    border: 1px solid rgba(255,255,255,.1);
-    border-radius: 7px;
-    color: var(--mut);
-    font-size: 16px;
-    padding: 5px 9px;
-    cursor: pointer;
-    line-height: 1;
-    transition: all .2s;
-  }
-  #mobMenuBtn:hover {
-    border-color: var(--teal);
-    color: var(--teal);
-  }
-
-  #mobTopTitle {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px;
-    letter-spacing: 2px;
-    color: #fff;
-  }
-  #mobTopTitle em {
-    color: var(--teal);
-    font-style: normal;
-  }
-
-  #mobTopRight {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     MAIN CONTENT — fills remaining space below top bar
-  ───────────────────────────────────────────────────── */
-  .main-content {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     PAGE HEADERS — tighter on mobile
-  ───────────────────────────────────────────────────── */
-  .ph {
-    padding: 12px 14px 0;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     DASHBOARD — stack vertically
-  ───────────────────────────────────────────────────── */
-  .dash-layout {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .dash-left {
-    border-right: none;
-    border-bottom: 1px solid var(--bdr);
-    overflow: visible;
-    padding: 10px 12px;
-  }
-
-  .dash-right {
-    border-right: none;
-    overflow: visible;
-    min-height: 0;
-  }
-
-  /* Wheel — constrain size on mobile */
-  .wheel-col {
-    min-height: 240px;
-    max-height: 300px;
-  }
-
-  /* Score progress bar area */
-  .sp-wrap {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 8px 12px 10px;
-  }
-
-  .tStats {
-    gap: 10px;
-  }
-
-  /* KPI list — reduce padding */
-  .ind-list {
-    padding: 4px 12px;
-  }
-
-  .ir {
-    grid-template-columns: 28px 1fr 64px 36px 8px;
-    gap: 6px;
-    padding: 7px 2px;
-  }
-
-  .ii {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
-  }
-
-  .inm {
-    font-size: 12px;
-  }
-
-  .ip {
-    font-size: 12px;
-  }
-
-  /* Diagnóstico in dash-right — full width */
-  .dash-diag {
-    min-height: 200px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     DIAGNÓSTICO PAGE
-  ───────────────────────────────────────────────────── */
-  .diag-layout {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .diag-main {
-    border-right: none;
-    border-bottom: 1px solid var(--bdr);
-    overflow: visible;
-  }
-
-  .diag-side {
-    min-height: 280px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     SIMULADOR — stack vertically
-  ───────────────────────────────────────────────────── */
-  .sim-layout {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .sim-left {
-    border-right: none;
-    border-bottom: 1px solid var(--bdr);
-    min-height: 260px;
-    max-height: 320px;
-    padding: 8px;
-    overflow: visible;
-  }
-
-  .sim-right {
-    padding: 12px 14px;
-    overflow: visible;
-    min-height: 0;
-  }
-
-  .sim-row {
-    grid-template-columns: 20px 1fr 90px 44px;
-    gap: 5px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     IMPORTAR DRE
-  ───────────────────────────────────────────────────── */
-  .dre-wrap {
-    padding: 16px 12px;
-    gap: 16px;
-  }
-
-  .dre-steps {
-    padding: 12px 16px;
-    gap: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
-
-  .dre-step-lbl {
-    font-size: 10px;
-  }
-
-  .dre-step-line {
-    width: 24px;
-    margin: 0 8px;
-  }
-
-  .dre-content {
-    max-width: 100%;
-    padding: 0;
-  }
-
-  .dre-upload-zone {
-    padding: 32px 16px;
-  }
-
-  .dre-month-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 12px 14px;
-  }
-
-  /* DRE Review step 3 — stack table and summary */
-  .dre-review-body {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-    overflow-x: hidden;
-    gap: 12px;
-  }
-
-  .dre-tbl-wrap {
-    min-height: 280px;
-    max-height: 50vh;
-  }
-
-  .dre-summary {
-    max-height: 40vh;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     CONFIGURAÇÃO
-  ───────────────────────────────────────────────────── */
-  .cfg-body {
-    padding: 12px 12px;
-    gap: 12px;
-  }
-
-  .cfg-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .cfg-row label {
-    width: auto;
-  }
-
-  .cfg-inp {
-    width: 100%;
-  }
-
-  /* Advisor cards — single column on mobile */
-  #cfgAdvisorCards {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Goals table — horizontal scroll */
-  .gtw {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     CONSELHEIRO
-  ───────────────────────────────────────────────────── */
-  #advisorCards {
-    grid-template-columns: 1fr !important;
-  }
-
-  #page-advisor > div:last-child {
-    padding: 0 12px 24px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     PLANOS DE AÇÃO — table becomes scrollable
-  ───────────────────────────────────────────────────── */
-  #actionsTable {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  #actionsTable table {
-    min-width: 640px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     LANÇAMENTOS — table scrollable
-  ───────────────────────────────────────────────────── */
-  .inp-2col {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .inp-left {
-    padding: 12px 12px 12px 12px;
-    overflow: visible;
-  }
-
-  .inp-right {
-    border-left: none;
-    border-top: 1px solid var(--bdr);
-    padding: 12px 12px 12px 12px;
-    overflow: visible;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     METODOLOGIA
-  ───────────────────────────────────────────────────── */
-  .mg {
-    grid-template-columns: 1fr;
-    padding: 12px;
-  }
-
-  .mkg {
-    grid-template-columns: 1fr;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     MODAIS
-  ───────────────────────────────────────────────────── */
-  .modal-box {
-    padding: 20px 16px;
-    width: calc(100vw - 32px) !important;
-    min-width: 0 !important;
-  }
-
-  .kpi-modal {
-    width: calc(100vw - 24px);
-    max-width: none;
-    max-height: 90vh;
-    padding: 16px;
-  }
-
-  .kpi-det-row {
-    grid-template-columns: 1fr;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     MEETING MODE — desktop only notice
-  ───────────────────────────────────────────────────── */
-  #meetingOverlay.open {
-    align-items: center;
-    justify-content: center;
-    background: #050e1c;
-  }
-
-  /* Hide actual slides, show notice */
-  #meetingOverlay.open #meetSlides,
-  #meetingOverlay.open .mnav,
-  #meetingOverlay.open .mhdr {
-    display: none !important;
-  }
-
-  #mobMeetingNotice {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    padding: 32px 24px;
-    text-align: center;
-    max-width: 320px;
-  }
-
-  #mobMeetingNotice .mob-notice-icon {
-    font-size: 48px;
-  }
-
-  #mobMeetingNotice .mob-notice-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    letter-spacing: 2px;
-    color: #e8f0ff;
-  }
-
-  #mobMeetingNotice .mob-notice-desc {
-    font-size: 13px;
-    color: var(--mut);
-    line-height: 1.6;
-  }
-
-  #mobMeetingNotice .mob-notice-close {
-    background: var(--teal);
-    color: #07101c;
-    font-weight: 700;
-    border: none;
-    border-radius: 9px;
-    padding: 10px 24px;
-    cursor: pointer;
-    font-family: 'Outfit', sans-serif;
-    font-size: 13px;
-    margin-top: 8px;
-  }
-
-  /* ─────────────────────────────────────────────────────
-     TOAST
-  ───────────────────────────────────────────────────── */
-  #toast {
-    white-space: normal;
-    max-width: calc(100vw - 32px);
-    text-align: center;
-    bottom: 16px;
-  }
+  /* ── TOAST ────────────────────────────────────────── */
+  #toast { white-space: normal; max-width: calc(100vw - 32px); text-align: center; bottom: 16px; }
 
 } /* end @media (max-width: 768px) */

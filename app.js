@@ -4653,9 +4653,9 @@ function dreConfirm() {
   const agg = dreAggregate();
   if (!agg.f_fat) { toast('⚠️ Nenhuma linha classificada como Receita Bruta'); return; }
 
-  // Save mappings for future learning
+  // Save mappings for future learning - TODAS as linhas, inclusive ignorar
   if (!S.dreMappings) S.dreMappings = {};
-  _dreClassified.filter(l => l.category !== 'ignorar').forEach(l => {
+  _dreClassified.forEach(l => {
     S.dreMappings[l.name.toLowerCase().trim()] = l.category;
   });
 

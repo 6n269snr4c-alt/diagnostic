@@ -4821,7 +4821,7 @@ function rLancamentos() {
         <div class="eico">🗂️</div>
         <p style="margin-bottom:20px">Nenhum lançamento ainda.<br>Comece importando seus dados financeiros.</p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-          <button class="bs" onclick="document.getElementById('dreFileInput').click()" style="padding:10px 20px">📤 Importar DRE</button>
+          <button class="bs" onclick="go('input')" style="padding:10px 20px">📤 Importar DRE</button>
           <button class="bs" onclick="importExtrato()" style="padding:10px 20px">💰 Importar Extrato</button>
         </div>
       </div>
@@ -4831,7 +4831,7 @@ function rLancamentos() {
   
   let html = `
     <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
-      <button class="bs" onclick="document.getElementById('dreFileInput').click()" style="padding:10px 20px;font-size:13px">
+      <button class="bs" onclick="go('input')" style="padding:10px 20px;font-size:13px">
         📤 Importar DRE
       </button>
       <button class="bs" onclick="importExtrato()" style="padding:10px 20px;font-size:13px">

@@ -824,28 +824,28 @@ function rCashflow() {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px">
       
       <!-- Card 1: Saldo -->
-      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px">
+      <div onclick="showCashflowKpiInfo('saldo')" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(0,232,155,.3)'" onmouseout="this.style.background='rgba(255,255,255,.04)';this.style.borderColor='rgba(255,255,255,.08)'">
         <div style="font-size:10px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:8px">💰 SALDO VARIAÇÃO</div>
         <div style="font-size:28px;font-weight:800;color:${analysis.saldo >= 0 ? 'var(--teal)' : 'var(--red)'};line-height:1">${fmtV(analysis.saldo, 'R$')}</div>
         <div style="font-size:11px;color:${tendColor};margin-top:4px;font-weight:600">${tendIcon} ${tendLabel}</div>
       </div>
       
       <!-- Card 2: Dias de Caixa -->
-      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px">
+      <div onclick="showCashflowKpiInfo('dias')" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(0,232,155,.3)'" onmouseout="this.style.background='rgba(255,255,255,.04)';this.style.borderColor='rgba(255,255,255,.08)'">
         <div style="font-size:10px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:8px">⏱️ DIAS DE SOBREVIVÊNCIA</div>
         <div style="font-size:28px;font-weight:800;color:${statusColor};line-height:1">${analysis.diasCaixa > 999 ? '∞' : analysis.diasCaixa}</div>
         <div style="font-size:11px;color:var(--mut);margin-top:4px">${statusIcon} ${statusLabel}</div>
       </div>
       
       <!-- Card 3: Maior Entrada -->
-      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px">
+      <div onclick="showCashflowKpiInfo('entrada')" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(0,232,155,.3)'" onmouseout="this.style.background='rgba(255,255,255,.04)';this.style.borderColor='rgba(255,255,255,.08)'">
         <div style="font-size:10px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:8px">📥 MAIOR ENTRADA</div>
         <div style="font-size:22px;font-weight:800;color:var(--green);line-height:1">${analysis.maiorEntrada ? fmtV(Math.abs(analysis.maiorEntrada.value), 'R$') : '—'}</div>
         <div style="font-size:10px;color:var(--mut);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${analysis.maiorEntrada?.desc || ''}">${analysis.maiorEntrada?.desc || '—'}</div>
       </div>
       
       <!-- Card 4: Maior Saída -->
-      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px">
+      <div onclick="showCashflowKpiInfo('saida')" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.06)';this.style.borderColor='rgba(0,232,155,.3)'" onmouseout="this.style.background='rgba(255,255,255,.04)';this.style.borderColor='rgba(255,255,255,.08)'">
         <div style="font-size:10px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:8px">📤 MAIOR SAÍDA</div>
         <div style="font-size:22px;font-weight:800;color:var(--red);line-height:1">${analysis.maiorSaida ? fmtV(Math.abs(analysis.maiorSaida.value), 'R$') : '—'}</div>
         <div style="font-size:10px;color:var(--mut);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${analysis.maiorSaida?.desc || ''}">${analysis.maiorSaida?.desc || '—'}</div>
@@ -1397,4 +1397,183 @@ function deleteConta(contaId) {
       rContasBancariasTable();
     }
   );
+}
+
+// Modal explicativo dos KPIs de Cashflow
+function showCashflowKpiInfo(type) {
+  const kpiData = {
+    saldo: {
+      emoji: '💰',
+      title: 'Saldo (Variação)',
+      formula: 'Total Entradas - Total Saídas',
+      desc: 'Mostra a variação líquida do caixa no período. Um saldo positivo indica que entrou mais dinheiro do que saiu. Um saldo negativo indica queima de caixa.',
+      ideal: 'Idealmente positivo e crescente. Empresas saudáveis mantêm saldo positivo consistente.',
+      calc: `
+        <div style="background:rgba(0,232,155,.06);padding:12px;border-radius:8px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--teal);font-weight:700;margin-bottom:4px">EXEMPLO DE CÁLCULO</div>
+          <div style="font-size:12px;color:#eef4ff;line-height:1.6">
+            Entradas: R$ 103.550,00<br>
+            Saídas: R$ 38.350,00<br>
+            ────────────────────<br>
+            <strong>Saldo = R$ 65.200,00</strong>
+          </div>
+        </div>
+      `,
+      interp: [
+        '<strong style="color:var(--teal)">Saldo Positivo (>0):</strong> Mais dinheiro entrando que saindo. Empresa está gerando caixa.',
+        '<strong style="color:#f59e0b">Saldo Zero (~0):</strong> Entradas e saídas equilibradas. Não sobra nem falta.',
+        '<strong style="color:var(--red)">Saldo Negativo (<0):</strong> Queimando caixa. Saídas maiores que entradas. Atenção!'
+      ]
+    },
+    dias: {
+      emoji: '⏱️',
+      title: 'Dias de Sobrevivência (Runway)',
+      formula: 'Saldo Atual ÷ Média de Gastos por Dia',
+      desc: 'Indica quantos dias a empresa consegue operar com o saldo atual, mantendo o nível de gastos médio do período.',
+      ideal: 'Acima de 90 dias é excelente. Entre 30-90 dias é saudável. Abaixo de 30 dias exige atenção.',
+      calc: `
+        <div style="background:rgba(0,232,155,.06);padding:12px;border-radius:8px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--teal);font-weight:700;margin-bottom:4px">EXEMPLO DE CÁLCULO</div>
+          <div style="font-size:12px;color:#eef4ff;line-height:1.6">
+            Saldo: R$ 65.200,00<br>
+            Saídas: R$ 38.350,00<br>
+            Período: 27 dias<br>
+            Média/dia = R$ 38.350 ÷ 27 = R$ 1.420/dia<br>
+            ────────────────────<br>
+            <strong>Dias = 65.200 ÷ 1.420 = ~46 dias</strong>
+          </div>
+        </div>
+      `,
+      interp: [
+        '<strong style="color:var(--teal)">Acima de 90 dias:</strong> Excelente! Empresa tem folga financeira.',
+        '<strong style="color:#10b981">35-90 dias:</strong> Saudável. Caixa confortável para operar.',
+        '<strong style="color:#f59e0b">15-35 dias:</strong> Atenção. Buscar formas de aumentar caixa.',
+        '<strong style="color:var(--red)">Abaixo de 15 dias:</strong> Crítico! Risco de não honrar compromissos.'
+      ]
+    },
+    entrada: {
+      emoji: '📥',
+      title: 'Maior Entrada',
+      formula: 'MAX(transações de crédito)',
+      desc: 'Identifica qual foi a maior entrada de dinheiro no período. Útil para entender quais são as principais fontes de receita.',
+      ideal: 'Diversificação é saudável. Depender de uma única entrada grande pode ser arriscado.',
+      calc: `
+        <div style="background:rgba(16,185,129,.06);padding:12px;border-radius:8px;margin-bottom:12px">
+          <div style="font-size:11px;color:#10b981;font-weight:700;margin-bottom:4px">EXEMPLO</div>
+          <div style="font-size:12px;color:#eef4ff;line-height:1.6">
+            Transações de entrada:<br>
+            • R$ 45.000 - Cliente Acme Corp<br>
+            • R$ 22.000 - Cliente Delta Inc<br>
+            • R$ 15.300 - Transferência<br>
+            • R$ 12.500 - PIX Recebido<br>
+            ────────────────────<br>
+            <strong>Maior = R$ 45.000</strong>
+          </div>
+        </div>
+      `,
+      interp: [
+        '<strong>Análise:</strong> Se a maior entrada representa >50% do total, há dependência de um único cliente/fonte.',
+        '<strong>Risco:</strong> Perder esse cliente impacta drasticamente o fluxo de caixa.',
+        '<strong>Recomendação:</strong> Diversificar base de clientes para reduzir risco de concentração.'
+      ]
+    },
+    saida: {
+      emoji: '📤',
+      title: 'Maior Saída',
+      formula: 'MAX(transações de débito)',
+      desc: 'Identifica qual foi a maior saída de dinheiro no período. Ajuda a entender os principais custos fixos ou despesas significativas.',
+      ideal: 'Acompanhar se as maiores saídas são previsíveis (salários, aluguel) ou pontuais (investimentos).',
+      calc: `
+        <div style="background:rgba(239,68,68,.06);padding:12px;border-radius:8px;margin-bottom:12px">
+          <div style="font-size:11px;color:#ef4444;font-weight:700;margin-bottom:4px">EXEMPLO</div>
+          <div style="font-size:12px;color:#eef4ff;line-height:1.6">
+            Transações de saída:<br>
+            • R$ 12.000 - Salários<br>
+            • R$ 5.200 - Fornecedor<br>
+            • R$ 4.500 - Insumos<br>
+            • R$ 3.500 - Aluguel<br>
+            ────────────────────<br>
+            <strong>Maior = R$ 12.000</strong>
+          </div>
+        </div>
+      `,
+      interp: [
+        '<strong>Saídas Recorrentes:</strong> Salários, aluguel, impostos - custos fixos previsíveis.',
+        '<strong>Saídas Pontuais:</strong> Compra de equipamento, investimento - não se repetem.',
+        '<strong>Análise:</strong> Se a maior saída é recorrente, precisa ser coberta mensalmente pelas entradas.'
+      ]
+    }
+  };
+
+  const kpi = kpiData[type];
+  if (!kpi) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:99999;align-items:center;justify-content:center;padding:20px';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  modal.innerHTML = `
+    <div style="background:#0c1628;border:1px solid rgba(0,232,155,.3);border-radius:16px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.9)">
+      <div style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--teal);display:flex;align-items:center;gap:10px">
+            <span style="font-size:28px">${kpi.emoji}</span>
+            ${kpi.title}
+          </div>
+          <div style="font-size:11px;color:var(--mut);margin-top:4px">KPI de Fluxo de Caixa</div>
+        </div>
+        <button onclick="this.closest('.modal-bg').remove()" style="background:none;border:none;color:var(--mut);font-size:24px;cursor:pointer;padding:0;line-height:1">&times;</button>
+      </div>
+
+      <div style="padding:24px 28px">
+        <!-- Fórmula -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:10px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:8px">FÓRMULA</div>
+          <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:14px;color:#3b82f6;font-weight:600">
+            ${kpi.formula}
+          </div>
+        </div>
+
+        <!-- Descrição -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:10px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:8px">O QUE É?</div>
+          <div style="font-size:13px;color:#c8dff5;line-height:1.7">
+            ${kpi.desc}
+          </div>
+        </div>
+
+        <!-- Cálculo -->
+        ${kpi.calc}
+
+        <!-- Interpretação -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:10px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:8px">INTERPRETAÇÃO</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${kpi.interp.map(i => `
+              <div style="padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;font-size:12px;color:#c8dff5;line-height:1.6">
+                ${i}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Valor Ideal -->
+        <div>
+          <div style="font-size:10px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:8px">VALOR IDEAL</div>
+          <div style="padding:12px;background:rgba(0,232,155,.06);border:1px solid rgba(0,232,155,.2);border-radius:8px;font-size:12px;color:#c8dff5;line-height:1.6">
+            ${kpi.ideal}
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:16px 28px 24px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:flex-end">
+        <button onclick="this.closest('.modal-bg').remove()" class="bs ghost" style="font-size:13px;padding:8px 20px">
+          Entendi
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
 }

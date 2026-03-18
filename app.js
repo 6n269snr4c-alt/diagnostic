@@ -5005,7 +5005,7 @@ function renderDRETimeline(year, monthKeys) {
           </div>
           <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px">
             <div style="font-size:9px;color:#f59e0b;letter-spacing:1px;font-weight:700;margin-bottom:4px">LUCRO LÍQ.</div>
-            <div style="font-size:16px;font-weight:800;color:${kpis.lucroliq > 0 ? 'var(--teal)' : '#ef4444'}">${kpis.lucroliq !== null && kpis.lucroliq !== undefined ? kpis.lucroliq.toFixed(1) + '%' : '—'}</div>
+            <div style="font-size:16px;font-weight:800;color:${(kpis.lucroliq !== null && kpis.lucroliq !== undefined && kpis.lucroliq > 0) ? 'var(--teal)' : '#ef4444'}">${kpis.lucroliq !== null && kpis.lucroliq !== undefined ? kpis.lucroliq.toFixed(1) + '%' : '—'}</div>
           </div>
         </div>
         
@@ -5200,9 +5200,9 @@ function lancRenderModal(mk) {
   });
 
   const kpiItems = [
-    { label:'📈 Margem Contrib.', val: kpis.margem !== null ? kpis.margem.toFixed(1)+'%' : '—', col: kpis.margem >= 0 ? 'var(--teal)' : 'var(--red)' },
-    { label:'📊 EBITDA', val: kpis.ebitda !== null ? kpis.ebitda.toFixed(1)+'%' : '—', col: kpis.ebitda >= 0 ? 'var(--teal)' : 'var(--red)' },
-    { label:'💰 Lucro Líquido %', val: kpis.lucroliq !== null ? kpis.lucroliq.toFixed(1)+'%' : '—', col: lucroCol },
+    { label:'📈 Margem Contrib.', val: kpis.margem !== null && kpis.margem !== undefined ? kpis.margem.toFixed(1)+'%' : '—', col: (kpis.margem !== null && kpis.margem !== undefined && kpis.margem >= 0) ? 'var(--teal)' : 'var(--red)' },
+    { label:'📊 EBITDA', val: kpis.ebitda !== null && kpis.ebitda !== undefined ? kpis.ebitda.toFixed(1)+'%' : '—', col: (kpis.ebitda !== null && kpis.ebitda !== undefined && kpis.ebitda >= 0) ? 'var(--teal)' : 'var(--red)' },
+    { label:'💰 Lucro Líquido %', val: kpis.lucroliq !== null && kpis.lucroliq !== undefined ? kpis.lucroliq.toFixed(1)+'%' : '—', col: lucroCol },
   ];
   rightHtml += `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);font-weight:700;margin:8px 0 4px">KPIs Gerados</div>`;
   kpiItems.forEach(it => {

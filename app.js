@@ -5303,9 +5303,9 @@ function lancSaveEdits() {
   if (!S.dreLines) S.dreLines = {};
   S.dreLines[mk] = _lancEditLines.map(l => ({ ...l }));
 
-  // Update mappings
+  // Update mappings - TODAS as linhas, inclusive ignorar
   if (!S.dreMappings) S.dreMappings = {};
-  _lancEditLines.filter(l => l.category !== 'ignorar').forEach(l => {
+  _lancEditLines.forEach(l => {
     S.dreMappings[l.name.toLowerCase().trim()] = l.category;
   });
 

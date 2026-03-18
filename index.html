@@ -64,6 +64,7 @@
     <button class="tb" data-page="sim" onclick="go('sim',this)"><span class="tb-icon">🧪</span><span class="tb-label">Simulador</span></button>
     <button class="tb" data-page="actions" onclick="go('actions',this)"><span class="tb-icon">📋</span><span class="tb-label">Planos de Ação</span></button>
     <button class="tb" data-page="lancamentos" onclick="go('lancamentos',this)"><span class="tb-icon">🗂️</span><span class="tb-label">Lançamentos</span></button>
+    <button class="tb" data-page="cashflow" onclick="go('cashflow',this)"><span class="tb-icon">💰</span><span class="tb-label">Saúde de Caixa</span></button>
     <button class="tb" data-page="config" onclick="go('config',this)"><span class="tb-icon">⚙️</span><span class="tb-label">Configuração</span></button>
     <button class="tb" data-page="meth" onclick="go('meth',this)"><span class="tb-icon">📖</span><span class="tb-label">Metodologia</span></button>
   </nav>
@@ -627,6 +628,21 @@
     </div>
   </div>
   <div style="padding:16px 24px 40px" id="lancBody"></div>
+</div>
+
+<!-- ══════════════ SAÚDE DE CAIXA ══════════════ -->
+<div class="scrollpage" id="page-cashflow">
+  <div class="ph">
+    <div>
+      <div class="pt">💰 Saúde de Caixa</div>
+      <div class="ps">Análise automática do seu fluxo bancário — sem configuração</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="adm" onclick="importExtrato()">📤 Importar Extrato</button>
+      <button class="adm" onclick="clearExtratos()" style="background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#ef4444">🗑️ Limpar</button>
+    </div>
+  </div>
+  <div style="padding:16px 24px 40px" id="cashflowBody"></div>
 </div>
 
 <!-- ══════════════ LANCAMENTO DETAIL MODAL ══════════════ -->

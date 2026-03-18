@@ -230,6 +230,7 @@ async function loadUserData(uid){
       if(d.advisor)S.advisor=d.advisor;
       if(d.advisorHistory)S.advisorHistory=d.advisorHistory;
       if(d.extratos)S.extratos=d.extratos;
+      if(d.contasBancarias)S.contasBancarias=d.contasBancarias;
     }
   }catch(e){console.warn('Load error:',e);}
 }

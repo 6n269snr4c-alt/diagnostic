@@ -151,15 +151,15 @@ function showExtratoConfirmModal() {
   contasOptions += '<option value="nova">+ Adicionar nova conta</option>';
   
   modal.innerHTML = `
-    <div style="background:#0c1628;border:1px solid rgba(0,232,155,.3);border-radius:16px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-      <div style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <div style="background:#0c1628;border:1px solid rgba(0,232,155,.3);border-radius:16px;max-width:520px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <div style="padding:24px 28px;border-bottom:1px;flex-shrink:0 solid rgba(255,255,255,.08)">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--teal);margin-bottom:4px">
           ✅ EXTRATO PROCESSADO
         </div>
         <div style="font-size:11px;color:var(--mut)">Revise os dados antes de confirmar a importação</div>
       </div>
       
-      <div style="padding:24px 28px">
+      <div style="padding:24px 28px;overflow-y:auto;flex:1">
         <!-- Arquivo -->
         <div style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.06)">
           <div style="font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:700;margin-bottom:4px">ARQUIVO</div>
@@ -240,7 +240,7 @@ function showExtratoConfirmModal() {
         ` : ''}
       </div>
       
-      <div style="padding:16px 28px 24px;display:flex;gap:10px;justify-content:flex-end">
+      <div style="padding:16px 28px 24px;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;border-top:1px solid rgba(255,255,255,.08)">
         <button onclick="closeExtratoConfirmModal()" class="btn-cancel" style="padding:10px 20px;font-size:13px">
           Cancelar
         </button>

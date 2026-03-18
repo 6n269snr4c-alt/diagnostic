@@ -23,6 +23,9 @@ function importExtrato() {
   input.click();
 }
 
+// Variável temporária para preview
+let _pendingExtrato = null;
+
 function parseExtrato(content, filename) {
   let transactions = [];
   
@@ -38,18 +41,322 @@ function parseExtrato(content, filename) {
     return;
   }
   
-  // Salvar
+  // Auto-detectar banco
+  const bancoDetectado = detectarBanco(filename, content);
+  
+  // Detectar período
+  const sorted = [...transactions].sort((a,b) => a.date.localeCompare(b.date));
+  const firstDate = new Date(sorted[0].date);
+  const lastDate = new Date(sorted[sorted.length - 1].date);
+  
+  // Calcular resumo
+  const totalIn = transactions.filter(t => t.type === 'in').reduce((sum, t) => sum + Math.abs(t.value), 0);
+  const totalOut = transactions.filter(t => t.type === 'out').reduce((sum, t) => sum + Math.abs(t.value), 0);
+  const saldo = totalIn - totalOut;
+  
+  // Gerar ID do período (ano-mes)
+  const periodoId = `${firstDate.getFullYear()}-${String(firstDate.getMonth() + 1).padStart(2, '0')}`;
+  
+  // Verificar se já existem extratos no período
+  const extratosDoPeriodo = (S.extratos || []).filter(e => e.periodoId === periodoId);
+  
+  // Guardar temporariamente
+  _pendingExtrato = {
+    filename,
+    transactions,
+    firstDate,
+    lastDate,
+    periodoId,
+    totalIn,
+    totalOut,
+    saldo,
+    bancoDetectado,
+    extratosDoPeriodo
+  };
+  
+  // Mostrar modal de confirmação
+  showExtratoConfirmModal();
+}
+
+function detectarBanco(filename, content) {
+  const fn = filename.toLowerCase();
+  const ct = content.toLowerCase();
+  
+  // Detectar por nome do arquivo
+  if (fn.includes('bradesco')) return 'Bradesco';
+  if (fn.includes('itau') || fn.includes('itaú')) return 'Itaú';
+  if (fn.includes('santander')) return 'Santander';
+  if (fn.includes('bb') || fn.includes('banco do brasil')) return 'Banco do Brasil';
+  if (fn.includes('caixa')) return 'Caixa Econômica';
+  if (fn.includes('nubank') || fn.includes('nu ')) return 'Nubank';
+  if (fn.includes('inter')) return 'Inter';
+  if (fn.includes('c6')) return 'C6 Bank';
+  if (fn.includes('btg')) return 'BTG Pactual';
+  if (fn.includes('safra')) return 'Safra';
+  if (fn.includes('sicredi')) return 'Sicredi';
+  
+  // Detectar por conteúdo OFX (BANKID)
+  const bankIdMatch = /<BANKID>(\d+)/.exec(content);
+  if (bankIdMatch) {
+    const codes = {
+      '001': 'Banco do Brasil',
+      '033': 'Santander',
+      '104': 'Caixa Econômica',
+      '237': 'Bradesco',
+      '341': 'Itaú',
+      '260': 'Nubank',
+      '077': 'Inter',
+      '336': 'C6 Bank',
+      '208': 'BTG Pactual'
+    };
+    if (codes[bankIdMatch[1]]) return codes[bankIdMatch[1]];
+  }
+  
+  // Detectar por conteúdo textual
+  if (ct.includes('bradesco')) return 'Bradesco';
+  if (ct.includes('itaú') || ct.includes('itau')) return 'Itaú';
+  if (ct.includes('santander')) return 'Santander';
+  if (ct.includes('nubank')) return 'Nubank';
+  
+  return null;
+}
+
+function showExtratoConfirmModal() {
+  const p = _pendingExtrato;
+  if (!p) return;
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.id = 'extratoConfirmModal';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;padding:20px';
+  
+  const formatDate = d => d.toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric'});
+  const mesLabel = MES[p.firstDate.getMonth()] + '/' + p.firstDate.getFullYear();
+  
+  // Inicializar contas se não existir
+  if (!S.contasBancarias) S.contasBancarias = [];
+  
+  // Tentar encontrar conta existente do banco detectado
+  let contaSugerida = null;
+  if (p.bancoDetectado) {
+    contaSugerida = S.contasBancarias.find(c => c.banco === p.bancoDetectado);
+  }
+  
+  // Dropdown de contas
+  let contasOptions = '<option value="">Selecione a conta...</option>';
+  S.contasBancarias.forEach(c => {
+    const selected = contaSugerida && c.id === contaSugerida.id ? ' selected' : '';
+    contasOptions += `<option value="${c.id}"${selected}>${c.nome} · ${c.banco}</option>`;
+  });
+  contasOptions += '<option value="nova">+ Adicionar nova conta</option>';
+  
+  modal.innerHTML = `
+    <div style="background:#0c1628;border:1px solid rgba(0,232,155,.3);border-radius:16px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <div style="padding:24px 28px;border-bottom:1px solid rgba(255,255,255,.08)">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--teal);margin-bottom:4px">
+          ✅ EXTRATO PROCESSADO
+        </div>
+        <div style="font-size:11px;color:var(--mut)">Revise os dados antes de confirmar a importação</div>
+      </div>
+      
+      <div style="padding:24px 28px">
+        <!-- Arquivo -->
+        <div style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.06)">
+          <div style="font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:700;margin-bottom:4px">ARQUIVO</div>
+          <div style="font-size:13px;color:#eef4ff;font-weight:600">${p.filename}</div>
+        </div>
+        
+        <!-- Período -->
+        <div style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.06)">
+          <div style="font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:700;margin-bottom:4px">PERÍODO DETECTADO</div>
+          <div style="font-size:13px;color:#eef4ff;font-weight:600">${formatDate(p.firstDate)} a ${formatDate(p.lastDate)}</div>
+          <div style="font-size:11px;color:var(--teal);margin-top:2px">${p.transactions.length} transações · ${mesLabel}</div>
+        </div>
+        
+        <!-- Seleção de Conta (NOVO) -->
+        <div style="margin-bottom:16px;padding:12px 16px;background:rgba(0,232,155,.06);border-radius:10px;border:1px solid rgba(0,232,155,.15)">
+          <div style="font-size:10px;letter-spacing:1px;color:var(--teal);font-weight:700;margin-bottom:6px">💳 CONTA BANCÁRIA</div>
+          ${p.bancoDetectado ? `<div style="font-size:10px;color:var(--mut);margin-bottom:6px">Banco detectado: <strong style="color:var(--teal)">${p.bancoDetectado}</strong></div>` : ''}
+          <select id="extratoContaSelect" onchange="handleContaSelectChange()" style="width:100%;padding:8px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:13px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer">
+            ${contasOptions}
+          </select>
+        </div>
+        
+        <!-- Form nova conta (hidden inicialmente) -->
+        <div id="novaContaForm" style="display:none;margin-bottom:16px;padding:12px 16px;background:rgba(0,232,155,.06);border-radius:10px;border:1px solid rgba(0,232,155,.15)">
+          <div style="font-size:10px;letter-spacing:1px;color:var(--teal);font-weight:700;margin-bottom:8px">NOVA CONTA</div>
+          <input type="text" id="novaContaNome" placeholder="Nome da conta (ex: Bradesco PJ)" style="width:100%;padding:8px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:13px;margin-bottom:8px;font-family:'Outfit',sans-serif;outline:none;box-sizing:border-box" value="${p.bancoDetectado ? p.bancoDetectado + ' - Principal' : ''}">
+          <select id="novaContaBanco" style="width:100%;padding:8px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:13px;margin-bottom:8px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer;box-sizing:border-box">
+            <option value="">Selecione o banco...</option>
+            <option value="Banco do Brasil"${p.bancoDetectado === 'Banco do Brasil' ? ' selected' : ''}>Banco do Brasil</option>
+            <option value="Bradesco"${p.bancoDetectado === 'Bradesco' ? ' selected' : ''}>Bradesco</option>
+            <option value="BTG Pactual"${p.bancoDetectado === 'BTG Pactual' ? ' selected' : ''}>BTG Pactual</option>
+            <option value="C6 Bank"${p.bancoDetectado === 'C6 Bank' ? ' selected' : ''}>C6 Bank</option>
+            <option value="Caixa Econômica"${p.bancoDetectado === 'Caixa Econômica' ? ' selected' : ''}>Caixa Econômica</option>
+            <option value="Inter"${p.bancoDetectado === 'Inter' ? ' selected' : ''}>Inter</option>
+            <option value="Itaú"${p.bancoDetectado === 'Itaú' ? ' selected' : ''}>Itaú</option>
+            <option value="Nubank"${p.bancoDetectado === 'Nubank' ? ' selected' : ''}>Nubank</option>
+            <option value="Safra"${p.bancoDetectado === 'Safra' ? ' selected' : ''}>Safra</option>
+            <option value="Santander"${p.bancoDetectado === 'Santander' ? ' selected' : ''}>Santander</option>
+            <option value="Sicredi"${p.bancoDetectado === 'Sicredi' ? ' selected' : ''}>Sicredi</option>
+            <option value="Outro">Outro</option>
+          </select>
+          <select id="novaContaTipo" style="width:100%;padding:8px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:13px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer;box-sizing:border-box">
+            <option value="corrente">Conta Corrente</option>
+            <option value="poupanca">Poupança</option>
+            <option value="investimento">Investimentos</option>
+            <option value="cartao">Cartão de Crédito</option>
+          </select>
+        </div>
+        
+        <!-- Resumo Financeiro -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+          <div style="padding:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;text-align:center">
+            <div style="font-size:9px;letter-spacing:1px;color:#10b981;font-weight:700;margin-bottom:4px">ENTRADAS</div>
+            <div style="font-size:16px;font-weight:800;color:#10b981">${fmtV(p.totalIn, 'R$')}</div>
+          </div>
+          <div style="padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;text-align:center">
+            <div style="font-size:9px;letter-spacing:1px;color:#ef4444;font-weight:700;margin-bottom:4px">SAÍDAS</div>
+            <div style="font-size:16px;font-weight:800;color:#ef4444">${fmtV(p.totalOut, 'R$')}</div>
+          </div>
+          <div style="padding:12px;background:rgba(0,232,155,.08);border:1px solid rgba(0,232,155,.2);border-radius:10px;text-align:center">
+            <div style="font-size:9px;letter-spacing:1px;color:var(--teal);font-weight:700;margin-bottom:4px">SALDO</div>
+            <div style="font-size:16px;font-weight:800;color:${p.saldo >= 0 ? 'var(--teal)' : '#ef4444'}">${fmtV(p.saldo, 'R$')}</div>
+          </div>
+        </div>
+        
+        ${p.extratosDoPeriodo.length > 0 ? `
+        <!-- Info de consolidação -->
+        <div style="padding:12px 16px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);border-radius:10px;margin-bottom:16px">
+          <div style="font-size:11px;color:#3b82f6;line-height:1.6">
+            <strong>💡 Info:</strong> Já existe${p.extratosDoPeriodo.length > 1 ? 'm' : ''} ${p.extratosDoPeriodo.length} extrato(s) para ${mesLabel}. 
+            ${p.extratosDoPeriodo.map(e => {
+              const conta = S.contasBancarias.find(c => c.id === e.contaId);
+              return conta ? conta.nome : 'Conta sem nome';
+            }).join(', ')}.
+            Este extrato será <strong>consolidado</strong> com os existentes.
+          </div>
+        </div>
+        ` : ''}
+      </div>
+      
+      <div style="padding:16px 28px 24px;display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="closeExtratoConfirmModal()" class="btn-cancel" style="padding:10px 20px;font-size:13px">
+          Cancelar
+        </button>
+        <button onclick="confirmExtratoImport()" class="bs" style="padding:10px 24px;font-size:13px;font-weight:700">
+          ✓ Confirmar Importação
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+function handleContaSelectChange() {
+  const select = document.getElementById('extratoContaSelect');
+  const form = document.getElementById('novaContaForm');
+  
+  if (select.value === 'nova') {
+    form.style.display = 'block';
+  } else {
+    form.style.display = 'none';
+  }
+}
+
+function closeExtratoConfirmModal() {
+  const modal = document.getElementById('extratoConfirmModal');
+  if (modal) modal.remove();
+  _pendingExtrato = null;
+}
+
+function confirmExtratoImport() {
+  if (!_pendingExtrato) return;
+  
+  const p = _pendingExtrato;
+  const contaSelect = document.getElementById('extratoContaSelect');
+  
+  if (!contaSelect || !contaSelect.value) {
+    toast('⚠️ Selecione uma conta bancária');
+    return;
+  }
+  
+  let contaId = null;
+  
+  // Se selecionou "nova", criar conta
+  if (contaSelect.value === 'nova') {
+    const nomeInput = document.getElementById('novaContaNome');
+    const bancoSelect = document.getElementById('novaContaBanco');
+    const tipoSelect = document.getElementById('novaContaTipo');
+    
+    if (!nomeInput.value.trim()) {
+      toast('⚠️ Digite o nome da conta');
+      nomeInput.focus();
+      return;
+    }
+    
+    if (!bancoSelect.value) {
+      toast('⚠️ Selecione o banco');
+      bancoSelect.focus();
+      return;
+    }
+    
+    // Criar nova conta
+    if (!S.contasBancarias) S.contasBancarias = [];
+    const novaConta = {
+      id: Date.now(),
+      nome: nomeInput.value.trim(),
+      banco: bancoSelect.value,
+      tipo: tipoSelect.value,
+      criadoEm: new Date().toISOString()
+    };
+    S.contasBancarias.push(novaConta);
+    contaId = novaConta.id;
+    toast(`✅ Conta "${novaConta.nome}" criada`);
+  } else {
+    contaId = parseInt(contaSelect.value);
+  }
+  
+  // Inicializar array se necessário
   if (!S.extratos) S.extratos = [];
+  
+  // Adicionar novo extrato
+  const conta = S.contasBancarias.find(c => c.id === contaId);
   S.extratos.push({
     id: Date.now(),
-    filename: filename,
+    filename: p.filename,
+    periodoId: p.periodoId,
+    contaId: contaId,
+    contaNome: conta ? conta.nome : 'Sem nome',
+    banco: conta ? conta.banco : 'Desconhecido',
     importedAt: new Date().toISOString(),
-    transactions: transactions
+    firstDate: p.firstDate.toISOString().split('T')[0],
+    lastDate: p.lastDate.toISOString().split('T')[0],
+    totalIn: p.totalIn,
+    totalOut: p.totalOut,
+    saldo: p.saldo,
+    transactions: p.transactions,
+    count: p.transactions.length
   });
   
   sv();
-  toast(`✅ ${transactions.length} transações importadas de ${filename}`);
-  rCashflow();
+  closeExtratoConfirmModal();
+  
+  const mesLabel = MES[p.firstDate.getMonth()] + '/' + p.firstDate.getFullYear();
+  toast(`✅ ${p.transactions.length} transações importadas · ${conta ? conta.nome : ''} · ${mesLabel}`);
+  
+  // Atualizar página de cashflow se estiver aberta
+  const cashflowPage = document.getElementById('page-cashflow');
+  if (cashflowPage && cashflowPage.classList.contains('active')) {
+    rCashflow();
+  }
+  
+  // Atualizar lançamentos se estiver aberta
+  const lancPage = document.getElementById('page-lancamentos');
+  if (lancPage && lancPage.classList.contains('active')) {
+    rLancamentos();
+  }
 }
 
 // ── PARSERS ────────────────────────────────────────────────────────
@@ -278,8 +585,22 @@ function rCashflow() {
     return;
   }
   
+  // Pegar filtro de conta (se existir)
+  const contaFiltro = window._cashflowContaFiltro || 'todas';
+  
+  // Filtrar extratos
+  let extratosParaAnalise = S.extratos;
+  if (contaFiltro !== 'todas') {
+    extratosParaAnalise = S.extratos.filter(e => e.contaId === parseInt(contaFiltro));
+  }
+  
+  if (!extratosParaAnalise.length) {
+    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--mut)">Nenhum extrato para a conta selecionada</div>';
+    return;
+  }
+  
   // Pegar todas as transações
-  const allTx = S.extratos.flatMap(e => e.transactions);
+  const allTx = extratosParaAnalise.flatMap(e => e.transactions);
   const analysis = analyzeCashflow(allTx);
   
   if (!analysis) {
@@ -302,11 +623,34 @@ function rCashflow() {
   const tendColor = analysis.tendencia === 'up' ? 'var(--green)' : 
                    analysis.tendencia === 'down' ? 'var(--red)' : 'var(--mut)';
   
+  // Contagem de contas únicas
+  const contasUnicas = [...new Set(S.extratos.map(e => e.contaId))];
+  const numContas = contasUnicas.length;
+  
+  // Filtro de contas (se tiver mais de uma conta)
+  let filtroHtml = '';
+  if (numContas > 1) {
+    filtroHtml = `
+      <div style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--mut)">FILTRAR POR CONTA:</div>
+        <select onchange="setCashflowContaFiltro(this.value)" style="padding:6px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:12px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer">
+          <option value="todas"${contaFiltro === 'todas' ? ' selected' : ''}>📊 Todas as contas (${numContas})</option>
+          ${S.contasBancarias.filter(c => contasUnicas.includes(c.id)).map(c => `
+            <option value="${c.id}"${contaFiltro == c.id ? ' selected' : ''}>💳 ${c.nome} · ${c.banco}</option>
+          `).join('')}
+        </select>
+        ${contaFiltro !== 'todas' ? `<span style="font-size:11px;color:var(--teal)">✓ Exibindo apenas ${S.contasBancarias.find(c => c.id == contaFiltro)?.nome}</span>` : ''}
+      </div>
+    `;
+  }
+  
   // Render principal
   body.innerHTML = `
     <div style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;font-size:11px;color:var(--mut)">
-      📊 ${S.extratos.length} extrato(s) · ${allTx.length} transações · Última importação: ${new Date(S.extratos[S.extratos.length-1].importedAt).toLocaleDateString('pt-BR')}
+      📊 ${extratosParaAnalise.length} extrato(s)${numContas > 1 ? ' · ' + numContas + ' conta(s)' : ''} · ${allTx.length} transações · Última importação: ${new Date(S.extratos[S.extratos.length-1].importedAt).toLocaleDateString('pt-BR')}
     </div>
+    
+    ${filtroHtml}
     
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px">
       
@@ -496,6 +840,11 @@ function renderFlowChart(byMonth) {
 
 // ── CLEAR ──────────────────────────────────────────────────────────
 
+function setCashflowContaFiltro(contaId) {
+  window._cashflowContaFiltro = contaId;
+  rCashflow();
+}
+
 function clearExtratos() {
   if (!S.extratos || !S.extratos.length) {
     toast('⚠️ Nenhum extrato para limpar');
@@ -503,7 +852,7 @@ function clearExtratos() {
   }
   
   showDelDialog(
-    '🗑️ Limpar Extratos',
+    '🗑️ Limpar Todos os Extratos',
     `Remover todos os ${S.extratos.length} extrato(s) importado(s)? Esta ação não pode ser desfeita.`,
     () => {
       S.extratos = [];
@@ -512,6 +861,171 @@ function clearExtratos() {
       rCashflow();
     }
   );
+}
+
+function deleteExtrato(extratoId) {
+  const extrato = (S.extratos || []).find(e => e.id === extratoId);
+  if (!extrato) return;
+  
+  const [y, m] = extrato.periodoId.split('-');
+  const mesLabel = MES[parseInt(m) - 1] + '/' + y;
+  
+  showDelDialog(
+    '🗑️ Excluir Extrato',
+    `Remover extrato de ${mesLabel} (${extrato.count} transações)?`,
+    () => {
+      S.extratos = S.extratos.filter(e => e.id !== extratoId);
+      sv();
+      toast(`✓ Extrato de ${mesLabel} removido`);
+      
+      // Atualizar página ativa
+      const cashflowPage = document.getElementById('page-cashflow');
+      if (cashflowPage && cashflowPage.classList.contains('active')) {
+        rCashflow();
+      }
+      
+      const lancPage = document.getElementById('page-lancamentos');
+      if (lancPage && lancPage.classList.contains('active')) {
+        rLancamentos();
+      }
+    }
+  );
+}
+
+function viewExtratoDetail(extratoId) {
+  const extrato = (S.extratos || []).find(e => e.id === extratoId);
+  if (!extrato) return;
+  
+  const [y, m] = extrato.periodoId.split('-');
+  const mesLabel = MES[parseInt(m) - 1] + '/' + y;
+  
+  // Criar modal de visualização
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.id = 'extratoDetailModal';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;padding:20px';
+  
+  const formatDate = d => new Date(d).toLocaleDateString('pt-BR');
+  
+  // Agrupar por tipo
+  const entradas = extrato.transactions.filter(t => t.type === 'in').sort((a,b) => b.date.localeCompare(a.date));
+  const saidas = extrato.transactions.filter(t => t.type === 'out').sort((a,b) => b.date.localeCompare(a.date));
+  
+  modal.innerHTML = `
+    <div style="background:#0c1628;border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:800px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--teal)">
+              Extrato · ${mesLabel}
+            </div>
+            <div style="font-size:11px;color:var(--mut);margin-top:2px">
+              ${extrato.filename} · ${formatDate(extrato.firstDate)} a ${formatDate(extrato.lastDate)}
+            </div>
+          </div>
+          <button onclick="closeExtratoDetailModal()" class="btn-cancel" style="padding:6px 12px">✕ Fechar</button>
+        </div>
+      </div>
+      
+      <div style="padding:20px 24px;overflow-y:auto;flex:1">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
+          <div style="padding:14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;text-align:center">
+            <div style="font-size:9px;letter-spacing:1px;color:#10b981;font-weight:700;margin-bottom:4px">ENTRADAS</div>
+            <div style="font-size:18px;font-weight:800;color:#10b981">${fmtV(extrato.totalIn, 'R$')}</div>
+            <div style="font-size:10px;color:#10b98188;margin-top:2px">${entradas.length} transações</div>
+          </div>
+          <div style="padding:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;text-align:center">
+            <div style="font-size:9px;letter-spacing:1px;color:#ef4444;font-weight:700;margin-bottom:4px">SAÍDAS</div>
+            <div style="font-size:18px;font-weight:800;color:#ef4444">${fmtV(extrato.totalOut, 'R$')}</div>
+            <div style="font-size:10px;color:#ef444488;margin-top:2px">${saidas.length} transações</div>
+          </div>
+          <div style="padding:14px;background:rgba(0,232,155,.08);border:1px solid rgba(0,232,155,.2);border-radius:10px;text-align:center">
+            <div style="font-size:9px;letter-spacing:1px;color:var(--teal);font-weight:700;margin-bottom:4px">SALDO</div>
+            <div style="font-size:18px;font-weight:800;color:${extrato.saldo >= 0 ? 'var(--teal)' : '#ef4444'}">${fmtV(extrato.saldo, 'R$')}</div>
+            <div style="font-size:10px;color:var(--mut);margin-top:2px">${extrato.count} total</div>
+          </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06)">
+          <button onclick="switchExtratoTab('all')" id="extratoTabAll" class="extrato-tab active" style="padding:8px 16px;background:none;border:none;border-bottom:2px solid var(--teal);color:var(--teal);font-size:12px;font-weight:700;cursor:pointer">
+            Todas (${extrato.count})
+          </button>
+          <button onclick="switchExtratoTab('in')" id="extratoTabIn" class="extrato-tab" style="padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--mut);font-size:12px;font-weight:600;cursor:pointer">
+            Entradas (${entradas.length})
+          </button>
+          <button onclick="switchExtratoTab('out')" id="extratoTabOut" class="extrato-tab" style="padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--mut);font-size:12px;font-weight:600;cursor:pointer">
+            Saídas (${saidas.length})
+          </button>
+        </div>
+        
+        <div id="extratoTabContent"></div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Armazenar extrato atual para acesso das tabs
+  window._currentExtratoDetail = extrato;
+  
+  // Mostrar tab inicial
+  switchExtratoTab('all');
+}
+
+function switchExtratoTab(tab) {
+  const extrato = window._currentExtratoDetail;
+  if (!extrato) return;
+  
+  // Atualizar botões
+  document.querySelectorAll('.extrato-tab').forEach(btn => {
+    btn.style.borderBottomColor = 'transparent';
+    btn.style.color = 'var(--mut)';
+  });
+  const activeBtn = document.getElementById('extratoTab' + tab.charAt(0).toUpperCase() + tab.slice(1));
+  if (activeBtn) {
+    activeBtn.style.borderBottomColor = 'var(--teal)';
+    activeBtn.style.color = 'var(--teal)';
+  }
+  
+  // Filtrar transações
+  let transactions = extrato.transactions;
+  if (tab === 'in') transactions = transactions.filter(t => t.type === 'in');
+  if (tab === 'out') transactions = transactions.filter(t => t.type === 'out');
+  transactions.sort((a,b) => b.date.localeCompare(a.date));
+  
+  // Renderizar
+  const content = document.getElementById('extratoTabContent');
+  if (!content) return;
+  
+  if (!transactions.length) {
+    content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--mut);font-size:12px">Nenhuma transação nesta categoria</div>';
+    return;
+  }
+  
+  let html = '<div style="display:flex;flex-direction:column;gap:6px">';
+  transactions.forEach(t => {
+    const date = new Date(t.date).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'});
+    const color = t.type === 'in' ? '#10b981' : '#ef4444';
+    html += `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid rgba(255,255,255,.04)">
+        <div style="font-size:20px">${t.type === 'in' ? '📥' : '📤'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;color:#c8dff5;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.desc}</div>
+          <div style="font-size:10px;color:var(--mut);margin-top:2px">${date}</div>
+        </div>
+        <div style="font-size:14px;font-weight:800;color:${color};white-space:nowrap">${fmtV(Math.abs(t.value), 'R$')}</div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+function closeExtratoDetailModal() {
+  const modal = document.getElementById('extratoDetailModal');
+  if (modal) modal.remove();
+  window._currentExtratoDetail = null;
 }
 
 // ── HELPER para integração com Conselheiro (opcional) ─────────────
@@ -550,4 +1064,168 @@ function getCashflowContext() {
   }
 
   return txt;
+}
+
+// ── GESTÃO DE CONTAS BANCÁRIAS ────────────────────────────────────
+
+function rContasBancariasTable() {
+  const table = document.getElementById('contasBancariasTable');
+  if (!table) return;
+  
+  if (!S.contasBancarias || !S.contasBancarias.length) {
+    table.innerHTML = `
+      <div style="padding:24px;text-align:center;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:10px">
+        <div style="font-size:13px;color:var(--mut);margin-bottom:8px">Nenhuma conta cadastrada</div>
+        <div style="font-size:11px;color:var(--mut);opacity:.7">Contas serão criadas automaticamente ao importar extratos</div>
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '<div style="display:flex;flex-direction:column;gap:8px">';
+  
+  S.contasBancarias.forEach(c => {
+    const tipoLabels = {corrente: 'Corrente', poupanca: 'Poupança', investimento: 'Investimentos', cartao: 'Cartão'};
+    const tipoLabel = tipoLabels[c.tipo] || c.tipo;
+    
+    // Contar extratos dessa conta
+    const numExtratos = (S.extratos || []).filter(e => e.contaId === c.id).length;
+    
+    html += `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px">
+        <div style="font-size:24px">💳</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#eef4ff">${c.nome}</div>
+          <div style="font-size:10px;color:var(--mut);margin-top:2px">${c.banco} · ${tipoLabel}${numExtratos > 0 ? ' · ' + numExtratos + ' extrato(s)' : ''}</div>
+        </div>
+        <button onclick="deleteConta(${c.id})" class="bs ghost" style="font-size:10px;padding:4px 10px;color:rgba(255,61,90,.8);border-color:rgba(255,61,90,.3)">🗑️ Excluir</button>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  table.innerHTML = html;
+}
+
+function showNovaContaModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.id = 'novaContaModal';
+  modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;padding:20px';
+  
+  modal.innerHTML = `
+    <div style="background:#0c1628;border:1px solid rgba(0,232,155,.3);border-radius:16px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.08)">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--teal)">
+          💳 NOVA CONTA BANCÁRIA
+        </div>
+      </div>
+      
+      <div style="padding:24px">
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:700;margin-bottom:6px">NOME DA CONTA</label>
+          <input type="text" id="ncNome" placeholder="Ex: Bradesco PJ, Itaú Investimentos" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:13px;font-family:'Outfit',sans-serif;outline:none;box-sizing:border-box">
+        </div>
+        
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:700;margin-bottom:6px">BANCO</label>
+          <select id="ncBanco" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:13px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer;box-sizing:border-box">
+            <option value="">Selecione...</option>
+            <option value="Banco do Brasil">Banco do Brasil</option>
+            <option value="Bradesco">Bradesco</option>
+            <option value="BTG Pactual">BTG Pactual</option>
+            <option value="C6 Bank">C6 Bank</option>
+            <option value="Caixa Econômica">Caixa Econômica</option>
+            <option value="Inter">Inter</option>
+            <option value="Itaú">Itaú</option>
+            <option value="Nubank">Nubank</option>
+            <option value="Safra">Safra</option>
+            <option value="Santander">Santander</option>
+            <option value="Sicredi">Sicredi</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:700;margin-bottom:6px">TIPO DE CONTA</label>
+          <select id="ncTipo" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:13px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer;box-sizing:border-box">
+            <option value="corrente">Conta Corrente</option>
+            <option value="poupanca">Poupança</option>
+            <option value="investimento">Investimentos</option>
+            <option value="cartao">Cartão de Crédito</option>
+          </select>
+        </div>
+      </div>
+      
+      <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid rgba(255,255,255,.08)">
+        <button onclick="closeNovaContaModal()" class="btn-cancel" style="padding:8px 16px;font-size:12px">Cancelar</button>
+        <button onclick="saveNovaConta()" class="bs" style="padding:8px 20px;font-size:12px;font-weight:700">✓ Salvar</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  setTimeout(() => document.getElementById('ncNome').focus(), 100);
+}
+
+function closeNovaContaModal() {
+  const modal = document.getElementById('novaContaModal');
+  if (modal) modal.remove();
+}
+
+function saveNovaConta() {
+  const nome = document.getElementById('ncNome').value.trim();
+  const banco = document.getElementById('ncBanco').value;
+  const tipo = document.getElementById('ncTipo').value;
+  
+  if (!nome) {
+    toast('⚠️ Digite o nome da conta');
+    document.getElementById('ncNome').focus();
+    return;
+  }
+  
+  if (!banco) {
+    toast('⚠️ Selecione o banco');
+    document.getElementById('ncBanco').focus();
+    return;
+  }
+  
+  if (!S.contasBancarias) S.contasBancarias = [];
+  
+  S.contasBancarias.push({
+    id: Date.now(),
+    nome: nome,
+    banco: banco,
+    tipo: tipo,
+    criadoEm: new Date().toISOString()
+  });
+  
+  sv();
+  toast(`✅ Conta "${nome}" criada`);
+  closeNovaContaModal();
+  rContasBancariasTable();
+}
+
+function deleteConta(contaId) {
+  const conta = (S.contasBancarias || []).find(c => c.id === contaId);
+  if (!conta) return;
+  
+  // Verificar se tem extratos
+  const numExtratos = (S.extratos || []).filter(e => e.contaId === contaId).length;
+  
+  let msg = `Excluir a conta "${conta.nome}"?`;
+  if (numExtratos > 0) {
+    msg += `\n\n⚠️ Atenção: Esta conta tem ${numExtratos} extrato(s) importado(s). Os extratos NÃO serão excluídos, mas ficarão sem conta associada.`;
+  }
+  
+  showDelDialog(
+    '🗑️ Excluir Conta',
+    msg,
+    () => {
+      S.contasBancarias = S.contasBancarias.filter(c => c.id !== contaId);
+      sv();
+      toast(`✓ Conta "${conta.nome}" removida`);
+      rContasBancariasTable();
+    }
+  );
 }

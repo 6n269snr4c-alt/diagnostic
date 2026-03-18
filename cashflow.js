@@ -363,54 +363,223 @@ function confirmExtratoImport() {
 
 function parseCSV(content) {
   const lines = content.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return []; // Precisa de pelo menos header + 1 linha
+  
   const transactions = [];
   
   // Tentar detectar separador
   const sep = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
   
-  // Pular header (assumir que primeira linha é header se não tem número)
-  const startIdx = /\d/.test(lines[0]) ? 0 : 1;
+  // Parse do header (primeira linha)
+  const header = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/[^a-záéíóúàâêôãõç0-9]/g, ''));
   
-  for (let i = startIdx; i < lines.length; i++) {
+  // Detectar índices de colunas importantes
+  const colIdx = {
+    data: -1,
+    desc: -1,
+    valor: -1,
+    debito: -1,
+    credito: -1,
+    tipo: -1,
+    entrada: -1,
+    saida: -1
+  };
+  
+  header.forEach((h, i) => {
+    // Data
+    if (/data|date|dt|dia/.test(h)) colIdx.data = i;
+    
+    // Descrição
+    if (/descri[cç][aã]o|hist[oó]rico|memo|obs|observ|lanc|movimento|conta/.test(h) && colIdx.desc === -1) {
+      colIdx.desc = i;
+    }
+    
+    // Valor único
+    if (/^valor|vlr|montante|amount/.test(h) && colIdx.valor === -1) colIdx.valor = i;
+    
+    // Débito/Crédito separados
+    if (/d[eé]bito|debito|saida|sa[ií]da|pago|pagamento/.test(h)) colIdx.debito = i;
+    if (/cr[eé]dito|credito|entrada|recebimento|receb/.test(h)) colIdx.credito = i;
+    
+    // Entrada/Saída explícitas
+    if (/^entrada/.test(h)) colIdx.entrada = i;
+    if (/^saida|sa[ií]da/.test(h)) colIdx.saida = i;
+    
+    // Tipo (D/C, E/S, etc)
+    if (/^tipo|^dc|^es|natureza/.test(h)) colIdx.tipo = i;
+  });
+  
+  // Fallback: se não achou data, pegar primeira coluna que parece data
+  if (colIdx.data === -1) {
+    for (let i = 0; i < Math.min(header.length, 5); i++) {
+      const sample = lines[1]?.split(sep)[i]?.trim();
+      if (sample && parseDate(sample)) {
+        colIdx.data = i;
+        break;
+      }
+    }
+  }
+  
+  // Fallback: se não achou descrição, pegar primeira coluna de texto não-data não-valor
+  if (colIdx.desc === -1) {
+    for (let i = 0; i < header.length; i++) {
+      if (i === colIdx.data || i === colIdx.valor || i === colIdx.debito || i === colIdx.credito) continue;
+      const sample = lines[1]?.split(sep)[i]?.trim();
+      if (sample && sample.length > 2 && !/^[\d.,\-+]+$/.test(sample)) {
+        colIdx.desc = i;
+        break;
+      }
+    }
+  }
+  
+  // Processar linhas de dados (pular header)
+  for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
     if (cols.length < 2) continue;
     
-    // Tentar achar data e valor nas colunas
-    let date = null, value = null, desc = '';
-    
-    for (let j = 0; j < Math.min(cols.length, 5); j++) {
-      // Tentar parse de data
-      if (!date) {
+    // Extrair data
+    let date = null;
+    if (colIdx.data >= 0 && cols[colIdx.data]) {
+      date = parseDate(cols[colIdx.data]);
+    }
+    if (!date) {
+      // Tentar encontrar data em qualquer coluna
+      for (let j = 0; j < Math.min(cols.length, 5); j++) {
         date = parseDate(cols[j]);
+        if (date) break;
       }
-      
-      // Tentar parse de valor
-      if (!value && /^-?[\d.,]+$/.test(cols[j].replace(/[^\d.,-]/g, ''))) {
-        const clean = cols[j].replace(/[^\d.,-]/g, '').replace(',', '.');
-        const num = parseFloat(clean);
-        if (!isNaN(num) && Math.abs(num) > 0.01) {
-          value = num;
+    }
+    if (!date) continue; // Sem data, pular linha
+    
+    // Extrair valor
+    let value = null;
+    let type = null;
+    
+    // Caso 1: Tem coluna de valor único
+    if (colIdx.valor >= 0 && cols[colIdx.valor]) {
+      value = parseValue(cols[colIdx.valor]);
+      // Detectar tipo pela coluna "Tipo" ou pelo sinal do valor
+      if (colIdx.tipo >= 0 && cols[colIdx.tipo]) {
+        const tipoStr = cols[colIdx.tipo].toLowerCase();
+        if (/^c|cr[eé]d|entrada|e|receb|\+/.test(tipoStr)) {
+          type = 'in';
+          value = Math.abs(value);
+        } else if (/^d|d[eé]b|saida|sa[ií]da|s|pag|\-/.test(tipoStr)) {
+          type = 'out';
+          value = -Math.abs(value);
         }
       }
+      // Se não tem coluna tipo, usar sinal do valor
+      if (!type) {
+        type = value >= 0 ? 'in' : 'out';
+      }
+    }
+    // Caso 2: Tem colunas Débito/Crédito separadas
+    else if (colIdx.debito >= 0 || colIdx.credito >= 0) {
+      const debito = colIdx.debito >= 0 ? parseValue(cols[colIdx.debito]) : 0;
+      const credito = colIdx.credito >= 0 ? parseValue(cols[colIdx.credito]) : 0;
       
-      // Coletar descrição (texto que não é data nem valor)
-      if (!parseDate(cols[j]) && !/^-?[\d.,]+$/.test(cols[j].replace(/[^\d.,-]/g, '')) && cols[j].length > 2) {
-        if (desc) desc += ' ';
-        desc += cols[j];
+      if (credito > 0) {
+        value = credito;
+        type = 'in';
+      } else if (debito > 0) {
+        value = -debito;
+        type = 'out';
+      }
+    }
+    // Caso 3: Tem colunas Entrada/Saída separadas
+    else if (colIdx.entrada >= 0 || colIdx.saida >= 0) {
+      const entrada = colIdx.entrada >= 0 ? parseValue(cols[colIdx.entrada]) : 0;
+      const saida = colIdx.saida >= 0 ? parseValue(cols[colIdx.saida]) : 0;
+      
+      if (entrada > 0) {
+        value = entrada;
+        type = 'in';
+      } else if (saida > 0) {
+        value = -saida;
+        type = 'out';
+      }
+    }
+    // Caso 4: Fallback - procurar valor em qualquer coluna
+    else {
+      for (let j = 0; j < cols.length; j++) {
+        if (j === colIdx.data || j === colIdx.desc) continue;
+        const v = parseValue(cols[j]);
+        if (v !== null && Math.abs(v) > 0.01) {
+          value = v;
+          type = v >= 0 ? 'in' : 'out';
+          break;
+        }
       }
     }
     
-    if (!date || value === null) continue;
+    if (value === null || Math.abs(value) < 0.01) continue; // Sem valor válido, pular
+    
+    // Extrair descrição
+    let desc = '';
+    if (colIdx.desc >= 0 && cols[colIdx.desc]) {
+      desc = cols[colIdx.desc];
+    } else {
+      // Coletar texto de colunas não-data não-valor
+      for (let j = 0; j < cols.length; j++) {
+        if (j === colIdx.data || j === colIdx.valor || j === colIdx.debito || j === colIdx.credito) continue;
+        if (cols[j] && cols[j].length > 2 && !/^[\d.,\-+]+$/.test(cols[j])) {
+          if (desc) desc += ' ';
+          desc += cols[j];
+        }
+      }
+    }
     
     transactions.push({
       date: date.toISOString().split('T')[0],
       desc: desc || 'Sem descrição',
       value: value,
-      type: value > 0 ? 'in' : 'out'
+      type: type
     });
   }
   
   return transactions;
+}
+
+function parseValue(str) {
+  if (!str) return null;
+  
+  // Remover tudo exceto números, vírgula, ponto e sinal
+  let clean = str.replace(/[^\d.,-]/g, '');
+  
+  // Se vazio, retornar null
+  if (!clean) return null;
+  
+  // Detectar formato brasileiro (1.500,00) vs americano (1,500.00)
+  const temVirgula = clean.includes(',');
+  const temPonto = clean.includes('.');
+  
+  if (temVirgula && temPonto) {
+    // Tem ambos - descobrir qual é separador decimal
+    const posVirgula = clean.lastIndexOf(',');
+    const posPonto = clean.lastIndexOf('.');
+    
+    if (posVirgula > posPonto) {
+      // Vírgula depois do ponto = formato brasileiro (1.500,00)
+      clean = clean.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Ponto depois da vírgula = formato americano (1,500.00)
+      clean = clean.replace(/,/g, '');
+    }
+  } else if (temVirgula && !temPonto) {
+    // Só vírgula - pode ser decimal brasileiro ou separador de milhar
+    const parts = clean.split(',');
+    if (parts.length === 2 && parts[1].length <= 2) {
+      // Provavelmente decimal brasileiro (1500,00)
+      clean = clean.replace(',', '.');
+    } else {
+      // Provavelmente separador de milhar (1,500)
+      clean = clean.replace(/,/g, '');
+    }
+  }
+  
+  const num = parseFloat(clean);
+  return isNaN(num) ? null : num;
 }
 
 function parseOFX(content) {

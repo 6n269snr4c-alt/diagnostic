@@ -2696,6 +2696,113 @@ function rMeth(){
       </div>
     </div>`;
   grid.appendChild(sc);
+
+  // ── KPIs DE FLUXO DE CAIXA ─────────────────────────────────────────
+  const cashflowSection = document.createElement('div');
+  cashflowSection.className = 'mc2';
+  cashflowSection.style.gridColumn = '1/-1';
+  cashflowSection.style.marginTop = '40px';
+  cashflowSection.innerHTML = `
+    <div class="mt">KPIs de Fluxo de Caixa</div>
+    <div class="mb">
+      O módulo <strong>💰 Saúde de Caixa</strong> analisa extratos bancários (OFX ou CSV) e calcula automaticamente 
+      métricas de liquidez e gestão de caixa. Estes KPIs complementam a análise do DRE com visibilidade sobre 
+      <strong>movimentações reais de dinheiro</strong>.
+    </div>
+    
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:16px">
+      
+      <!-- Saldo Variação -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:24px">💰</span>
+          <div style="font-size:14px;font-weight:700;color:var(--teal)">Saldo (Variação)</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3b82f6;margin-bottom:8px;padding:8px;background:rgba(59,130,246,.08);border-radius:6px">
+          Total Entradas − Total Saídas
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:10px">
+          Mostra se entrou mais ou menos dinheiro do que saiu no período. Saldo positivo = geração de caixa. 
+          Saldo negativo = queima de caixa.
+        </div>
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;font-weight:700;margin-bottom:4px">INTERPRETAÇÃO</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">
+          <span style="color:var(--teal)">▸ Positivo:</span> Empresa gerando caixa<br>
+          <span style="color:#f59e0b">▸ Zero:</span> Entradas = Saídas<br>
+          <span style="color:var(--red)">▸ Negativo:</span> Queimando caixa
+        </div>
+      </div>
+      
+      <!-- Dias de Sobrevivência -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:24px">⏱️</span>
+          <div style="font-size:14px;font-weight:700;color:var(--teal)">Dias de Sobrevivência (Runway)</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3b82f6;margin-bottom:8px;padding:8px;background:rgba(59,130,246,.08);border-radius:6px">
+          Saldo Atual ÷ Média de Gastos/Dia
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:10px">
+          Quantos dias a empresa consegue operar com o saldo atual, mantendo o nível de gastos médio. 
+          Métrica crítica para empresas em fase inicial ou com fluxo negativo.
+        </div>
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;font-weight:700;margin-bottom:4px">FAIXAS</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">
+          <span style="color:var(--green)">▸ >90 dias:</span> Excelente<br>
+          <span style="color:#10b981">▸ 35-90:</span> Saudável<br>
+          <span style="color:#f59e0b">▸ 15-35:</span> Atenção<br>
+          <span style="color:var(--red)">▸ <15:</span> Crítico
+        </div>
+      </div>
+      
+      <!-- Maior Entrada -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:24px">📥</span>
+          <div style="font-size:14px;font-weight:700;color:var(--teal)">Maior Entrada</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3b82f6;margin-bottom:8px;padding:8px;background:rgba(59,130,246,.08);border-radius:6px">
+          MAX(transações de crédito)
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:10px">
+          Identifica a maior entrada de dinheiro no período. Útil para entender as principais fontes de receita 
+          e avaliar concentração de risco.
+        </div>
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;font-weight:700;margin-bottom:4px">ANÁLISE</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">
+          Se representa >50% do total: alta dependência de um cliente/fonte. Recomenda-se diversificação.
+        </div>
+      </div>
+      
+      <!-- Maior Saída -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:24px">📤</span>
+          <div style="font-size:14px;font-weight:700;color:var(--teal)">Maior Saída</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3b82f6;margin-bottom:8px;padding:8px;background:rgba(59,130,246,.08);border-radius:6px">
+          MAX(transações de débito)
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:10px">
+          Identifica a maior saída de dinheiro. Ajuda a entender os principais custos fixos ou despesas significativas 
+          que precisam ser cobertos mensalmente.
+        </div>
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;font-weight:700;margin-bottom:4px">CLASSIFICAÇÃO</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">
+          <span style="color:var(--teal)">▸ Recorrente:</span> Salários, aluguel<br>
+          <span style="color:#f59e0b">▸ Pontual:</span> Investimentos, compras
+        </div>
+      </div>
+      
+    </div>
+    
+    <div style="background:rgba(0,232,155,.06);border:1px solid rgba(0,232,155,.15);border-radius:12px;padding:14px 18px;margin-top:16px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.8">
+      <strong style="color:var(--teal)">💡 Dica:</strong> Os KPIs de cashflow são <strong>complementares</strong> aos KPIs do DRE. 
+      O DRE mostra rentabilidade (regime de competência), enquanto o cashflow mostra liquidez (regime de caixa). 
+      Uma empresa pode ter lucro no DRE mas caixa negativo, ou vice-versa.
+    </div>
+  `;
+  grid.appendChild(cashflowSection);
 }
 
 // ═══════════════════════════════════════════

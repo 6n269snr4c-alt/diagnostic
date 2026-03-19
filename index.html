@@ -485,10 +485,27 @@
       <!-- Sugestões -->
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px" id="advisorSuggestions"></div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px">
         <div style="font-size:10px;color:var(--mut)">Cmd+Enter para enviar</div>
-        <button class="bs" onclick="advisorAsk()" id="advisorSendBtn" style="padding:8px 24px">
-          Consultar Conselheiro →
+        <div style="display:flex;gap:8px">
+          <button class="bs ghost" onclick="toggleVoiceInput()" id="voiceBtn" style="padding:8px 16px;display:flex;align-items:center;gap:6px" title="Falar com a IA">
+            <span id="voiceBtnIcon">🎤</span>
+            <span id="voiceBtnText">Falar</span>
+          </button>
+          <button class="bs" onclick="advisorAsk()" id="advisorSendBtn" style="padding:8px 24px">
+            Consultar Conselheiro →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voice visualization -->
+    <div id="voiceVisualizer" style="display:none;background:var(--glass);border:1px solid var(--bdr);border-radius:14px;padding:24px;text-align:center">
+      <div id="voiceStatus" style="font-size:14px;font-weight:700;color:var(--teal);margin-bottom:16px">🎤 Gravando...</div>
+      <canvas id="voiceCanvas" width="400" height="100" style="width:100%;max-width:400px;height:100px;margin:0 auto"></canvas>
+      <div style="margin-top:16px">
+        <button class="bs" onclick="stopVoiceInput()" style="padding:8px 24px;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#ef4444">
+          ⏹ Parar Gravação
         </button>
       </div>
     </div>

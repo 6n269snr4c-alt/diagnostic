@@ -4138,10 +4138,13 @@ IMPORTANTE: Formate sua resposta usando markdown simples (negrito com **, listas
       <div style="background:var(--glass);border:1px solid ${advisor.color}33;border-radius:14px;overflow:hidden">
         <div style="padding:16px 24px;border-bottom:1px solid ${advisor.color}22;display:flex;align-items:center;gap:10px">
           <span style="font-size:22px">${advisor.icon}</span>
-          <div>
+          <div style="flex:1">
             <div style="font-size:12px;font-weight:700;color:${advisor.color}">${advisor.name}</div>
             <div style="font-size:10px;color:var(--mut);font-style:italic">"${advisor.tagline}"</div>
           </div>
+          <button onclick="speakText(document.getElementById('advisorRespText').textContent)" class="bs ghost" style="padding:6px 12px;font-size:12px" title="Ouvir resposta">
+            🔊 Ouvir
+          </button>
         </div>
         <div style="padding:20px 24px;font-size:13px;color:#c8dff5;line-height:1.8" id="advisorRespText">${formatted}</div>
         ${actions.length ? `
@@ -4171,6 +4174,12 @@ IMPORTANTE: Formate sua resposta usando markdown simples (negrito com **, listas
           </button>
         </div>` : ''}
       </div>`;
+
+    // Fala a resposta automaticamente
+    setTimeout(() => {
+      const textToSpeak = document.getElementById('advisorRespText').textContent;
+      speakText(textToSpeak);
+    }, 500);
 
     // Save to history
     if (!S.advisorHistory) S.advisorHistory = { analytics:[], growth:[], strategist:[] };
@@ -6025,4 +6034,259 @@ function dreModelClear() {
       dreModelRenderStatus();
     }
   );
+}
+
+// ═══════════════════════════════════════════
+// VOICE INPUT (Speech-to-Text)
+// ═══════════════════════════════════════════
+
+let _voiceRecognition = null;
+let _voiceAnimationFrame = null;
+let _audioContext = null;
+let _analyser = null;
+let _voiceStream = null;
+
+function initVoiceRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (!SpeechRecognition) {
+    toast('⚠️ Seu navegador não suporta reconhecimento de voz');
+    return null;
+  }
+  
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'pt-BR';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  
+  return recognition;
+}
+
+function toggleVoiceInput() {
+  if (_voiceRecognition && _voiceRecognition.listening) {
+    stopVoiceInput();
+  } else {
+    startVoiceInput();
+  }
+}
+
+async function startVoiceInput() {
+  if (!_voiceRecognition) {
+    _voiceRecognition = initVoiceRecognition();
+    if (!_voiceRecognition) return;
+  }
+  
+  try {
+    _voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    initVoiceVisualization(_voiceStream);
+    
+    document.getElementById('voiceVisualizer').style.display = 'block';
+    document.getElementById('voiceBtn').style.display = 'none';
+    
+    _voiceRecognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById('advisorQuestion').value = transcript;
+      stopVoiceInput();
+      toast('✓ Transcrição concluída');
+    };
+    
+    _voiceRecognition.onerror = (event) => {
+      console.error('Erro:', event.error);
+      if (event.error === 'no-speech') {
+        toast('⚠️ Nenhuma fala detectada');
+      } else {
+        toast('⚠️ Erro no reconhecimento de voz');
+      }
+      stopVoiceInput();
+    };
+    
+    _voiceRecognition.onend = () => {
+      _voiceRecognition.listening = false;
+    };
+    
+    _voiceRecognition.listening = true;
+    _voiceRecognition.start();
+    
+    document.getElementById('voiceStatus').innerHTML = '🎤 Fale agora...';
+    
+  } catch (error) {
+    console.error('Erro ao acessar microfone:', error);
+    toast('⚠️ Não foi possível acessar o microfone');
+    stopVoiceInput();
+  }
+}
+
+function stopVoiceInput() {
+  if (_voiceRecognition && _voiceRecognition.listening) {
+    _voiceRecognition.stop();
+    _voiceRecognition.listening = false;
+  }
+  
+  if (_voiceAnimationFrame) {
+    cancelAnimationFrame(_voiceAnimationFrame);
+    _voiceAnimationFrame = null;
+  }
+  
+  if (_voiceStream) {
+    _voiceStream.getTracks().forEach(track => track.stop());
+    _voiceStream = null;
+  }
+  
+  if (_audioContext) {
+    _audioContext.close();
+    _audioContext = null;
+  }
+  
+  document.getElementById('voiceVisualizer').style.display = 'none';
+  document.getElementById('voiceBtn').style.display = 'flex';
+}
+
+function initVoiceVisualization(stream) {
+  const canvas = document.getElementById('voiceCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  _audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  _analyser = _audioContext.createAnalyser();
+  const source = _audioContext.createMediaStreamSource(stream);
+  source.connect(_analyser);
+  _analyser.fftSize = 256;
+  
+  const bufferLength = _analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  
+  const draw = () => {
+    _voiceAnimationFrame = requestAnimationFrame(draw);
+    _analyser.getByteFrequencyData(dataArray);
+    
+    ctx.fillStyle = 'rgba(10, 24, 40, 0.3)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let barHeight;
+    let x = 0;
+    
+    for (let i = 0; i < bufferLength; i++) {
+      barHeight = (dataArray[i] / 255) * canvas.height * 0.8;
+      const hue = (i / bufferLength) * 120 + 180;
+      ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+      ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+      x += barWidth + 1;
+    }
+  };
+  
+  draw();
+}
+
+// ═══════════════════════════════════════════
+// VOICE OUTPUT (Text-to-Speech)
+// ═══════════════════════════════════════════
+
+let _currentSpeech = null;
+let _orbAnimation = null;
+
+function speakText(text) {
+  if (!window.speechSynthesis) {
+    toast('⚠️ Seu navegador não suporta síntese de voz');
+    return;
+  }
+  
+  if (_currentSpeech) {
+    window.speechSynthesis.cancel();
+  }
+  
+  _currentSpeech = new SpeechSynthesisUtterance(text);
+  _currentSpeech.lang = 'pt-BR';
+  _currentSpeech.rate = 1.0;
+  _currentSpeech.pitch = 1.0;
+  _currentSpeech.volume = 1.0;
+  
+  const voices = window.speechSynthesis.getVoices();
+  const ptBRVoice = voices.find(v => v.lang === 'pt-BR');
+  if (ptBRVoice) {
+    _currentSpeech.voice = ptBRVoice;
+  }
+  
+  _currentSpeech.onstart = () => { showSpeakingOrb(); };
+  _currentSpeech.onend = () => { hideSpeakingOrb(); _currentSpeech = null; };
+  _currentSpeech.onerror = (error) => { console.error('Erro:', error); hideSpeakingOrb(); _currentSpeech = null; };
+  
+  window.speechSynthesis.speak(_currentSpeech);
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  hideSpeakingOrb();
+  _currentSpeech = null;
+}
+
+function showSpeakingOrb() {
+  let overlay = document.getElementById('speakingOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'speakingOverlay';
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.8); z-index: 9999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+    `;
+    overlay.innerHTML = `
+      <div style="font-size:18px;font-weight:700;color:#3b82f6">🔊 Respondendo...</div>
+      <canvas id="orbCanvas" width="300" height="300"></canvas>
+      <button class="bs" onclick="stopSpeaking()" style="padding:10px 24px;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#ef4444">⏹ Parar</button>
+    `;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  startOrbAnimation();
+}
+
+function hideSpeakingOrb() {
+  const overlay = document.getElementById('speakingOverlay');
+  if (overlay) overlay.style.display = 'none';
+  if (_orbAnimation) {
+    cancelAnimationFrame(_orbAnimation);
+    _orbAnimation = null;
+  }
+}
+
+function startOrbAnimation() {
+  const canvas = document.getElementById('orbCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  let time = 0;
+  
+  const draw = () => {
+    _orbAnimation = requestAnimationFrame(draw);
+    time += 0.02;
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    for (let layer = 0; layer < 3; layer++) {
+      const particles = 30;
+      const radius = 80 + layer * 30;
+      for (let i = 0; i < particles; i++) {
+        const angle = (i / particles) * Math.PI * 2 + time + layer * 0.5;
+        const wave = Math.sin(time * 2 + i * 0.3) * 10;
+        const x = centerX + Math.cos(angle) * (radius + wave);
+        const y = centerY + Math.sin(angle) * (radius + wave);
+        const hue = (time * 50 + i * 10 + layer * 30) % 360;
+        const alpha = 0.6 - layer * 0.15;
+        ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 3 - layer * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  };
+  draw();
+}
+
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {};
 }

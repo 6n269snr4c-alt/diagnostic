@@ -831,12 +831,15 @@ function toggleKpiList(){
   });
 }
 function sizeWheel(){
-  const col=document.getElementById('wheelCol');if(!col)return;
-  const W=col.clientWidth,H=col.clientHeight;
-  const sz=Math.max(180,Math.min(W*.88,H*.9,500));
   const svg=document.getElementById('hw');
-  svg.setAttribute('width',sz);svg.setAttribute('height',sz);svg.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
-  const ww=document.getElementById('wheelWrap');ww.style.width=sz+'px';ww.style.height=sz+'px';
+  if(!svg)return;
+  
+  // No novo layout executivo, a roda tem tamanho fixo de 200px
+  const sz = 200;
+  svg.setAttribute('width',sz);
+  svg.setAttribute('height',sz);
+  svg.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
+  
   rWheel(window._lastDets||null,sz,'hw');
 }
 window.addEventListener('resize',()=>{
@@ -1189,6 +1192,10 @@ function rDash(){
   const ss=document.getElementById('scoreSector');if(ss)ss.textContent=S.sector||'';
   const nl=document.getElementById('navLogo');if(S.logo){nl.src=S.logo;nl.style.display='block';}else nl.style.display='none';
   rPills();rTrend();
+  
+  // Renderiza dashboard executivo
+  renderExecutiveDashboard();
+  
   const res=S.sel?calcScore(S.sel):null;
   // Lucro Líquido card
   (function(){
@@ -6290,3 +6297,349 @@ function startOrbAnimation() {
 if (window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => {};
 }
+
+// ═══════════════════════════════════════════
+// EXECUTIVE DASHBOARD
+// ═══════════════════════════════════════════
+
+function renderExecutiveDashboard() {
+  if (!S.months || S.months.length === 0) return;
+  
+  const latest = S.months[S.months.length - 1];
+  const previous = S.months.length > 1 ? S.months[S.months.length - 2] : null;
+  
+  // Calcular métricas
+  const lucro = latest.net_profit || 0;
+  const receita = latest.revenue || 0;
+  const margem = receita > 0 ? (lucro / receita) * 100 : 0;
+  
+  // Variações vs mês anterior
+  const lucroVar = previous ? ((lucro - (previous.net_profit || 0)) / Math.abs(previous.net_profit || 1)) * 100 : 0;
+  const receitaVar = previous ? ((receita - (previous.revenue || 0)) / (previous.revenue || 1)) * 100 : 0;
+  const margemVar = previous && previous.revenue > 0 ? margem - ((previous.net_profit || 0) / previous.revenue * 100) : 0;
+  
+  // Atualizar cards de métricas
+  document.getElementById('execLucro').textContent = fmt(lucro);
+  document.getElementById('execLucro').style.color = lucro >= 0 ? 'var(--teal)' : 'var(--red)';
+  document.getElementById('execLucroVar').innerHTML = formatVariation(lucroVar, lucro);
+  
+  document.getElementById('execMargem').textContent = margem.toFixed(1) + '%';
+  document.getElementById('execMargem').style.color = margem >= 10 ? 'var(--teal)' : margem >= 5 ? 'var(--amber)' : 'var(--red)';
+  document.getElementById('execMargemVar').innerHTML = formatVariation(margemVar, margem, '%');
+  
+  document.getElementById('execReceita').textContent = fmt(receita);
+  document.getElementById('execReceita').style.color = '#c8dff5';
+  document.getElementById('execReceitaVar').innerHTML = formatVariation(receitaVar, receita);
+  
+  // Renderizar mini gráfico
+  renderExecChart();
+  
+  // Renderizar diagnóstico
+  renderExecDiag();
+  
+  // Renderizar top gastos
+  renderExecGastos();
+  
+  // Renderizar ações
+  renderExecAcoes();
+  
+  // Renderizar alertas
+  renderExecAlertas();
+}
+
+function formatVariation(variation, value, suffix = '') {
+  if (!variation || Math.abs(variation) < 0.1) {
+    return `<span style="color:var(--mut)">—</span>`;
+  }
+  
+  const arrow = variation > 0 ? '↗️' : '↘️';
+  const color = variation > 0 ? 'var(--teal)' : 'var(--red)';
+  const sign = variation > 0 ? '+' : '';
+  
+  return `<span style="color:${color}">${arrow} ${sign}${variation.toFixed(1)}${suffix}</span>`;
+}
+
+function renderExecChart() {
+  const canvas = document.getElementById('execChart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width = canvas.offsetWidth * 2; // 2x for retina
+  const height = canvas.height = 160; // 2x for retina (80px display)
+  
+  const months = S.months.slice(-6);
+  if (months.length === 0) return;
+  
+  const lucros = months.map(m => m.net_profit || 0);
+  const max = Math.max(...lucros, 0);
+  const min = Math.min(...lucros, 0);
+  const range = max - min || 1;
+  
+  const padding = 20;
+  const chartWidth = width - padding * 2;
+  const chartHeight = height - padding * 2;
+  const step = chartWidth / (months.length - 1 || 1);
+  
+  // Limpa canvas
+  ctx.clearRect(0, 0, width, height);
+  
+  // Desenha grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding + (chartHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding, y);
+    ctx.lineTo(width - padding, y);
+    ctx.stroke();
+  }
+  
+  // Desenha linha
+  ctx.strokeStyle = 'rgba(0,232,155,0.8)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  ctx.stroke();
+  
+  // Desenha pontos
+  ctx.fillStyle = 'rgba(0,232,155,1)';
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  // Área sombreada
+  ctx.globalAlpha = 0.1;
+  ctx.fillStyle = 'rgba(0,232,155,1)';
+  ctx.beginPath();
+  ctx.moveTo(padding, height - padding);
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    ctx.lineTo(x, y);
+  });
+  ctx.lineTo(padding + chartWidth, height - padding);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function renderExecDiag() {
+  const diagEl = document.getElementById('execDiag');
+  if (!diagEl) return;
+  
+  const latest = S.months[S.months.length - 1];
+  if (!latest || !latest.diagnosis) {
+    diagEl.innerHTML = '<span style="color:var(--mut)">Diagnóstico será gerado ao salvar os dados do mês.</span>';
+    return;
+  }
+  
+  // Pega primeiro parágrafo do diagnóstico (resumo)
+  const diag = latest.diagnosis;
+  const firstPara = diag.split('\n\n')[0] || diag.substring(0, 200);
+  diagEl.textContent = firstPara + (firstPara.length < diag.length ? '...' : '');
+}
+
+function renderExecGastos() {
+  const gastosEl = document.getElementById('execGastos');
+  if (!gastosEl) return;
+  
+  const latest = S.months[S.months.length - 1];
+  if (!latest || !latest.lines) {
+    gastosEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem dados</div>';
+    return;
+  }
+  
+  // Pega linhas de despesa e ordena por valor
+  const expenses = latest.lines
+    .filter(l => l.value < 0)
+    .map(l => ({ name: l.name, value: Math.abs(l.value) }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+  
+  if (expenses.length === 0) {
+    gastosEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem despesas</div>';
+    return;
+  }
+  
+  const total = expenses.reduce((sum, e) => sum + e.value, 0);
+  
+  gastosEl.innerHTML = expenses.map((e, i) => {
+    const pct = (e.value / total * 100).toFixed(0);
+    const icon = i === 0 ? '💼' : i === 1 ? '🏢' : '📢';
+    return `
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">${icon}</span>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600;color:#e8f0ff;margin-bottom:2px">${e.name}</div>
+          <div style="font-size:11px;color:var(--mut)">${fmt(e.value)}</div>
+        </div>
+        <div style="font-size:11px;color:var(--red);font-weight:700">${pct}%</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderExecAcoes() {
+  const acoesEl = document.getElementById('execAcoes');
+  if (!acoesEl) return;
+  
+  // Busca ações salvas
+  const actions = S.actions || [];
+  
+  if (actions.length === 0) {
+    acoesEl.innerHTML = `
+      <div style="color:var(--mut);font-size:11px;padding:30px 0;text-align:center">
+        <div style="margin-bottom:8px">Nenhuma ação salva</div>
+        <button onclick="go('advisor',document.querySelector('[data-page=advisor]'))" class="bs ghost" style="font-size:11px;padding:6px 14px">
+          Consultar Conselheiro
+        </button>
+      </div>
+    `;
+    document.getElementById('execAcoesBar').style.width = '0%';
+    return;
+  }
+  
+  // Mostra top 3 ações
+  const topActions = actions.slice(0, 3);
+  const completed = actions.filter(a => a.done).length;
+  const progress = (completed / actions.length * 100).toFixed(0);
+  
+  acoesEl.innerHTML = topActions.map(a => {
+    const prazo = a.prazo ? parsePrazo(a.prazo) : null;
+    const isLate = prazo && prazo < new Date();
+    const daysLeft = prazo ? Math.ceil((prazo - new Date()) / (1000 * 60 * 60 * 24)) : null;
+    
+    let prazoHtml = '';
+    if (a.prazo && !a.done) {
+      if (isLate) {
+        prazoHtml = `<div style="font-size:10px;color:var(--red);margin-top:2px">⚠️ Atrasado ${Math.abs(daysLeft)} dias</div>`;
+      } else if (daysLeft <= 3) {
+        prazoHtml = `<div style="font-size:10px;color:var(--amber);margin-top:2px">⏱ Vence em ${daysLeft} dias</div>`;
+      } else {
+        prazoHtml = `<div style="font-size:10px;color:var(--mut);margin-top:2px">⏱ Vence em ${daysLeft} dias</div>`;
+      }
+    }
+    
+    return `
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:8px;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid rgba(255,255,255,.04)" onmouseover="this.style.borderColor='rgba(0,232,155,.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,.04)'">
+        <input type="checkbox" ${a.done ? 'checked' : ''} onchange="toggleExecAction('${a.id}')" style="margin-top:2px;accent-color:var(--teal);width:14px;height:14px;cursor:pointer;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;line-height:1.5;color:${a.done ? 'var(--mut)' : '#c8dff5'};${a.done ? 'text-decoration:line-through' : ''}">${a.text}</div>
+          ${prazoHtml}
+        </div>
+      </label>
+    `;
+  }).join('');
+  
+  document.getElementById('execAcoesBar').style.width = progress + '%';
+}
+
+function toggleExecAction(id) {
+  const action = S.actions.find(a => a.id === id);
+  if (action) {
+    action.done = !action.done;
+    sv();
+    renderExecAcoes();
+    toast(action.done ? '✓ Ação concluída' : 'Ação marcada como pendente');
+  }
+}
+
+function renderExecAlertas() {
+  const alertasEl = document.getElementById('execAlertas');
+  if (!alertasEl) return;
+  
+  const alerts = [];
+  
+  if (S.months && S.months.length >= 2) {
+    const latest = S.months[S.months.length - 1];
+    const previous = S.months[S.months.length - 2];
+    
+    const lucro = latest.net_profit || 0;
+    const receita = latest.revenue || 0;
+    const margem = receita > 0 ? (lucro / receita) * 100 : 0;
+    const prevMargem = previous.revenue > 0 ? ((previous.net_profit || 0) / previous.revenue * 100) : 0;
+    const margemVar = margem - prevMargem;
+    
+    // Alerta: Margem caiu
+    if (margemVar < -2) {
+      alerts.push({
+        icon: '🔴',
+        text: `Margem caiu ${Math.abs(margemVar).toFixed(1)}%`,
+        color: 'var(--red)'
+      });
+    }
+    
+    // Alerta: Lucro negativo
+    if (lucro < 0) {
+      alerts.push({
+        icon: '🔴',
+        text: 'Prejuízo no período',
+        color: 'var(--red)'
+      });
+    }
+    
+    // Alerta: Margem baixa mas positiva
+    if (lucro >= 0 && margem < 5) {
+      alerts.push({
+        icon: '🟡',
+        text: `Margem apertada (${margem.toFixed(1)}%)`,
+        color: 'var(--amber)'
+      });
+    }
+    
+    // Boa notícia: Margem cresceu
+    if (margemVar > 2) {
+      alerts.push({
+        icon: '🟢',
+        text: `Margem cresceu ${margemVar.toFixed(1)}%`,
+        color: 'var(--teal)'
+      });
+    }
+    
+    // Boa notícia: Lucro cresceu
+    const lucroVar = previous.net_profit ? ((lucro - previous.net_profit) / Math.abs(previous.net_profit)) * 100 : 0;
+    if (lucroVar > 10) {
+      alerts.push({
+        icon: '🟢',
+        text: `Lucro cresceu ${lucroVar.toFixed(0)}%`,
+        color: 'var(--teal)'
+      });
+    }
+  }
+  
+  if (alerts.length === 0) {
+    alertasEl.innerHTML = '<div style="color:var(--mut);font-size:11px">Nenhum alerta no momento</div>';
+    return;
+  }
+  
+  alertasEl.innerHTML = alerts.map(a => `
+    <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,255,255,.06)">
+      <span style="font-size:14px">${a.icon}</span>
+      <span style="font-size:11px;color:${a.color};font-weight:600">${a.text}</span>
+    </div>
+  `).join('');
+}
+
+function openKpiModal() {
+  // Por enquanto, vai para página de KPIs
+  toast('💡 Feature: Modal detalhado de KPIs em desenvolvimento');
+}
+
+function openAcoesModal() {
+  // Por enquanto, vai para página do conselheiro
+  go('advisor', document.querySelector('[data-page=advisor]'));
+}
+

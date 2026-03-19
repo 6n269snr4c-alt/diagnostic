@@ -83,6 +83,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);back
 .sidebar.collapsed .logout-btn{padding:4px 6px;font-size:13px}
 
 /* Main content area */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .main-content{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .page{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column}.page.active{display:flex}.act-row{border-bottom:1px solid rgba(255,255,255,.05);transition:background .15s}.act-row:hover{background:rgba(255,255,255,.03)}.act-row-overdue{border-left:2px solid #ef4444}input[type="date"].m-ai{color-scheme:light;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:5px 8px;color:#334155;font-size:12px;font-family:Outfit,sans-serif;outline:none}.kact-inp{color:var(--text);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:4px 8px;font-size:11px;font-family:Outfit,sans-serif;outline:none;width:100%}
 .scrollpage{display:none;flex:1;min-height:0;overflow-y:auto;flex-direction:column}.scrollpage.active{display:flex}

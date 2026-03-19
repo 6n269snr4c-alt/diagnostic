@@ -377,7 +377,7 @@ function rActions(){
   var thead=document.createElement('thead');
   var hrow=document.createElement('tr');
   hrow.style.borderBottom='2px solid rgba(255,255,255,.08)';
-  ['MÊS','KPI','AÇÃO','RESPONSÁVEL','PRAZO','STATUS','OBSERVAÇÃO',''].forEach(function(col){
+  ['MÊS','KPI','AÇÃO','RESPONSÁVEL','PRAZO','STATUS','OBSERVAÇÃO','',''].forEach(function(col){
     var th=document.createElement('th');
     th.style.cssText='text-align:left;padding:10px 12px;font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:700;white-space:nowrap';
     th.textContent=col;hrow.appendChild(th);
@@ -473,8 +473,19 @@ function rActions(){
     (function(aid){obsInp.addEventListener('change',function(){updateActionObs(aid,this.value);});})(a.id);
     tdObs.appendChild(obsInp);tr.appendChild(tdObs);
 
+    // Calendário
+    var tdCal=document.createElement('td');tdCal.style.padding='8px 4px';
+    var calBtn=document.createElement('button');
+    calBtn.title='Adicionar ao calendário';
+    calBtn.textContent='📅';
+    calBtn.style.cssText='background:none;border:none;cursor:pointer;font-size:16px;opacity:.4;transition:opacity .15s;padding:4px';
+    calBtn.onmouseover=function(){this.style.opacity='1';};
+    calBtn.onmouseout=function(){this.style.opacity='.4';};
+    (function(aid){calBtn.addEventListener('click',function(){addToCalendar(aid);});})(a.id);
+    tdCal.appendChild(calBtn);tr.appendChild(tdCal);
+
     // Excluir
-    var tdDel=document.createElement('td');tdDel.style.padding='8px 12px';
+    var tdDel=document.createElement('td');tdDel.style.padding='8px 4px';
     var delBtn=document.createElement('button');
     delBtn.title='Excluir ação';
     delBtn.textContent='🗑';
@@ -504,6 +515,235 @@ function updateActionStatus(id,status){
 function updateActionObs(id,obs){
   var a=S.actions.find(function(x){return x.id===id;});
   if(a){a.obs=obs;sv();}
+}
+
+// ═══════════════════════════════════════════
+// CALENDAR INTEGRATION
+// ═══════════════════════════════════════════
+
+function formatICSDate(dateStr) {
+  // Convert "15/04/2025" to "20250415"
+  if (!dateStr) return '';
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return '';
+  const [day, month, year] = parts;
+  return `${year}${month.padStart(2,'0')}${day.padStart(2,'0')}`;
+}
+
+function formatICSDateTime(date) {
+  // Format: 20250415T120000Z
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  const h = String(date.getUTCHours()).padStart(2, '0');
+  const min = String(date.getUTCMinutes()).padStart(2, '0');
+  const s = String(date.getUTCSeconds()).padStart(2, '0');
+  return `${y}${m}${d}T${h}${min}${s}Z`;
+}
+
+function generateICS(action) {
+  const now = formatICSDateTime(new Date());
+  const startDate = formatICSDate(action.prazo);
+  
+  // Escape special characters in ICS
+  const escapeICS = (str) => {
+    return (str || '').replace(/\\/g, '\\\\')
+                      .replace(/;/g, '\\;')
+                      .replace(/,/g, '\\,')
+                      .replace(/\n/g, '\\n');
+  };
+  
+  const title = escapeICS(action.text || 'Plano de Ação');
+  const description = escapeICS(
+    `KPI: ${action.kpi || '—'}\\n` +
+    `Responsável: ${action.resp || '—'}\\n` +
+    `Observação: ${action.obs || '—'}\\n\\n` +
+    `Criado em: ${action.criadoEm || ''}`
+  );
+  
+  return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Vital Diagnostic//Plano de Ação//PT
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:plano-${action.id}@vitaldiagnostic.com
+DTSTAMP:${now}
+DTSTART;VALUE=DATE:${startDate}
+SUMMARY:${title}
+DESCRIPTION:${description}
+STATUS:CONFIRMED
+SEQUENCE:0
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+TRIGGER:-P1D
+ACTION:DISPLAY
+DESCRIPTION:Lembrete: ${title}
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+}
+
+function addToCalendar(actionId) {
+  const action = S.actions.find(a => a.id === actionId);
+  if (!action) return;
+  
+  // Validar prazo
+  if (!action.prazo) {
+    toast('⚠️ Defina um prazo antes de adicionar ao calendário');
+    return;
+  }
+  
+  const icsContent = generateICS(action);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    // Mobile: abre app de calendário nativo instantaneamente
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    // Tenta abrir o calendário nativo
+    window.location.href = url;
+    
+    // Limpa URL após 1 segundo
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    
+  } else {
+    // Desktop: mostra modal com opções
+    showCalendarModal(action, icsContent);
+  }
+}
+
+function showCalendarModal(action, icsContent) {
+  // Formata data para URLs
+  const prazoDate = parsePrazo(action.prazo);
+  if (!prazoDate) return;
+  
+  const formatGoogleDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
+  };
+  
+  const googleDate = formatGoogleDate(prazoDate);
+  
+  // URLs para calendários online
+  const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+    `&text=${encodeURIComponent(action.text || 'Plano de Ação')}` +
+    `&dates=${googleDate}/${googleDate}` +
+    `&details=${encodeURIComponent(`KPI: ${action.kpi || '—'}\nResponsável: ${action.resp || '—'}\nObservação: ${action.obs || '—'}`)}`;
+  
+  const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose` +
+    `?subject=${encodeURIComponent(action.text || 'Plano de Ação')}` +
+    `&startdt=${prazoDate.toISOString()}` +
+    `&body=${encodeURIComponent(`KPI: ${action.kpi}\nResponsável: ${action.resp}`)}`;
+  
+  // Cria modal
+  const modal = document.createElement('div');
+  modal.id = 'calendarModal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn .2s;
+  `;
+  
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">
+        📅 Adicionar ao Calendário
+      </div>
+      <div style="font-size:12px;color:var(--mut);margin-bottom:20px">
+        ${action.text}
+      </div>
+      
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="window.open('${googleUrl}');closeCalendarModal()" 
+          style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:12px;color:#3b82f6;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;text-align:left;display:flex;align-items:center;gap:10px"
+          onmouseover="this.style.background='rgba(59,130,246,.15)';this.style.borderColor='rgba(59,130,246,.5)'"
+          onmouseout="this.style.background='rgba(59,130,246,.1)';this.style.borderColor='rgba(59,130,246,.3)'">
+          <span style="font-size:20px">🗓️</span>
+          <div>
+            <div>Google Calendar</div>
+            <div style="font-size:10px;opacity:.7;font-weight:400">Abre em nova aba</div>
+          </div>
+        </button>
+        
+        <button onclick="window.open('${outlookUrl}');closeCalendarModal()" 
+          style="background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:8px;padding:12px;color:#8b5cf6;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;text-align:left;display:flex;align-items:center;gap:10px"
+          onmouseover="this.style.background='rgba(139,92,246,.15)';this.style.borderColor='rgba(139,92,246,.5)'"
+          onmouseout="this.style.background='rgba(139,92,246,.1)';this.style.borderColor='rgba(139,92,246,.3)'">
+          <span style="font-size:20px">📧</span>
+          <div>
+            <div>Outlook</div>
+            <div style="font-size:10px;opacity:.7;font-weight:400">Abre em nova aba</div>
+          </div>
+        </button>
+        
+        <button onclick="downloadICSFile('${action.id}');closeCalendarModal()" 
+          style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:12px;color:#10b981;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s;text-align:left;display:flex;align-items:center;gap:10px"
+          onmouseover="this.style.background='rgba(16,185,129,.15)';this.style.borderColor='rgba(16,185,129,.5)'"
+          onmouseout="this.style.background='rgba(16,185,129,.1)';this.style.borderColor='rgba(16,185,129,.3)'">
+          <span style="font-size:20px">📥</span>
+          <div>
+            <div>Baixar .ics</div>
+            <div style="font-size:10px;opacity:.7;font-weight:400">Apple Calendar, outros</div>
+          </div>
+        </button>
+      </div>
+      
+      <button onclick="closeCalendarModal()" 
+        style="width:100%;margin-top:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px;color:var(--mut);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s"
+        onmouseover="this.style.background='rgba(255,255,255,.08)'"
+        onmouseout="this.style.background='rgba(255,255,255,.06)'">
+        Cancelar
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Fecha ao clicar no fundo
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeCalendarModal();
+  });
+}
+
+function closeCalendarModal() {
+  const modal = document.getElementById('calendarModal');
+  if (modal) modal.remove();
+}
+
+function downloadICSFile(actionId) {
+  const action = S.actions.find(a => a.id === actionId);
+  if (!action) return;
+  
+  const icsContent = generateICS(action);
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `plano-${action.id}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function parsePrazo(prazoStr) {
+  // Parse "15/04/2025" to Date
+  if (!prazoStr) return null;
+  const parts = prazoStr.split('/');
+  if (parts.length !== 3) return null;
+  const [day, month, year] = parts.map(p => parseInt(p));
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  return new Date(year, month - 1, day);
 }
 
 function toggleSidebar(){

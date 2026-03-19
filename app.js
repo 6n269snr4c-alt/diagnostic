@@ -596,23 +596,47 @@ function addToCalendar(actionId) {
   
   const icsContent = generateICS(action);
   
-  // TODOS OS DISPOSITIVOS: gera .ics e deixa o SO abrir o calendário nativo
-  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
+  // Detecta dispositivo
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isMobile = isIOS || isAndroid;
   
-  // Cria link e força download/abertura
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `plano-${action.id}.ics`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  // Limpa URL após 1 segundo
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  
-  // Feedback visual
-  toast('📅 Abrindo no calendário...');
+  if (isMobile) {
+    // Mobile: força download do .ics (abre app nativo)
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `plano-${action.id}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    
+  } else {
+    // Desktop: tenta data URL primeiro
+    const dataUrl = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsContent);
+    
+    // Tenta abrir data URL (alguns navegadores abrem calendário)
+    const opened = window.open(dataUrl, '_blank');
+    
+    if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+      // Se bloqueou, faz download do .ics
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `plano-${action.id}.ics`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+      toast('📥 Arquivo baixado! Clique nele para abrir no calendário');
+    } else {
+      toast('📅 Abrindo no calendário...');
+    }
+  }
 }
 
 function parsePrazo(prazoStr) {

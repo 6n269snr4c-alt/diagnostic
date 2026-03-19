@@ -723,11 +723,6 @@ function showCalendarModal(action, icsContent) {
       </button>
     </div>
   `;
-        onmouseout="this.style.background='rgba(255,255,255,.06)'">
-        Cancelar
-      </button>
-    </div>
-  `;
   
   document.body.appendChild(modal);
   

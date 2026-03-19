@@ -594,15 +594,19 @@ function addToCalendar(actionId) {
     return;
   }
   
-  const icsContent = generateICS(action);
+  const prazoDate = parsePrazo(action.prazo);
+  if (!prazoDate) {
+    toast('⚠️ Formato de prazo inválido');
+    return;
+  }
   
-  // Detecta dispositivo
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isAndroid = /Android/.test(navigator.userAgent);
   const isMobile = isIOS || isAndroid;
   
   if (isMobile) {
-    // Mobile: força download do .ics (abre app nativo)
+    // Mobile: gera .ics e abre app nativo
+    const icsContent = generateICS(action);
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -614,28 +618,30 @@ function addToCalendar(actionId) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     
   } else {
-    // Desktop: tenta data URL primeiro
-    const dataUrl = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsContent);
+    // Desktop: abre Google Calendar (funciona para todos)
+    const formatGoogleDate = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}${m}${d}`;
+    };
     
-    // Tenta abrir data URL (alguns navegadores abrem calendário)
-    const opened = window.open(dataUrl, '_blank');
+    const googleDate = formatGoogleDate(prazoDate);
+    const title = encodeURIComponent(action.text || 'Plano de Ação');
+    const details = encodeURIComponent(
+      `KPI: ${action.kpi || '—'}\n` +
+      `Responsável: ${action.resp || '—'}\n` +
+      `Observação: ${action.obs || '—'}`
+    );
     
-    if (!opened || opened.closed || typeof opened.closed === 'undefined') {
-      // Se bloqueou, faz download do .ics
-      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `plano-${action.id}.ics`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      
-      toast('📥 Arquivo baixado! Clique nele para abrir no calendário');
-    } else {
-      toast('📅 Abrindo no calendário...');
-    }
+    // Abre Google Calendar em nova aba
+    const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+      `&text=${title}` +
+      `&dates=${googleDate}/${googleDate}` +
+      `&details=${details}`;
+    
+    window.open(googleUrl, '_blank');
+    toast('📅 Calendário aberto em nova aba');
   }
 }
 

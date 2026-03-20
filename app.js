@@ -834,13 +834,23 @@ function sizeWheel(){
   const svg=document.getElementById('hw');
   if(!svg)return;
   
-  // No novo layout executivo, a roda tem tamanho fixo de 280px
-  const sz = 280;
-  svg.setAttribute('width',sz);
-  svg.setAttribute('height',sz);
-  svg.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
-  
-  rWheel(window._lastDets||null,sz,'hw');
+  // Roda agora usa o espaço do container pai
+  const parent = svg.parentElement;
+  if (parent) {
+    const maxSize = Math.min(parent.clientWidth, parent.clientHeight);
+    const sz = Math.max(280, maxSize);
+    svg.setAttribute('width', sz);
+    svg.setAttribute('height', sz);
+    svg.setAttribute('viewBox', `0 0 ${sz} ${sz}`);
+    rWheel(window._lastDets||null, sz, 'hw');
+  } else {
+    // Fallback
+    const sz = 380;
+    svg.setAttribute('width', sz);
+    svg.setAttribute('height', sz);
+    svg.setAttribute('viewBox', `0 0 ${sz} ${sz}`);
+    rWheel(window._lastDets||null, sz, 'hw');
+  }
 }
 window.addEventListener('resize',()=>{
   const pg=document.getElementById('page-dashboard');
@@ -6317,27 +6327,26 @@ function fmt(val) {
 function renderExecutiveDashboard() {
   console.log('🎯 renderExecutiveDashboard chamado');
   
-  const known = getKnownMonths();
-  console.log('📅 Meses conhecidos:', known);
-  
-  if (!known || known.length === 0) {
-    console.log('⚠️ Sem dados - mostrando placeholders');
-    // Sem dados - mostra placeholders
-    document.getElementById('execLucro').textContent = '—';
-    document.getElementById('execLucroVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
-    document.getElementById('execMargem').textContent = '—';
-    document.getElementById('execMargemVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
-    document.getElementById('execReceita').textContent = '—';
-    document.getElementById('execReceitaVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
-    document.getElementById('execDiag').innerHTML = '<span style="color:var(--mut)">Diagnóstico será gerado ao salvar os dados.</span>';
-    document.getElementById('execGastos').innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem dados</div>';
-    document.getElementById('execAcoes').innerHTML = '<div style="color:var(--mut);font-size:11px;padding:30px 0;text-align:center">Nenhuma ação salva</div>';
-    document.getElementById('execAlertas').innerHTML = '<div style="color:var(--mut);font-size:11px">Sem dados suficientes</div>';
+  // USA MÊS SELECIONADO (S.sel) ao invés do último
+  if (!S.sel) {
+    console.log('⚠️ Nenhum mês selecionado');
+    showExecPlaceholders();
     return;
   }
   
-  const latestKey = known[known.length - 1];
-  const previousKey = known.length > 1 ? known[known.length - 2] : null;
+  const known = getKnownMonths();
+  console.log('📅 Meses conhecidos:', known);
+  console.log('📅 Mês selecionado:', S.sel);
+  
+  if (!known || known.length === 0) {
+    console.log('⚠️ Sem dados - mostrando placeholders');
+    showExecPlaceholders();
+    return;
+  }
+  
+  const latestKey = S.sel; // USA SELECIONADO!
+  const latestIndex = known.indexOf(latestKey);
+  const previousKey = latestIndex > 0 ? known[latestIndex - 1] : null;
   
   console.log('📊 Mês atual:', latestKey);
   console.log('📊 Mês anterior:', previousKey);
@@ -6397,16 +6406,21 @@ function renderExecutiveDashboard() {
   // Renderizar diagnóstico
   renderExecDiag();
   
-  // Renderizar top gastos
-  renderExecGastos();
-  
   // Renderizar ações
   renderExecAcoes();
   
-  // Renderizar alertas
-  renderExecAlertas();
-  
   console.log('✅ Dashboard executivo renderizado completamente');
+}
+
+function showExecPlaceholders() {
+  document.getElementById('execLucro').textContent = '—';
+  document.getElementById('execLucroVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
+  document.getElementById('execMargem').textContent = '—';
+  document.getElementById('execMargemVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
+  document.getElementById('execReceita').textContent = '—';
+  document.getElementById('execReceitaVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
+  document.getElementById('execDiag').innerHTML = '<span style="color:var(--mut)">Diagnóstico será gerado ao salvar os dados.</span>';
+  document.getElementById('execAcoes').innerHTML = '<div style="color:var(--mut);font-size:11px;padding:30px 0;text-align:center">Nenhuma ação salva</div>';
 }
 
 function formatVariation(variation, value, suffix = '') {
@@ -6621,12 +6635,16 @@ function renderExecAcoes() {
       }
     }
     
+    // Responsável
+    const respHtml = a.responsible ? `<div style="font-size:10px;color:var(--mut);margin-top:2px">👤 ${a.responsible}</div>` : '';
+    
     return `
       <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:8px;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid rgba(255,255,255,.04)" onmouseover="this.style.borderColor='rgba(0,232,155,.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,.04)'">
         <input type="checkbox" ${a.done ? 'checked' : ''} onchange="toggleExecAction('${a.id}')" style="margin-top:2px;accent-color:var(--teal);width:14px;height:14px;cursor:pointer;flex-shrink:0">
         <div style="flex:1;min-width:0">
           <div style="font-size:11px;line-height:1.5;color:${a.done ? 'var(--mut)' : '#c8dff5'};${a.done ? 'text-decoration:line-through' : ''}">${a.text}</div>
           ${prazoHtml}
+          ${respHtml}
         </div>
       </label>
     `;
@@ -6744,5 +6762,65 @@ function openKpiModal() {
 function openAcoesModal() {
   // Por enquanto, vai para página do conselheiro
   go('advisor', document.querySelector('[data-page=advisor]'));
+}
+
+
+// ═══════════════════════════════════════════
+// FULLSCREEN & EXPAND
+// ═══════════════════════════════════════════
+
+let _dashFullscreen = false;
+
+function toggleFullDash() {
+  _dashFullscreen = !_dashFullscreen;
+  const container = document.getElementById('dashContainer');
+  const sidebar = document.getElementById('sb');
+  const topbar = document.querySelector('.top');
+  const btn = document.getElementById('fullDashBtn');
+  
+  if (_dashFullscreen) {
+    // Entra fullscreen
+    if (sidebar) sidebar.style.display = 'none';
+    if (topbar) topbar.style.display = 'none';
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.right = '0';
+    container.style.bottom = '0';
+    container.style.zIndex = '9999';
+    btn.innerHTML = '⛶ Sair';
+    btn.title = 'Sair do modo tela cheia';
+  } else {
+    // Sai fullscreen
+    if (sidebar) sidebar.style.display = '';
+    if (topbar) topbar.style.display = '';
+    container.style.position = '';
+    container.style.top = '';
+    container.style.left = '';
+    container.style.right = '';
+    container.style.bottom = '';
+    container.style.zIndex = '';
+    btn.innerHTML = '⛶ Expandir';
+    btn.title = 'Expandir dashboard para tela cheia';
+  }
+}
+
+function expandCard(cardType) {
+  // Por enquanto só mostra toast
+  // Pode implementar modal depois
+  switch(cardType) {
+    case 'roda':
+      toast('💡 Clique nas fatias da roda para ver detalhes de cada KPI');
+      break;
+    case 'resumo':
+      toast('💡 Feature: Expandir gráfico em desenvolvimento');
+      break;
+    case 'diag':
+      go('diag', document.querySelector('[data-page=diag]'));
+      break;
+    case 'acoes':
+      go('advisor', document.querySelector('[data-page=advisor]'));
+      break;
+  }
 }
 

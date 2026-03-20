@@ -1325,8 +1325,7 @@ function rDash(){
   const dp=document.getElementById('diagPeriod');
   if(dp&&S.sel){const[dy,dmo]=S.sel.split('-');dp.textContent=MES[parseInt(dmo)-1]+'/'+dy;}
   const ss=document.getElementById('scoreSector');if(ss)ss.textContent=S.sector||'';
-  const nl=document.getElementById('navLogo');if(S.logo){nl.src=S.logo;nl.style.display='block';}else nl.style.display='none';
-  const cn=document.getElementById('companyName');if(cn)cn.textContent=S.company||'';
+  const nl=document.getElementById('navLogo');if(nl&&S.logo){nl.src=S.logo;nl.style.display='block';}else if(nl)nl.style.display='none';
   rPills();rTrend();
   
   // Renderiza dashboard executivo

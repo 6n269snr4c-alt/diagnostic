@@ -5,9 +5,10 @@
 // Estado temporário do projeto sendo editado
 let _editingProject = null;
 
-// Helper: toast notification
-function toast(msg) {
-  if (typeof window.toast === 'function') {
+// Helper: toast notification (usa toast global se existir)
+function showToast(msg) {
+  // Verificar se existe toast global do app.js
+  if (typeof window.toast === 'function' && window.toast !== showToast) {
     window.toast(msg);
   } else {
     // Fallback: criar toast simples
@@ -549,7 +550,7 @@ window.saveActionInline = function saveActionInline(projIdx) {
   const deadline = document.getElementById('inlineActionDeadline').value;
   
   if (!title) {
-    toast('⚠️ Preencha o título da ação');
+    showToast('⚠️ Preencha o título da ação');
     return;
   }
   
@@ -574,7 +575,7 @@ window.saveActionInline = function saveActionInline(projIdx) {
   proj.actionIds.push(newAction.id);
   
   sv();
-  toast('✓ Ação criada e vinculada ao projeto');
+  showToast('✓ Ação criada e vinculada ao projeto');
   
   document.querySelector('.modal-overlay').remove();
   viewProject(projIdx);
@@ -599,7 +600,7 @@ window.saveLinkedActions = function saveLinkedActions(projIdx) {
   proj.actionIds = linkedIds;
   sv();
   
-  toast('✓ Ações vinculadas ao projeto');
+  showToast('✓ Ações vinculadas ao projeto');
   document.querySelector('.modal-overlay').remove();
   viewProject(projIdx);
 }
@@ -687,7 +688,7 @@ window.saveProject = function saveProject() {
   
   if (!nameEl || !objectiveEl || !deadlineEl) {
     console.error('[PROJETOS] Elementos do formulário não encontrados!');
-    toast('❌ Erro: Formulário não encontrado');
+    showToast('❌ Erro: Formulário não encontrado');
     return;
   }
   
@@ -698,12 +699,12 @@ window.saveProject = function saveProject() {
   console.log('[PROJETOS] Valores do formulário:', { name, objective, deadline });
   
   if (!name) {
-    toast('⚠️ Preencha o nome do projeto');
+    showToast('⚠️ Preencha o nome do projeto');
     return;
   }
   
   if (!deadline) {
-    toast('⚠️ Defina um prazo para o projeto');
+    showToast('⚠️ Defina um prazo para o projeto');
     return;
   }
   
@@ -726,13 +727,13 @@ window.saveProject = function saveProject() {
       // Editar existente
       S.projects[_editingProject] = projectData;
       console.log('[PROJETOS] Projeto atualizado');
-      toast('✓ Projeto atualizado');
+      showToast('✓ Projeto atualizado');
     } else {
       // Criar novo
       if (!S.projects) S.projects = [];
       S.projects.push(projectData);
       console.log('[PROJETOS] Projeto criado. Total de projetos:', S.projects.length);
-      toast('✓ Projeto criado');
+      showToast('✓ Projeto criado');
     }
     
     // Salvar no Firebase
@@ -764,7 +765,7 @@ window.saveProject = function saveProject() {
     
   } catch (error) {
     console.error('[PROJETOS] Erro ao salvar projeto:', error);
-    toast('❌ Erro ao salvar projeto: ' + error.message);
+    showToast('❌ Erro ao salvar projeto: ' + error.message);
   }
 }
 
@@ -783,7 +784,7 @@ window.deleteProject = function deleteProject(idx) {
       () => {
         S.projects.splice(idx, 1);
         if (typeof sv === 'function') sv();
-        toast('✓ Projeto excluído');
+        showToast('✓ Projeto excluído');
         rProjects();
       }
     );
@@ -791,7 +792,7 @@ window.deleteProject = function deleteProject(idx) {
     if (confirm(`Tem certeza que deseja excluir o projeto "${proj.name}"? As ações vinculadas não serão excluídas.`)) {
       S.projects.splice(idx, 1);
       if (typeof sv === 'function') sv();
-      toast('✓ Projeto excluído');
+      showToast('✓ Projeto excluído');
       rProjects();
     }
   }

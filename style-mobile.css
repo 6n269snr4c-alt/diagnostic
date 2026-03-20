@@ -1,6 +1,6 @@
 /*
  * ═══════════════════════════════════════════════════════
- * VITAL DIAGNOSTIC — MOBILE RESPONSIVE STYLESHEET
+ * FLUXA — MOBILE RESPONSIVE STYLESHEET
  * ═══════════════════════════════════════════════════════
  * ALL rules inside @media (max-width: 768px)
  * style.css is never touched — remove this file to revert
@@ -108,6 +108,25 @@
   .dash-title { font-size: 10px !important; letter-spacing: 2px; }
   #kpiToggleBtn { display: none; }
   .adm { font-size: 11px !important; padding: 4px 8px !important; }
+
+  /* Dashboard Executivo - Cards expansíveis */
+  #execDashContainer { padding: 12px !important; }
+  
+  /* Cards do dashboard executivo */
+  .exec-card {
+    min-height: auto !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* Botões de ação no topo do dashboard */
+  #dashActions { 
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  #dashActions button {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
 
   /* Month pills — single-line horizontal scroll */
   .mpills {

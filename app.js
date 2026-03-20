@@ -318,15 +318,51 @@ function parsePrazo(str){
   var d=new Date(y,parseInt(m[2])-1,parseInt(m[1]));
   return isNaN(d)?null:d;
 }
+// Normaliza ação para formato consistente
+function normalizeAction(a) {
+  return {
+    id: a.id || ('act_' + Date.now()),
+    text: a.text || a.acao || '—',
+    kpi: a.kpi || '—',
+    mes: a.mes || (a.mk ? formatMonthKey(a.mk) : '—'),
+    mk: a.mk || extractMonthKey(a.mes),
+    resp: a.resp || a.responsible || '',
+    prazo: a.prazo || a.deadline || '',
+    obs: a.obs || '',
+    status: a.status || (a.done ? 'done' : 'open'),
+    criadoEm: a.criadoEm || a.createdAt || new Date().toISOString()
+  };
+}
+
+function formatMonthKey(mk) {
+  if (!mk || !mk.includes('-')) return '—';
+  const [year, month] = mk.split('-');
+  return MES[parseInt(month) - 1] + '/' + year;
+}
+
+function extractMonthKey(mes) {
+  if (!mes || !mes.includes('/')) return '';
+  const parts = mes.split('/');
+  const monthName = parts[0];
+  const year = parts[1];
+  const monthIndex = MES.indexOf(monthName);
+  if (monthIndex === -1) return '';
+  return year + '-' + String(monthIndex + 1).padStart(2, '0');
+}
+
 function rActions(){
   if(!S.actions)S.actions=[];
+  
+  // Normalizar todas as ações
+  const normalizedActions = S.actions.map(normalizeAction);
+  
   var filterMes=document.getElementById('actFilterMes');
   var filterStatus=document.getElementById('actFilterStatus');
   var mesSel=filterMes?filterMes.value:'';
   var statusSel=filterStatus?filterStatus.value:'';
 
   // Populate month filter
-  var meses=[...new Set(S.actions.map(function(a){return a.mk;}))].sort().reverse();
+  var meses=[...new Set(normalizedActions.map(function(a){return a.mk;}))].filter(Boolean).sort().reverse();
   if(filterMes){
     var prev=filterMes.value;
     filterMes.innerHTML='<option value="">Todos os meses</option>';
@@ -339,20 +375,15 @@ function rActions(){
     });
   }
 
-  var filtered=S.actions.filter(function(a){
+  var filtered=normalizedActions.filter(function(a){
     if(mesSel&&a.mk!==mesSel)return false;
-    // Converter done para status se necessário
-    var actionStatus = a.status || (a.done ? 'done' : 'open');
-    if(statusSel&&actionStatus!==statusSel)return false;
+    if(statusSel&&a.status!==statusSel)return false;
     return true;
   }).sort(function(a,b){return b.criadoEm.localeCompare(a.criadoEm);});
 
-  var open=S.actions.filter(function(a){
-    var actionStatus = a.status || (a.done ? 'done' : 'open');
-    return actionStatus==='open';
-  }).length;
+  var open=normalizedActions.filter(function(a){return a.status==='open';}).length;
   var sumEl=document.getElementById('actSummary');
-  if(sumEl)sumEl.textContent=open+' em aberto · '+S.actions.length+' total';
+  if(sumEl)sumEl.textContent=open+' em aberto · '+normalizedActions.length+' total';
 
   var tbl=document.getElementById('actionsTable');
   if(!tbl)return;
@@ -392,12 +423,10 @@ function rActions(){
   // Body
   var tbody=document.createElement('tbody');
   filtered.forEach(function(a){
-    // Converter done para status se necessário
-    var actionStatus = a.status || (a.done ? 'done' : 'open');
-    var sc=statusCfg[actionStatus]||statusCfg.open;
+    var sc=statusCfg[a.status]||statusCfg.open;
     var tr=document.createElement('tr');
     var _prazoDate=parsePrazo(a.prazo||'');
-    var _prazoOverdue=_prazoDate&&actionStatus==='open'&&_prazoDate<(function(){var d=new Date();d.setHours(0,0,0,0);return d;})();
+    var _prazoOverdue=_prazoDate&&a.status==='open'&&_prazoDate<(function(){var d=new Date();d.setHours(0,0,0,0);return d;})();
     tr.className='act-row'+(_prazoOverdue?' act-row-overdue':'');
 
     // Mês

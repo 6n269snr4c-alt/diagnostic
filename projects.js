@@ -200,7 +200,7 @@ function viewProject(idx) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
-    <div class="modal-box" style="max-width:800px">
+    <div class="modal-box" style="max-width:900px">
       <div class="modal-header">
         <div>
           <div style="font-size:24px;font-weight:600;margin-bottom:8px">${proj.name}</div>
@@ -235,13 +235,34 @@ function viewProject(idx) {
           </div>
         </div>
         
-        <div style="margin-bottom:16px">
-          <div style="font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-            <span>📋 Planos de Ação</span>
-            <button class="btn-ok" style="padding:6px 12px;font-size:12px" onclick="linkActionsToProject(${idx})">➕ Vincular Ações</button>
+        <!-- ABAS -->
+        <div class="project-tabs">
+          <button class="project-tab active" onclick="switchProjectTab(${idx}, 'actions', this)">📋 Planos de Ação</button>
+          <button class="project-tab" onclick="switchProjectTab(${idx}, 'tasks', this)">✓ Tarefas</button>
+        </div>
+        
+        <!-- CONTEÚDO DAS ABAS -->
+        <div class="project-tab-content">
+          <!-- ABA AÇÕES -->
+          <div id="projTab-actions-${idx}" class="tab-pane active">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <span style="font-weight:600;font-size:14px;color:var(--mut)">Planos de ação vinculados</span>
+              <button class="btn-ok" style="padding:6px 12px;font-size:12px" onclick="linkActionsToProject(${idx})">➕ Vincular/Criar Ação</button>
+            </div>
+            <div class="actions-list">
+              ${actionsHTML}
+            </div>
           </div>
-          <div class="actions-list">
-            ${actionsHTML}
+          
+          <!-- ABA TAREFAS -->
+          <div id="projTab-tasks-${idx}" class="tab-pane" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <span style="font-weight:600;font-size:14px;color:var(--mut)">Checklist de tarefas do projeto</span>
+              <button class="btn-ok" style="padding:6px 12px;font-size:12px" onclick="addTaskToProject(${idx})">➕ Nova Tarefa</button>
+            </div>
+            <div id="tasksList-${idx}">
+              ${renderProjectTasks(proj, idx)}
+            </div>
           </div>
         </div>
       </div>
@@ -252,6 +273,103 @@ function viewProject(idx) {
       </div>
     </div>
   `;
+  
+  document.body.appendChild(modal);
+}
+
+// ═══════════════════════════════════════════
+// RENDERIZAR TAREFAS DO PROJETO
+// ═══════════════════════════════════════════
+function renderProjectTasks(proj, projIdx) {
+  if (!proj.tasks || proj.tasks.length === 0) {
+    return '<div style="text-align:center;padding:40px;color:var(--mut);font-size:13px">Nenhuma tarefa criada. Clique em "➕ Nova Tarefa" para começar.</div>';
+  }
+  
+  let html = '<div class="tasks-list">';
+  proj.tasks.forEach((task, taskIdx) => {
+    html += `
+      <div class="task-item ${task.done ? 'task-done' : ''}">
+        <input type="checkbox" ${task.done ? 'checked' : ''} 
+               onchange="toggleTask(${projIdx}, ${taskIdx}, this.checked)">
+        <span class="task-text">${task.text}</span>
+        <button class="task-delete" onclick="deleteTask(${projIdx}, ${taskIdx})" title="Excluir">🗑️</button>
+      </div>
+    `;
+  });
+  html += '</div>';
+  
+  return html;
+}
+
+// ═══════════════════════════════════════════
+// ALTERNAR ENTRE ABAS DO PROJETO
+// ═══════════════════════════════════════════
+function switchProjectTab(projIdx, tabName, btn) {
+  // Remover active de todas as abas
+  btn.parentElement.querySelectorAll('.project-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  
+  // Mostrar painel correto
+  document.querySelectorAll(`[id^="projTab-"]`).forEach(p => p.style.display = 'none');
+  const pane = document.getElementById(`projTab-${tabName}-${projIdx}`);
+  if (pane) pane.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════
+// ADICIONAR TAREFA AO PROJETO
+// ═══════════════════════════════════════════
+function addTaskToProject(projIdx) {
+  const taskText = prompt('Digite a nova tarefa:');
+  if (!taskText || !taskText.trim()) return;
+  
+  const proj = S.projects[projIdx];
+  if (!proj.tasks) proj.tasks = [];
+  
+  proj.tasks.push({
+    id: 'task_' + Date.now(),
+    text: taskText.trim(),
+    done: false,
+    createdAt: new Date().toISOString()
+  });
+  
+  sv();
+  
+  // Atualizar UI
+  const tasksList = document.getElementById(`tasksList-${projIdx}`);
+  if (tasksList) {
+    tasksList.innerHTML = renderProjectTasks(proj, projIdx);
+  }
+}
+
+// ═══════════════════════════════════════════
+// TOGGLE TAREFA
+// ═══════════════════════════════════════════
+function toggleTask(projIdx, taskIdx, done) {
+  const proj = S.projects[projIdx];
+  if (!proj || !proj.tasks || !proj.tasks[taskIdx]) return;
+  
+  proj.tasks[taskIdx].done = done;
+  sv();
+}
+
+// ═══════════════════════════════════════════
+// EXCLUIR TAREFA
+// ═══════════════════════════════════════════
+function deleteTask(projIdx, taskIdx) {
+  if (!confirm('Excluir esta tarefa?')) return;
+  
+  const proj = S.projects[projIdx];
+  if (!proj || !proj.tasks) return;
+  
+  proj.tasks.splice(taskIdx, 1);
+  sv();
+  
+  // Atualizar UI
+  const tasksList = document.getElementById(`tasksList-${projIdx}`);
+  if (tasksList) {
+    tasksList.innerHTML = renderProjectTasks(proj, projIdx);
+  }
+}
   
   document.body.appendChild(modal);
 }
@@ -289,17 +407,17 @@ function linkActionsToProject(projIdx) {
   
   // Verificar se S.actions existe e tem itens
   if (!S.actions || S.actions.length === 0) {
-    toast('⚠️ Nenhum plano de ação cadastrado. Crie planos de ação primeiro no Modo Reunião.');
-    setTimeout(() => viewProject(projIdx), 100);
+    // Oferecer criar ação direto
+    showCreateActionInline(projIdx);
     return;
   }
   
-  // Listar ações disponíveis (que não estão canceladas)
-  const availableActions = S.actions.filter(a => a.status !== 'cancelled');
+  // Listar ações disponíveis (que não estão canceladas e têm título)
+  const availableActions = S.actions.filter(a => a.status !== 'cancelled' && a.title);
   
   if (availableActions.length === 0) {
-    toast('⚠️ Nenhuma ação disponível para vincular');
-    setTimeout(() => viewProject(projIdx), 100);
+    // Oferecer criar ação direto
+    showCreateActionInline(projIdx);
     return;
   }
   
@@ -313,7 +431,7 @@ function linkActionsToProject(projIdx) {
                  data-action-id="${act.id}">
         </div>
         <div class="action-content">
-          <div class="action-title">${act.title}</div>
+          <div class="action-title">${act.title || 'Sem título'}</div>
           <div class="action-meta">
             ${act.responsible ? `<span>👤 ${act.responsible}</span>` : ''}
             ${act.deadline ? `<span>📅 ${formatDate(act.deadline)}</span>` : ''}
@@ -333,6 +451,12 @@ function linkActionsToProject(projIdx) {
       </div>
       
       <div class="modal-body">
+        <div style="margin-bottom:16px;padding:12px;background:rgba(16,212,168,.05);border:1px solid rgba(16,212,168,.15);border-radius:8px">
+          <div style="font-size:12px;color:var(--teal);margin-bottom:8px">💡 Dica: Você pode criar uma nova ação direto daqui</div>
+          <button class="btn-ok" style="width:100%;padding:8px" onclick="this.closest('.modal-overlay').remove();showCreateActionInline(${projIdx})">➕ Criar Nova Ação para este Projeto</button>
+        </div>
+        
+        <div style="font-weight:600;margin-bottom:12px;color:var(--fg)">Ou selecione ações existentes:</div>
         <div class="actions-list">
           ${actionsHTML}
         </div>
@@ -346,6 +470,96 @@ function linkActionsToProject(projIdx) {
   `;
   
   document.body.appendChild(modal);
+}
+
+// ═══════════════════════════════════════════
+// CRIAR AÇÃO INLINE (DIRETO DO PROJETO)
+// ═══════════════════════════════════════════
+function showCreateActionInline(projIdx) {
+  const proj = S.projects[projIdx];
+  if (!proj) return;
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:500px">
+      <div class="modal-header">
+        <div style="font-size:18px;font-weight:600">Nova Ação para o Projeto</div>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove();viewProject(${projIdx})">✕</button>
+      </div>
+      
+      <div class="modal-body">
+        <div style="margin-bottom:16px;padding:12px;background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.15);border-radius:8px;font-size:12px;color:var(--mut)">
+          Esta ação será automaticamente vinculada ao projeto <strong style="color:var(--fg)">${proj.name}</strong>
+        </div>
+        
+        <div class="form-group">
+          <label>Título da Ação *</label>
+          <input type="text" id="inlineActionTitle" class="form-input" 
+                 placeholder="Ex: Negociar com fornecedores">
+        </div>
+        
+        <div class="form-group">
+          <label>Responsável</label>
+          <input type="text" id="inlineActionResp" class="form-input" 
+                 placeholder="Nome do responsável">
+        </div>
+        
+        <div class="form-group">
+          <label>Prazo</label>
+          <input type="date" id="inlineActionDeadline" class="form-input">
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn-ok" onclick="saveActionInline(${projIdx})">➕ Criar e Vincular</button>
+        <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove();viewProject(${projIdx})">Cancelar</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  document.getElementById('inlineActionTitle').focus();
+}
+
+// ═══════════════════════════════════════════
+// SALVAR AÇÃO INLINE
+// ═══════════════════════════════════════════
+function saveActionInline(projIdx) {
+  const title = document.getElementById('inlineActionTitle').value.trim();
+  const responsible = document.getElementById('inlineActionResp').value.trim();
+  const deadline = document.getElementById('inlineActionDeadline').value;
+  
+  if (!title) {
+    toast('⚠️ Preencha o título da ação');
+    return;
+  }
+  
+  // Criar nova ação
+  const newAction = {
+    id: 'act_' + Date.now(),
+    title: title,
+    responsible: responsible || '',
+    deadline: deadline || '',
+    status: 'open',
+    createdAt: new Date().toISOString(),
+    source: 'project' // Marca que foi criada pelo projeto
+  };
+  
+  // Adicionar ao array de ações
+  if (!S.actions) S.actions = [];
+  S.actions.push(newAction);
+  
+  // Vincular ao projeto
+  const proj = S.projects[projIdx];
+  if (!proj.actionIds) proj.actionIds = [];
+  proj.actionIds.push(newAction.id);
+  
+  sv();
+  toast('✓ Ação criada e vinculada ao projeto');
+  
+  document.querySelector('.modal-overlay').remove();
+  viewProject(projIdx);
 }
 
 // ═══════════════════════════════════════════
@@ -448,6 +662,7 @@ function saveProject() {
     objective,
     deadline,
     actionIds: _editingProject !== null ? S.projects[_editingProject].actionIds || [] : [],
+    tasks: _editingProject !== null ? S.projects[_editingProject].tasks || [] : [], // NOVO: Array de tarefas
     createdAt: _editingProject !== null ? S.projects[_editingProject].createdAt : new Date().toISOString()
   };
   

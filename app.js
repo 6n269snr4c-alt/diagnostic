@@ -191,7 +191,6 @@ let S={
   forecast:{},
   meetActions:{},
   actions:[],
-  projects:[], // Lista de projetos
   sel:null,
 };
 
@@ -230,6 +229,8 @@ async function loadUserData(uid){
       if(d.userName)S.userName=d.userName;
       if(d.advisor)S.advisor=d.advisor;
       if(d.advisorHistory)S.advisorHistory=d.advisorHistory;
+      if(d.extratos)S.extratos=d.extratos;
+      if(d.contasBancarias)S.contasBancarias=d.contasBancarias;
     }
   }catch(e){console.warn('Load error:',e);}
 }
@@ -376,7 +377,7 @@ function rActions(){
   var thead=document.createElement('thead');
   var hrow=document.createElement('tr');
   hrow.style.borderBottom='2px solid rgba(255,255,255,.08)';
-  ['MÊS','KPI','AÇÃO','RESPONSÁVEL','PRAZO','STATUS','OBSERVAÇÃO',''].forEach(function(col){
+  ['MÊS','KPI','AÇÃO','RESPONSÁVEL','PRAZO','STATUS','OBSERVAÇÃO','',''].forEach(function(col){
     var th=document.createElement('th');
     th.style.cssText='text-align:left;padding:10px 12px;font-size:10px;letter-spacing:1px;color:var(--mut);font-weight:700;white-space:nowrap';
     th.textContent=col;hrow.appendChild(th);
@@ -472,8 +473,19 @@ function rActions(){
     (function(aid){obsInp.addEventListener('change',function(){updateActionObs(aid,this.value);});})(a.id);
     tdObs.appendChild(obsInp);tr.appendChild(tdObs);
 
+    // Calendário
+    var tdCal=document.createElement('td');tdCal.style.padding='8px 4px';
+    var calBtn=document.createElement('button');
+    calBtn.title='Adicionar ao calendário';
+    calBtn.textContent='📅';
+    calBtn.style.cssText='background:none;border:none;cursor:pointer;font-size:16px;opacity:.4;transition:opacity .15s;padding:4px';
+    calBtn.onmouseover=function(){this.style.opacity='1';};
+    calBtn.onmouseout=function(){this.style.opacity='.4';};
+    (function(aid){calBtn.addEventListener('click',function(){addToCalendar(aid);});})(a.id);
+    tdCal.appendChild(calBtn);tr.appendChild(tdCal);
+
     // Excluir
-    var tdDel=document.createElement('td');tdDel.style.padding='8px 12px';
+    var tdDel=document.createElement('td');tdDel.style.padding='8px 4px';
     var delBtn=document.createElement('button');
     delBtn.title='Excluir ação';
     delBtn.textContent='🗑';
@@ -505,6 +517,180 @@ function updateActionObs(id,obs){
   if(a){a.obs=obs;sv();}
 }
 
+// ═══════════════════════════════════════════
+// CALENDAR INTEGRATION
+// ═══════════════════════════════════════════
+
+function formatICSDate(dateStr) {
+  // Convert "15/04/2025" to "20250415"
+  if (!dateStr) return '';
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return '';
+  const [day, month, year] = parts;
+  return `${year}${month.padStart(2,'0')}${day.padStart(2,'0')}`;
+}
+
+function formatICSDateTime(date) {
+  // Format: 20250415T120000Z
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  const h = String(date.getUTCHours()).padStart(2, '0');
+  const min = String(date.getUTCMinutes()).padStart(2, '0');
+  const s = String(date.getUTCSeconds()).padStart(2, '0');
+  return `${y}${m}${d}T${h}${min}${s}Z`;
+}
+
+function generateICS(action) {
+  const now = formatICSDateTime(new Date());
+  const startDate = formatICSDate(action.prazo);
+  
+  // Escape special characters in ICS
+  const escapeICS = (str) => {
+    return (str || '').replace(/\\/g, '\\\\')
+                      .replace(/;/g, '\\;')
+                      .replace(/,/g, '\\,')
+                      .replace(/\n/g, '\\n');
+  };
+  
+  const title = escapeICS(action.text || 'Plano de Ação');
+  const description = escapeICS(
+    `KPI: ${action.kpi || '—'}\\n` +
+    `Responsável: ${action.resp || '—'}\\n` +
+    `Observação: ${action.obs || '—'}\\n\\n` +
+    `Criado em: ${action.criadoEm || ''}`
+  );
+  
+  return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Vital Diagnostic//Plano de Ação//PT
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:plano-${action.id}@vitaldiagnostic.com
+DTSTAMP:${now}
+DTSTART;VALUE=DATE:${startDate}
+SUMMARY:${title}
+DESCRIPTION:${description}
+STATUS:CONFIRMED
+SEQUENCE:0
+TRANSP:TRANSPARENT
+BEGIN:VALARM
+TRIGGER:-P1D
+ACTION:DISPLAY
+DESCRIPTION:Lembrete: ${title}
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+}
+
+function addToCalendar(actionId) {
+  const action = S.actions.find(a => a.id === actionId);
+  if (!action) return;
+  
+  // Validar prazo
+  if (!action.prazo) {
+    toast('⚠️ Defina um prazo antes de adicionar ao calendário');
+    return;
+  }
+  
+  const prazoDate = parsePrazo(action.prazo);
+  if (!prazoDate) {
+    toast('⚠️ Formato de prazo inválido');
+    return;
+  }
+  
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isMobile = isIOS || isAndroid;
+  const isChrome = /CriOS/.test(navigator.userAgent); // Chrome no iOS
+  
+  if (isMobile) {
+    // Chrome no iOS: não consegue abrir Calendar app, usa Google Calendar web
+    if (isIOS && isChrome) {
+      const formatGoogleDate = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}${m}${d}`;
+      };
+      
+      const googleDate = formatGoogleDate(prazoDate);
+      const title = encodeURIComponent(action.text || 'Plano de Ação');
+      const details = encodeURIComponent(
+        `KPI: ${action.kpi || '—'}\n` +
+        `Responsável: ${action.resp || '—'}\n` +
+        `Observação: ${action.obs || '—'}`
+      );
+      
+      const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+        `&text=${title}` +
+        `&dates=${googleDate}/${googleDate}` +
+        `&details=${details}`;
+      
+      window.open(googleUrl, '_blank');
+      toast('📅 Calendário aberto');
+      return;
+    }
+    
+    // Safari iOS ou Android: tenta .ics
+    const icsContent = generateICS(action);
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    
+    if (isIOS) {
+      // Safari iOS: tenta window.location
+      window.location.href = url;
+    } else {
+      // Android: download normal
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `plano-${action.id}.ics`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    
+  } else {
+    // Desktop: abre Google Calendar (funciona para todos)
+    const formatGoogleDate = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}${m}${d}`;
+    };
+    
+    const googleDate = formatGoogleDate(prazoDate);
+    const title = encodeURIComponent(action.text || 'Plano de Ação');
+    const details = encodeURIComponent(
+      `KPI: ${action.kpi || '—'}\n` +
+      `Responsável: ${action.resp || '—'}\n` +
+      `Observação: ${action.obs || '—'}`
+    );
+    
+    // Abre Google Calendar em nova aba
+    const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+      `&text=${title}` +
+      `&dates=${googleDate}/${googleDate}` +
+      `&details=${details}`;
+    
+    window.open(googleUrl, '_blank');
+    toast('📅 Calendário aberto em nova aba');
+  }
+}
+
+function parsePrazo(prazoStr) {
+  // Parse "15/04/2025" to Date
+  if (!prazoStr) return null;
+  const parts = prazoStr.split('/');
+  if (parts.length !== 3) return null;
+  const [day, month, year] = parts.map(p => parseInt(p));
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  return new Date(year, month - 1, day);
+}
+
 function toggleSidebar(){
   const sb=document.getElementById('sidebar');
   const collapsed=sb.classList.toggle('collapsed');
@@ -519,6 +705,7 @@ function go(name,btn){
   // Activate sidebar button
   const sbBtn=document.querySelector('.tb[data-page="'+name+'"]');
   if(sbBtn)sbBtn.classList.add('active');
+  mobOnNav(); // close sidebar on mobile when navigating
   if(name==='dashboard'){rDash();setTimeout(sizeWheel,60);}
   if(name==='diag')rDiagPage();
   if(name==='input')dreInitPage();
@@ -526,8 +713,8 @@ function go(name,btn){
   if(name==='sim')initSim();
   if(name==='import')rImportPage();
   if(name==='actions')rActions();
-  if(name==='projects')rProjects();
   if(name==='lancamentos')rLancamentos();
+  if(name==='cashflow')rCashflow();
   if(name==='meth')rMeth();
   if(name==='advisor'){_currentAdvisor=_currentAdvisor||S.advisor||'analytics';rAdvisorPage();}
 }
@@ -644,13 +831,26 @@ function toggleKpiList(){
   });
 }
 function sizeWheel(){
-  const col=document.getElementById('wheelCol');if(!col)return;
-  const W=col.clientWidth,H=col.clientHeight;
-  const sz=Math.max(180,Math.min(W*.88,H*.9,500));
   const svg=document.getElementById('hw');
-  svg.setAttribute('width',sz);svg.setAttribute('height',sz);svg.setAttribute('viewBox',`0 0 ${sz} ${sz}`);
-  const ww=document.getElementById('wheelWrap');ww.style.width=sz+'px';ww.style.height=sz+'px';
-  rWheel(window._lastDets||null,sz,'hw');
+  if(!svg)return;
+  
+  // Roda agora usa o espaço do container pai
+  const parent = svg.parentElement;
+  if (parent) {
+    const maxSize = Math.min(parent.clientWidth, parent.clientHeight);
+    const sz = Math.max(280, maxSize);
+    svg.setAttribute('width', sz);
+    svg.setAttribute('height', sz);
+    svg.setAttribute('viewBox', `0 0 ${sz} ${sz}`);
+    rWheel(window._lastDets||null, sz, 'hw');
+  } else {
+    // Fallback
+    const sz = 380;
+    svg.setAttribute('width', sz);
+    svg.setAttribute('height', sz);
+    svg.setAttribute('viewBox', `0 0 ${sz} ${sz}`);
+    rWheel(window._lastDets||null, sz, 'hw');
+  }
 }
 window.addEventListener('resize',()=>{
   const pg=document.getElementById('page-dashboard');
@@ -904,36 +1104,161 @@ function confirmMod(){
 // ═══════════════════════════════════════════
 // DIAGNOSIS PAGE
 // ═══════════════════════════════════════════
+
+let _diagSel = null; // Seleção independente para página Diagnóstico
+
 function rDiagPage(){
-  if(!S.sel){return;}
-  const[y,mo]=S.sel.split('-');
-  const label=MES[parseInt(mo)-1]+'/'+y;
-  const pd=document.getElementById('diagPagePeriod');
-  if(pd)pd.textContent=label+(S.sector?' · '+S.sector:'');
-  // Render goal cards
-  rDiagGoals();
-  // Render full diagnosis (reuse cached or call API)
-  const res=calcScore(S.sel);
-  if(!res){
-    const body=document.getElementById('diagPageBody');
-    if(body)body.innerHTML='<div class="empty"><div class="eico">📊</div><p>Lance os dados do período para gerar o diagnóstico</p></div>';
+  // Popula seletores de mês/ano
+  const known = getKnownMonths();
+  if (!known || known.length === 0) {
+    const body = document.getElementById('diagPageBody');
+    if (body) body.innerHTML = '<div class="empty"><div class="eico">📊</div><p>Lance os dados do período para gerar o diagnóstico</p></div>';
     return;
   }
-  // Mirror diagC to diagPageBody
-  const diagC=document.getElementById('diagC');
-  const diagBody=document.getElementById('diagPageBody');
-  if(diagBody){
-    if(diagC&&diagC.innerHTML&&!diagC.innerHTML.includes('eico')){
-      diagBody.innerHTML=diagC.innerHTML;
-    } else {
-      // Call diagnosis and render in both places
-      rDiag(res,true);
+  
+  // Preenche seletores
+  const mesEl = document.getElementById('diagMesSel');
+  const anoEl = document.getElementById('diagAnoSel');
+  
+  if (mesEl && anoEl) {
+    // Se não tem seleção, usa o último período ou S.sel
+    if (!_diagSel) {
+      _diagSel = S.sel || known[known.length - 1];
+    }
+    
+    const [selY, selM] = _diagSel.split('-');
+    
+    // Preenche meses
+    mesEl.innerHTML = MES.map((m, i) => {
+      const idx = String(i + 1).padStart(2, '0');
+      return `<option value="${idx}">${m}</option>`;
+    }).join('');
+    mesEl.value = selM;
+    
+    // Preenche anos
+    const years = [...new Set(known.map(k => k.split('-')[0]))].sort();
+    anoEl.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    anoEl.value = selY;
+  }
+  
+  // Renderiza diagnóstico
+  renderDiagnosisPage();
+}
+
+function onDiagMonthChange() {
+  const mes = document.getElementById('diagMesSel').value;
+  const ano = document.getElementById('diagAnoSel').value;
+  _diagSel = ano + '-' + mes;
+  
+  console.log('📅 Diagnóstico: Mudou para', _diagSel);
+  
+  // Re-renderiza
+  renderDiagnosisPage();
+}
+
+async function renderDiagnosisPage() {
+  if (!_diagSel) return;
+  
+  console.log('🔄 Renderizando página Diagnóstico para:', _diagSel);
+  
+  // Renderiza goals
+  rDiagGoals();
+  
+  // Calcula score
+  const res = calcScore(_diagSel);
+  const body = document.getElementById('diagPageBody');
+  
+  if (!res) {
+    if (body) body.innerHTML = '<div class="empty"><div class="eico">📊</div><p>Lance os dados do período para gerar o diagnóstico</p></div>';
+    return;
+  }
+  
+  // Verifica se já tem diagnóstico salvo
+  const diagData = S.data && S.data[_diagSel] ? S.data[_diagSel] : {};
+  
+  if (diagData.diagnosis) {
+    // Já tem diagnóstico salvo - renderiza direto
+    console.log('✅ Diagnóstico já existe, renderizando...');
+    const [y, mo] = _diagSel.split('-');
+    _renderDiag(body, diagData.diagnosis, res, 
+      [...res.details].sort((a, b) => a.adjPct - b.adjPct).slice(0, 3),
+      [...res.details].sort((a, b) => a.adjPct - b.adjPct).slice(-2),
+      MES[parseInt(mo) - 1] + '/' + y
+    );
+  } else {
+    // Não tem diagnóstico - gera automaticamente
+    console.log('🔄 Gerando diagnóstico automaticamente...');
+    body.innerHTML = '<div class="dload"><div class="spin"></div><span>Analisando...</span></div>';
+    
+    const sorted = [...res.details].sort((a, b) => a.adjPct - b.adjPct);
+    const worst = sorted.slice(0, 3);
+    const best = sorted.slice(-2);
+    const [y, mo] = _diagSel.split('-');
+    const kpiAll = res.details.map(d => d.ind.name + ': ' + Math.round(d.adjPct) + '% da meta').join(' | ');
+    const scoreLabel = res.score >= 90 ? 'SAUDÁVEL' : res.score >= 70 ? 'ATENÇÃO' : res.score >= 50 ? 'CRÍTICO' : 'GRAVE';
+    
+    const prompt = 'Você é um CFO experiente analisando ' + S.company + (S.sector ? ' (' + S.sector + ')' : '') + '. ' +
+      'Mês: ' + MES[parseInt(mo) - 1] + '/' + y + '. Score: ' + res.score + '% (' + scoreLabel + '). ' +
+      'KPIs: ' + kpiAll + '. ' +
+      'Críticos: ' + worst.map(d => d.ind.name + ' ' + Math.round(d.adjPct) + '%').join(', ') + '. ' +
+      'Destaques: ' + best.map(d => d.ind.name + ' ' + Math.round(d.adjPct) + '%').join(', ') + '. ' +
+      'Escreva um diagnóstico executivo OBJETIVO em até 200 palavras. ' +
+      'Sem markdown. Formato: SITUACAO: [frase]. ALERTAS: • item1 • item2 • item3. ACOES: 1. acao 2. acao 3. acao';
+    
+    try {
+      const response = await fetch('/api/diagnose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      
+      const diagResult = await response.json();
+      if (diagResult.error) throw new Error(diagResult.error);
+      
+      const txt = diagResult.text || '';
+      if (!txt) throw new Error('Resposta vazia');
+      
+      // Salva diagnosis
+      if (!S.data[_diagSel]) S.data[_diagSel] = {};
+      S.data[_diagSel].diagnosis = txt;
+      
+      // Extrai bullets
+      const lines = txt.split('\n').map(l => l.trim()).filter(l => l);
+      const bullets = [];
+      let mode = null;
+      lines.forEach(line => {
+        const lu = line.toUpperCase();
+        if (lu.startsWith('ALERTAS') || lu.startsWith('ALERTA')) {
+          mode = 'alert';
+          return;
+        }
+        if (lu.startsWith('ACOES') || lu.startsWith('AÇÕES')) {
+          mode = null;
+          return;
+        }
+        if (mode === 'alert' && (line.startsWith('•') || line.startsWith('-'))) {
+          bullets.push(line.replace(/^[•\-]\s*/, ''));
+        }
+      });
+      
+      S.data[_diagSel].bullets = bullets.length > 0 ? bullets : null;
+      sv(); // Salva no Firebase
+      
+      console.log('✅ Diagnóstico gerado e salvo');
+      
+      // Renderiza
+      _renderDiag(body, txt, res, worst, best, MES[parseInt(mo) - 1] + '/' + y);
+      
+    } catch (error) {
+      console.error('❌ Erro ao gerar diagnóstico:', error);
+      body.innerHTML = '<div class="diag-box"><p style="color:var(--amber)">Erro ao gerar diagnóstico: ' + error.message + '</p></div>';
     }
   }
 }
+
 function rDiagGoals(){
   const el=document.getElementById('diagGoals');if(!el)return;
-  const res=S.sel?calcScore(S.sel):null;
+  const res = _diagSel ? calcScore(_diagSel) : null;
   if(!res){el.innerHTML='<div class="empty"><div class="eico">🎯</div><p>Lance os dados para ver as metas</p></div>';return;}
   el.innerHTML='';
   [...res.details].sort((a,b)=>a.pct-b.pct).forEach(d=>{
@@ -1002,6 +1327,10 @@ function rDash(){
   const ss=document.getElementById('scoreSector');if(ss)ss.textContent=S.sector||'';
   const nl=document.getElementById('navLogo');if(S.logo){nl.src=S.logo;nl.style.display='block';}else nl.style.display='none';
   rPills();rTrend();
+  
+  // Renderiza dashboard executivo
+  renderExecutiveDashboard();
+  
   const res=S.sel?calcScore(S.sel):null;
   // Lucro Líquido card
   (function(){
@@ -1482,6 +1811,33 @@ async function rDiag(res,diagPageOnly){
     const txt=data.text||'';
     if(!txt)throw new Error('Resposta vazia');
     _renderDiag(el,txt,res,worst,best,MES[parseInt(mo)-1]+'/'+y);
+    
+    // Salva diagnosis e bullets em S.data
+    if (!S.data) S.data = {};
+    if (!S.data[S.sel]) S.data[S.sel] = {};
+    S.data[S.sel].diagnosis = txt;
+    
+    // Extrai bullets (alertas) para o dashboard executivo
+    const lines = txt.split('\n').map(l => l.trim()).filter(l => l);
+    const bullets = [];
+    let mode = null;
+    lines.forEach(line => {
+      const lu = line.toUpperCase();
+      if (lu.startsWith('ALERTAS') || lu.startsWith('ALERTA')) {
+        mode = 'alert';
+        return;
+      }
+      if (lu.startsWith('ACOES') || lu.startsWith('AÇÕES')) {
+        mode = null;
+        return;
+      }
+      if (mode === 'alert' && (line.startsWith('•') || line.startsWith('-'))) {
+        bullets.push(line.replace(/^[•\-]\s*/, ''));
+      }
+    });
+    S.data[S.sel].bullets = bullets.length > 0 ? bullets : null;
+    sv(); // Salva no Firebase
+    
     if(!S.diagCache)S.diagCache={};
     S.diagCache[S.sel]={key:cacheKey,html:el.innerHTML};
     // Mirror to diagPageBody if it exists and is different
@@ -1933,6 +2289,11 @@ function rConfig(){
   dreModelRenderStatus();
   rMappingsTable();
   rAdvisorCfgCards();
+  
+  // Renderizar contas bancárias (se a função existir no cashflow.js)
+  if (typeof rContasBancariasTable === 'function') {
+    rContasBancariasTable();
+  }
 
   // Popula year select ANTES de chamar rGoalsTable
   const ys=document.getElementById('goalsYear');
@@ -2000,26 +2361,12 @@ const _BENCHABLE=new Set(['cac','margem','ebitda','despop','lucroliq','margbruta
 function rCfgKpiTable(){
   const t=document.getElementById('cfgGrid');t.innerHTML='';
   const dis=S.locked?'disabled':'';
-  let html=`<thead><tr><th>KPI</th><th>Grupo</th><th>Peso</th><th>Meta (quadro acima)</th><th>Benchmark</th><th>Direção</th></tr></thead><tbody>`;
+  let html=`<thead><tr><th>KPI</th><th>Grupo</th><th>Peso</th><th>Direção</th></tr></thead><tbody>`;
   IND.forEach(ind=>{
-    const cfg=S.cfg[ind.id]||{weight:1,hb:ind.hb,benchMode:'manual'};const col=GC[ind.group];
-    const canBench=_BENCHABLE.has(ind.id);
-    const isAI=canBench&&cfg.benchMode==='ai'&&cfg.benchGoal!=null;
-    // Meta column: when AI mode, show bench value read-only; otherwise empty (uses goals table above)
-    const metaCell=isAI
-      ?`<span style="font-size:11px;color:#c084fc;font-weight:700">${cfg.benchGoal} ${ind.unit} <span style="font-size:9px;opacity:.7">(IA)</span></span>`
-      :`<span style="font-size:11px;color:var(--mut)">do quadro acima</span>`;
-    const benchCell=canBench
-      ?`<div class="dir-sel" id="bm_${ind.id}">
-          <button class="dir-btn ${!isAI?'active':''}" onclick="setKpiBM('${ind.id}','manual')" ${dis}>🎯 Manual</button>
-          <button class="dir-btn ${isAI?'active':''}" style="${isAI?'color:#c084fc':''}" onclick="setKpiBM('${ind.id}','ai')" ${dis}>🏦 Mercado</button>
-        </div>`
-      :`<span style="font-size:10px;color:var(--mut)">só manual</span>`;
+    const cfg=S.cfg[ind.id]||{weight:1,hb:ind.hb};const col=GC[ind.group];
     html+=`<tr id="cfgrow_${ind.id}"><td style="font-size:12px">${ind.icon} ${ind.name}</td>
       <td style="font-size:11px;color:${col}">${GN[ind.group].split(' ')[0]}</td>
       <td><input type="number" min="0" max="5" step=".5" class="gi2" id="cw_${ind.id}" value="${cfg.weight}" ${dis}></td>
-      <td>${metaCell}</td>
-      <td>${benchCell}</td>
       <td><div class="dir-sel" id="hb_${ind.id}">
         <button class="dir-btn ${cfg.hb?'active':''}" onclick="setHb('${ind.id}',true)" ${dis}>↑ Maior</button>
         <button class="dir-btn ${!cfg.hb?'active':''}" onclick="setHb('${ind.id}',false)" ${dis}>↓ Menor</button>
@@ -2689,6 +3036,113 @@ function rMeth(){
       </div>
     </div>`;
   grid.appendChild(sc);
+
+  // ── KPIs DE FLUXO DE CAIXA ─────────────────────────────────────────
+  const cashflowSection = document.createElement('div');
+  cashflowSection.className = 'mc2';
+  cashflowSection.style.gridColumn = '1/-1';
+  cashflowSection.style.marginTop = '40px';
+  cashflowSection.innerHTML = `
+    <div class="mt">KPIs de Fluxo de Caixa</div>
+    <div class="mb">
+      O módulo <strong>💰 Saúde de Caixa</strong> analisa extratos bancários (OFX ou CSV) e calcula automaticamente 
+      métricas de liquidez e gestão de caixa. Estes KPIs complementam a análise do DRE com visibilidade sobre 
+      <strong>movimentações reais de dinheiro</strong>.
+    </div>
+    
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:16px">
+      
+      <!-- Saldo Variação -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:24px">💰</span>
+          <div style="font-size:14px;font-weight:700;color:var(--teal)">Saldo (Variação)</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3b82f6;margin-bottom:8px;padding:8px;background:rgba(59,130,246,.08);border-radius:6px">
+          Total Entradas − Total Saídas
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:10px">
+          Mostra se entrou mais ou menos dinheiro do que saiu no período. Saldo positivo = geração de caixa. 
+          Saldo negativo = queima de caixa.
+        </div>
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;font-weight:700;margin-bottom:4px">INTERPRETAÇÃO</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">
+          <span style="color:var(--teal)">▸ Positivo:</span> Empresa gerando caixa<br>
+          <span style="color:#f59e0b">▸ Zero:</span> Entradas = Saídas<br>
+          <span style="color:var(--red)">▸ Negativo:</span> Queimando caixa
+        </div>
+      </div>
+      
+      <!-- Dias de Sobrevivência -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:24px">⏱️</span>
+          <div style="font-size:14px;font-weight:700;color:var(--teal)">Dias de Sobrevivência (Runway)</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3b82f6;margin-bottom:8px;padding:8px;background:rgba(59,130,246,.08);border-radius:6px">
+          Saldo Atual ÷ Média de Gastos/Dia
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:10px">
+          Quantos dias a empresa consegue operar com o saldo atual, mantendo o nível de gastos médio. 
+          Métrica crítica para empresas em fase inicial ou com fluxo negativo.
+        </div>
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;font-weight:700;margin-bottom:4px">FAIXAS</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">
+          <span style="color:var(--green)">▸ >90 dias:</span> Excelente<br>
+          <span style="color:#10b981">▸ 35-90:</span> Saudável<br>
+          <span style="color:#f59e0b">▸ 15-35:</span> Atenção<br>
+          <span style="color:var(--red)">▸ <15:</span> Crítico
+        </div>
+      </div>
+      
+      <!-- Maior Entrada -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:24px">📥</span>
+          <div style="font-size:14px;font-weight:700;color:var(--teal)">Maior Entrada</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3b82f6;margin-bottom:8px;padding:8px;background:rgba(59,130,246,.08);border-radius:6px">
+          MAX(transações de crédito)
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:10px">
+          Identifica a maior entrada de dinheiro no período. Útil para entender as principais fontes de receita 
+          e avaliar concentração de risco.
+        </div>
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;font-weight:700;margin-bottom:4px">ANÁLISE</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">
+          Se representa >50% do total: alta dependência de um cliente/fonte. Recomenda-se diversificação.
+        </div>
+      </div>
+      
+      <!-- Maior Saída -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="font-size:24px">📤</span>
+          <div style="font-size:14px;font-weight:700;color:var(--teal)">Maior Saída</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#3b82f6;margin-bottom:8px;padding:8px;background:rgba(59,130,246,.08);border-radius:6px">
+          MAX(transações de débito)
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:10px">
+          Identifica a maior saída de dinheiro. Ajuda a entender os principais custos fixos ou despesas significativas 
+          que precisam ser cobertos mensalmente.
+        </div>
+        <div style="font-size:10px;color:var(--mut);letter-spacing:1px;font-weight:700;margin-bottom:4px">CLASSIFICAÇÃO</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">
+          <span style="color:var(--teal)">▸ Recorrente:</span> Salários, aluguel<br>
+          <span style="color:#f59e0b">▸ Pontual:</span> Investimentos, compras
+        </div>
+      </div>
+      
+    </div>
+    
+    <div style="background:rgba(0,232,155,.06);border:1px solid rgba(0,232,155,.15);border-radius:12px;padding:14px 18px;margin-top:16px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.8">
+      <strong style="color:var(--teal)">💡 Dica:</strong> Os KPIs de cashflow são <strong>complementares</strong> aos KPIs do DRE. 
+      O DRE mostra rentabilidade (regime de competência), enquanto o cashflow mostra liquidez (regime de caixa). 
+      Uma empresa pode ter lucro no DRE mas caixa negativo, ou vice-versa.
+    </div>
+  `;
+  grid.appendChild(cashflowSection);
 }
 
 // ═══════════════════════════════════════════
@@ -2790,43 +3244,73 @@ function saveMeetActions(){
   if(!S.sel)return;
   if(!S.meetActions)S.meetActions={};
   if(!S.meetActions[S.sel])S.meetActions[S.sel]={fechamento:[],forecast:[],adicionais:[]};
-  // Ações adicionais
-  var _adic=[];
-  document.querySelectorAll('#actAdicBody tr').forEach(function(tr){
-    var t=(tr.querySelector('.act-text')||{}).value||'';t=t.trim();
-    var r=(tr.querySelector('.act-resp')||{}).value||'';r=r.trim();
-    var p=(tr.querySelector('.act-prazo')||{}).value||'';p=p.trim();
-    if(t||r||p)_adic.push({text:t,resp:r,prazo:p,kpi:'Adicional'});
-  });
-  S.meetActions[S.sel].adicionais=_adic;
-  // KPI inline actions (no data-type)
-  var texts=document.querySelectorAll('.kcard-act .act-text:not([data-type])');
-  var resps=document.querySelectorAll('.kcard-act .act-resp:not([data-type])');
-  var prazos=document.querySelectorAll('.kcard-act .act-prazo:not([data-type])');
-  var fech=[];
-  for(var i=0;i<texts.length;i++){
-    fech.push({
-      text:(texts[i].value||'').trim(),
-      resp:(resps[i]?resps[i].value||'':'').trim(),
-      prazo:(prazos[i]?prazos[i].value||'':'').trim(),
-      kpi:texts[i].dataset.kpi||''
+
+  // Ações adicionais (slide 3)
+  var adicBody=document.getElementById('actAdicBody');
+  if(adicBody){
+    var _adic=[];
+    adicBody.querySelectorAll('tr').forEach(function(tr){
+      var t=(tr.querySelector('.act-text')||{}).value||'';t=t.trim();
+      var r=(tr.querySelector('.act-resp')||{}).value||'';r=r.trim();
+      var p=(tr.querySelector('.act-prazo')||{}).value||'';p=p.trim();
+      if(t||r||p)_adic.push({text:t,resp:r,prazo:p,kpi:'Adicional'});
     });
+    S.meetActions[S.sel].adicionais=_adic;
   }
-  S.meetActions[S.sel].fechamento=fech;
-  // Forecast actions
+
+  // KPI inline actions — slide 1 usa .kact-inp por data-kpi
+  var kactInputs=document.querySelectorAll('.kact-inp.act-text');
+  if(kactInputs.length){
+    var fech=[];
+    kactInputs.forEach(function(inp){
+      var kpiId=inp.dataset.kpi||'';
+      var row=inp.closest('div[style*="grid-template-columns"]')||inp.parentElement.parentElement;
+      var respInp=row?row.querySelector('.kact-inp.act-resp'):null;
+      var prazoInp=row?row.querySelector('.kact-inp.act-prazo'):null;
+      fech.push({
+        text:(inp.value||'').trim(),
+        resp:(respInp?respInp.value||'':'').trim(),
+        prazo:(prazoInp?prazoInp.value||'':'').trim(),
+        kpi:kpiId
+      });
+    });
+    S.meetActions[S.sel].fechamento=fech;
+  }
+
+  // KPI inline actions — older .kcard-act selector (fallback)
+  var kcardTexts=document.querySelectorAll('.kcard-act .act-text:not([data-type])');
+  if(kcardTexts.length){
+    var fech2=[];
+    var kcardResps=document.querySelectorAll('.kcard-act .act-resp:not([data-type])');
+    var kcardPrazos=document.querySelectorAll('.kcard-act .act-prazo:not([data-type])');
+    for(var i=0;i<kcardTexts.length;i++){
+      fech2.push({
+        text:(kcardTexts[i].value||'').trim(),
+        resp:(kcardResps[i]?kcardResps[i].value||'':'').trim(),
+        prazo:(kcardPrazos[i]?kcardPrazos[i].value||'':'').trim(),
+        kpi:kcardTexts[i].dataset.kpi||''
+      });
+    }
+    S.meetActions[S.sel].fechamento=fech2;
+  }
+
+  // Forecast actions (slide 2)
   var ftexts=document.querySelectorAll('.act-text[data-type="forecast"]');
-  var fresps=document.querySelectorAll('.act-resp[data-type="forecast"]');
-  var fprazos=document.querySelectorAll('.act-prazo[data-type="forecast"]');
-  var farr=[];
-  for(var j=0;j<ftexts.length;j++){
-    farr.push({
-      text:(ftexts[j].value||'').trim(),
-      resp:(fresps[j]?fresps[j].value||'':'').trim(),
-      prazo:(fprazos[j]?fprazos[j].value||'':'').trim(),
-      kpi:ftexts[j].dataset.kpi||''
-    });
+  if(ftexts.length){
+    var fresps=document.querySelectorAll('.act-resp[data-type="forecast"]');
+    var fprazos=document.querySelectorAll('.act-prazo[data-type="forecast"]');
+    var farr=[];
+    for(var j=0;j<ftexts.length;j++){
+      farr.push({
+        text:(ftexts[j].value||'').trim(),
+        resp:(fresps[j]?fresps[j].value||'':'').trim(),
+        prazo:(fprazos[j]?fprazos[j].value||'':'').trim(),
+        kpi:ftexts[j].dataset.kpi||''
+      });
+    }
+    S.meetActions[S.sel].forecast=farr;
   }
-  S.meetActions[S.sel].forecast=farr;
+
   syncActionsFromMeeting(S.sel);
   sv();
 }
@@ -2941,11 +3425,18 @@ function buildSlideDiag(res){
   var sz=420;
   var wheelId='meetDiagWheel';
 
-  // Get diagnosis from cache — strip the outer diag-box wrapper to re-style
+  // Get FULL diagnosis from S.data (não o cache HTML resumido)
   var diagInner='';
-  var cached=S.diagCache&&S.diagCache[S.sel];
-  if(cached&&cached.html){
-    diagInner=cached.html;
+  var diagData = S.data && S.data[S.sel] ? S.data[S.sel] : {};
+  
+  if (diagData.diagnosis) {
+    // Tem diagnóstico completo - renderiza usando _renderDiag
+    var tempDiv = document.createElement('div');
+    const sorted = [...res.details].sort((a, b) => a.adjPct - b.adjPct);
+    const worst = sorted.slice(0, 3);
+    const best = sorted.slice(-2);
+    _renderDiag(tempDiv, diagData.diagnosis, res, worst, best, period);
+    diagInner = tempDiv.innerHTML;
   } else {
     diagInner='<div style="color:var(--mut);font-size:13px;line-height:1.8">'
       +'Abra o Dashboard primeiro para gerar o diagnóstico de IA deste período.'
@@ -3032,8 +3523,6 @@ function buildSlide1(res){
   var cols=3;var rows=Math.ceil(n/cols);
   // KPI cards — clean, no embedded action inputs
   var sorted=[].concat(res.details).sort(function(a,b){return a.pct-b.pct;});
-  var saved_f=(S.meetActions&&S.meetActions[S.sel]&&S.meetActions[S.sel].fechamento)||[];
-
   var kpiCards=sorted.map(function(d,i){
     var c=d.pct<50?'#ef4444':d.pct<75?'#f59e0b':'#10b981';
     var border=d.pct<80?c+'40':'rgba(255,255,255,.07)';
@@ -3053,8 +3542,13 @@ function buildSlide1(res){
   }).join('');
 
   // Action rows — only KPIs below 80%, clean table
-  var actionRows=sorted.filter(function(d){return d.pct<80;}).map(function(d,i){
-    var sa=saved_f[i]||{};
+  var saved_f=(S.meetActions&&S.meetActions[S.sel]&&S.meetActions[S.sel].fechamento)||[];
+  // Build lookup by kpi id for correct restore when returning to slide
+  var savedByKpi={};
+  saved_f.forEach(function(a){if(a.kpi)savedByKpi[a.kpi]=a;});
+
+  var actionRows=sorted.filter(function(d){return d.pct<80;}).map(function(d){
+    var sa=savedByKpi[d.ind.id]||{};
     var c=d.pct<50?'#ef4444':'#f59e0b';
     return '<div style="display:grid;grid-template-columns:180px 1fr 130px 120px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
       +'<div style="display:flex;align-items:center;gap:6px">'
@@ -3062,9 +3556,9 @@ function buildSlide1(res){
       +'<span style="font-size:11px;font-weight:700;color:'+c+'">'+d.ind.short+'</span>'
       +'<span style="font-size:10px;color:rgba(255,255,255,.3)">'+Math.round(d.pct)+'%</span>'
       +'</div>'
-      +'<input class="kact-inp act-text" data-kpi="'+d.ind.id+'" data-idx="'+i+'" placeholder="Descrever a ação..." value="'+(sa.text||'').replace(/"/g,'&quot;')+'" style="font-size:11px">'
-      +'<input class="kact-inp act-resp" data-kpi="'+d.ind.id+'" data-idx="'+i+'" placeholder="Responsável" value="'+(sa.resp||'').replace(/"/g,'&quot;')+'" style="font-size:11px">'
-      +'<input type="text" class="kact-inp act-prazo" data-kpi="'+d.ind.id+'" data-idx="'+i+'" placeholder="dd/mm/aaaa" value="'+(sa.prazo||'').replace(/"/g,'&quot;')+'" style="font-size:11px">'
+      +'<input class="kact-inp act-text" data-kpi="'+d.ind.id+'" placeholder="Descrever a ação..." value="'+(sa.text||'').replace(/"/g,'&quot;')+'" style="font-size:11px">'
+      +'<input class="kact-inp act-resp" data-kpi="'+d.ind.id+'" placeholder="Responsável" value="'+(sa.resp||'').replace(/"/g,'&quot;')+'" style="font-size:11px">'
+      +'<input type="text" class="kact-inp act-prazo" data-kpi="'+d.ind.id+'" placeholder="dd/mm/aaaa" value="'+(sa.prazo||'').replace(/"/g,'&quot;')+'" style="font-size:11px">'
       +'</div>';
   }).join('');
 
@@ -3820,10 +4314,13 @@ IMPORTANTE: Formate sua resposta usando markdown simples (negrito com **, listas
       <div style="background:var(--glass);border:1px solid ${advisor.color}33;border-radius:14px;overflow:hidden">
         <div style="padding:16px 24px;border-bottom:1px solid ${advisor.color}22;display:flex;align-items:center;gap:10px">
           <span style="font-size:22px">${advisor.icon}</span>
-          <div>
+          <div style="flex:1">
             <div style="font-size:12px;font-weight:700;color:${advisor.color}">${advisor.name}</div>
             <div style="font-size:10px;color:var(--mut);font-style:italic">"${advisor.tagline}"</div>
           </div>
+          <button onclick="speakText(document.getElementById('advisorRespText').textContent)" class="bs ghost" style="padding:6px 12px;font-size:12px" title="Ouvir resposta">
+            🔊 Ouvir
+          </button>
         </div>
         <div style="padding:20px 24px;font-size:13px;color:#c8dff5;line-height:1.8" id="advisorRespText">${formatted}</div>
         ${actions.length ? `
@@ -3853,6 +4350,12 @@ IMPORTANTE: Formate sua resposta usando markdown simples (negrito com **, listas
           </button>
         </div>` : ''}
       </div>`;
+
+    // Não fala automaticamente - deixa usuário escolher
+    // setTimeout(() => {
+    //   const textToSpeak = document.getElementById('advisorRespText').textContent;
+    //   speakText(textToSpeak);
+    // }, 500);
 
     // Save to history
     if (!S.advisorHistory) S.advisorHistory = { analytics:[], growth:[], strategist:[] };
@@ -4009,6 +4512,79 @@ function rAdvisorCfgCards() {
   _renderAdvisorCards('cfgAdvisorCards', true);
 }
 
+// ═══════════════════════════════════════════
+// MOBILE RESPONSIVO
+// ═══════════════════════════════════════════
+const _isMobile = () => {
+  // Verifica se é realmente um dispositivo móvel (não apenas tela pequena)
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const isSmallScreen = window.innerWidth <= 768;
+  const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  // É mobile apenas se: tela pequena E (dispositivo touch OU user agent mobile)
+  return isSmallScreen && (isTouchDevice || isMobileUA);
+};
+
+function mobInit() {
+  if (!_isMobile()) return;
+  // Show mobile top bar
+  const topBar = document.getElementById('mobTopBar');
+  if (topBar) topBar.style.display = 'flex';
+  // Adjust shell height to account for top bar
+  const shell = document.querySelector('.shell');
+  if (shell) shell.style.flex = '1';
+}
+
+function mobToggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('mobSidebarOverlay');
+  if (!sidebar) return;
+  const isOpen = sidebar.classList.contains('mob-open');
+  if (isOpen) {
+    sidebar.classList.remove('mob-open');
+    if (overlay) overlay.classList.remove('open');
+  } else {
+    sidebar.classList.add('mob-open');
+    if (overlay) overlay.classList.add('open');
+  }
+}
+
+function mobCloseSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('mobSidebarOverlay');
+  if (sidebar) sidebar.classList.remove('mob-open');
+  if (overlay) overlay.classList.remove('open');
+}
+
+// Close sidebar when navigating on mobile
+const _origGo = typeof go === 'function' ? go : null;
+
+function mobOnNav() {
+  if (_isMobile()) mobCloseSidebar();
+}
+
+// Show/hide mobile meeting notice
+function mobCheckMeeting() {
+  const notice = document.getElementById('mobMeetingNotice');
+  if (!notice) return;
+  notice.style.display = _isMobile() ? 'flex' : 'none';
+}
+
+// Re-run on resize (tablet rotation etc.)
+window.addEventListener('resize', () => {
+  if (_isMobile()) {
+    mobInit();
+  } else {
+    // Restore desktop state
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobSidebarOverlay');
+    const topBar = document.getElementById('mobTopBar');
+    if (sidebar) sidebar.classList.remove('mob-open');
+    if (overlay) overlay.classList.remove('open');
+    if (topBar) topBar.style.display = 'none';
+  }
+});
+
 function doLogout(){auth.signOut();}
 function toggleFullscreen(){
   if(!document.fullscreenElement){
@@ -4083,6 +4659,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       document.getElementById('appShell').style.display='block';
       document.getElementById('loginScreen').style.display='none';
       rDash();setTimeout(sizeWheel,100);
+      mobInit();
     } else {
       document.getElementById('appShell').style.display='none';
       document.getElementById('loginScreen').style.display='flex';
@@ -4387,7 +4964,14 @@ function dreRenderReview() {
           ${DRE_CATS.map(c => `<option value="${c.id}"${c.id===line.category?' selected':''}>${c.icon} ${c.label}</option>`).join('')}
         </select>
       </td>
-      <td style="text-align:center;font-size:15px">${confIcon}</td>
+      <td style="text-align:center;min-width:110px">
+        <select class="dre-conf-sel" data-idx="${i}" onchange="dreUpdateConf(${i},this.value)"
+          style="padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#eef4ff;font-size:11px;cursor:pointer;font-family:'Outfit',sans-serif;outline:none">
+          <option value="high"${line.confidence==='high'?' selected':''}>✅ Alta</option>
+          <option value="medium"${line.confidence==='medium'?' selected':''}>⚠️ Média</option>
+          <option value="low"${line.confidence==='low'?' selected':''}>❓ Baixa</option>
+        </select>
+      </td>
     </tr>`;
   });
   document.getElementById('dreReviewRows').innerHTML = rows;
@@ -4396,14 +4980,34 @@ function dreRenderReview() {
 
 function dreUpdateCat(idx, newCat) {
   _dreClassified[idx].category = newCat;
-  _dreClassified[idx].confidence = 'high';
+  // NÃO força mais confidence = 'high' automaticamente
   const row = document.getElementById('dre-row-' + idx);
-  if (row) row.className = 'dre-tbl-row';
+  if (row) {
+    // Remove classes de confiança antigas
+    row.className = 'dre-tbl-row';
+    // Adiciona classe baseada na confiabilidade atual
+    const conf = _dreClassified[idx].confidence;
+    if (conf === 'low') row.classList.add('dre-low');
+    else if (conf === 'medium') row.classList.add('dre-med');
+  }
   const sel = document.querySelector(`[data-idx="${idx}"]`);
   if (sel) {
     const col = DRE_CATS.find(c => c.id === newCat)?.color || '#64748b';
     sel.style.borderColor = col + '55';
     sel.style.color = col;
+  }
+  dreRenderSummary();
+}
+
+function dreUpdateConf(idx, newConf) {
+  _dreClassified[idx].confidence = newConf;
+  const row = document.getElementById('dre-row-' + idx);
+  if (row) {
+    // Remove classes antigas
+    row.classList.remove('dre-low', 'dre-med');
+    // Adiciona nova classe
+    if (newConf === 'low') row.classList.add('dre-low');
+    else if (newConf === 'medium') row.classList.add('dre-med');
   }
   dreRenderSummary();
 }
@@ -4547,15 +5151,15 @@ function dreConfirm() {
   const agg = dreAggregate();
   if (!agg.f_fat) { toast('⚠️ Nenhuma linha classificada como Receita Bruta'); return; }
 
-  // Save mappings for future learning
+  // Save mappings for future learning - TODAS as linhas, inclusive ignorar
   if (!S.dreMappings) S.dreMappings = {};
-  _dreClassified.filter(l => l.category !== 'ignorar').forEach(l => {
+  _dreClassified.forEach(l => {
     S.dreMappings[l.name.toLowerCase().trim()] = l.category;
   });
 
-  // Save raw DRE lines so they can be reviewed/edited later
+  // Save raw DRE lines so they can be reviewed/edited later (incluindo confidence)
   if (!S.dreLines) S.dreLines = {};
-  S.dreLines[mk] = _dreClassified.map(l => ({ name: l.name, value: l.value, category: l.category }));
+  S.dreLines[mk] = _dreClassified.map(l => ({ name: l.name, value: l.value, category: l.category, confidence: l.confidence }));
 
   // Build raw for calcKPIs
   // f_cv = CMV + deduções (para Margem de Contribuição)
@@ -4579,6 +5183,46 @@ function dreConfirm() {
   if (!S.raw) S.raw = {};
   S.raw[mk] = raw;
 
+  // Calcular confiabilidade de cada KPI baseada nas linhas que o compõem
+  const kpiConfidence = {};
+  
+  // Mapear quais linhas afetam cada KPI
+  const kpiLineMapping = {
+    'receita': ['receita_bruta'],
+    'cac': ['despesa_comercial'],
+    'margbruta': ['receita_bruta', 'deducao_receita', 'custo_variavel'],
+    'margem': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial'],
+    'ebitda': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
+    'despop': ['despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
+    'lucroliq': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa', 'depreciacao', 'despesa_financeira', 'imposto_lucro'],
+    'pessoal': ['despesa_pessoal'],
+    'admperc': ['despesa_administrativa'],
+    'spread': ['despesa_financeira', 'imposto_lucro'],
+    'eficiencia': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
+    'margseg': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa']
+  };
+  
+  // Para cada KPI, calcular confiabilidade média das linhas envolvidas
+  Object.keys(kpiLineMapping).forEach(kpiId => {
+    const relevantCategories = kpiLineMapping[kpiId];
+    const relevantLines = _dreClassified.filter(l => relevantCategories.includes(l.category));
+    
+    if (relevantLines.length === 0) {
+      kpiConfidence[kpiId] = 'high'; // Se não tem linhas, assume alta
+    } else {
+      // Calcular confiabilidade média
+      const confScores = relevantLines.map(l => 
+        l.confidence === 'high' ? 100 : l.confidence === 'medium' ? 60 : 20
+      );
+      const avgScore = confScores.reduce((a, b) => a + b, 0) / confScores.length;
+      
+      // Converter de volta para high/medium/low
+      if (avgScore >= 90) kpiConfidence[kpiId] = 'high';
+      else if (avgScore >= 50) kpiConfidence[kpiId] = 'medium';
+      else kpiConfidence[kpiId] = 'low';
+    }
+  });
+
   const kpis = calcKPIs(raw);
   const filled = Object.values(kpis).filter(v => v !== null).length;
   if (!S.data) S.data = {};
@@ -4586,7 +5230,10 @@ function dreConfirm() {
   IND.forEach(ind => {
     const v = kpis[ind.id];
     if (v !== null) {
-      S.data[mk][ind.id] = { value: parseFloat(v.toFixed(4)), confidence: 'high' };
+      S.data[mk][ind.id] = { 
+        value: parseFloat(v.toFixed(4)), 
+        confidence: kpiConfidence[ind.id] || 'high'
+      };
     }
   });
 
@@ -4705,54 +5352,341 @@ let _lancEditLines = [];
 function rLancamentos() {
   const body = document.getElementById('lancBody');
   if (!body) return;
+  
   const months = (S.months || []).slice().sort().reverse();
-  if (!months.length) {
-    body.innerHTML = '<div class="empty" style="padding:40px 0"><div class="eico">🗂️</div><p>Nenhum lançamento ainda.<br>Use Lançamento para importar um DRE.</p></div>';
+  const extratos = (S.extratos || []).slice().sort((a,b) => b.periodoId.localeCompare(a.periodoId));
+  
+  if (!months.length && !extratos.length) {
+    body.innerHTML = `
+      <div class="empty" style="padding:60px 20px">
+        <div class="eico">🗂️</div>
+        <p style="margin-bottom:20px">Nenhum lançamento ainda.<br>Comece importando seus dados financeiros.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <button class="bs" onclick="go('input')" style="padding:10px 20px">📤 Importar DRE</button>
+          <button class="bs" onclick="importExtrato()" style="padding:10px 20px">💰 Importar Extrato</button>
+        </div>
+      </div>
+    `;
     return;
   }
-  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">';
-  months.forEach(mk => {
-    const parts = mk.split('-');
-    const lbl = MES[parseInt(parts[1]) - 1] + '/' + parts[0];
-    const hasLines = S.dreLines && S.dreLines[mk];
-    const raw = S.raw && S.raw[mk];
-    const kpis = raw ? calcKPIs(raw) : {};
-    const score = S.data && S.data[mk] ? calcScore(mk) : null;
-    const g = score ? grade(score.score) : null;
-    const recVal = raw && raw.f_fat ? 'R$ ' + dreFormatNum(raw.f_fat) : '—';
-    const lucroVal = kpis.lucroliq !== null && kpis.lucroliq !== undefined
-      ? kpis.lucroliq.toFixed(1) + '%' : '—';
-    const lucroCol = kpis.lucroliq > 0 ? 'var(--teal)' : kpis.lucroliq < 0 ? 'var(--red)' : 'var(--mut)';
-    const lineCount = hasLines ? S.dreLines[mk].filter(l => l.category !== 'ignorar').length : 0;
-
-    html += `<div style="background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s;cursor:pointer"
-      onmouseover="this.style.borderColor='rgba(0,240,200,.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,.075)'"
-      onclick="lancOpenModal('${mk}')">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;color:#c8dff5">${lbl}</div>
-        ${g ? `<span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;background:${g.c}18;color:${g.c};border:1px solid ${g.c}44">${g.l}</span>` : '<span style="font-size:10px;color:var(--mut)">Sem score</span>'}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px">
-          <div style="font-size:9px;color:var(--mut);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Receita</div>
-          <div style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--teal)">${recVal}</div>
+  
+  let html = `
+    <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <button class="bs" onclick="go('input')" style="padding:10px 20px;font-size:13px">
+        📤 Importar DRE
+      </button>
+      <button class="bs" onclick="importExtrato()" style="padding:10px 20px;font-size:13px">
+        💰 Importar Extrato Bancário
+      </button>
+    </div>
+  `;
+  
+  html += '<div style="display:flex;flex-direction:column;gap:32px">';
+  
+  // ── TIMELINE DE DREs ────────────────────────────────────────────
+  if (months.length) {
+    // Agrupar por ano
+    const byYear = {};
+    months.forEach(mk => {
+      const [y] = mk.split('-');
+      if (!byYear[y]) byYear[y] = [];
+      byYear[y].push(mk);
+    });
+    
+    const years = Object.keys(byYear).sort().reverse();
+    const currentYear = new Date().getFullYear();
+    const selectedYear = window._lancDreYear || currentYear;
+    
+    html += `
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#3b82f6;font-weight:700;display:flex;align-items:center;gap:8px">
+            <span>📊 DREs IMPORTADOS</span>
+            <span style="background:rgba(59,130,246,.15);color:#3b82f6;padding:2px 8px;border-radius:10px;font-size:10px">${months.length}</span>
+          </div>
+          <select onchange="setLancDreYear(this.value)" style="padding:6px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:12px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer">
+            ${years.map(y => `<option value="${y}"${y == selectedYear ? ' selected' : ''}>${y}</option>`).join('')}
+          </select>
         </div>
-        <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px">
-          <div style="font-size:9px;color:var(--mut);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Lucro Líq.</div>
-          <div style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${lucroCol}">${lucroVal}</div>
+        
+        <div style="background:rgba(59,130,246,.04);border:1px solid rgba(59,130,246,.15);border-radius:14px;padding:24px">
+          ${renderDRETimeline(selectedYear, byYear[selectedYear] || [])}
         </div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:10px;color:var(--mut)">${hasLines ? lineCount + ' linhas do DRE' : 'Lançamento manual'}</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="event.stopPropagation();lancDelete('${mk}')" style="background:none;border:1px solid rgba(255,61,90,.25);color:rgba(255,61,90,.6);border-radius:6px;font-size:10px;padding:3px 8px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .2s" onmouseover="this.style.borderColor='#ff3d5a';this.style.color='#ff3d5a'" onmouseout="this.style.borderColor='rgba(255,61,90,.25)';this.style.color='rgba(255,61,90,.6)'">🗑 Excluir</button>
-          <span style="font-size:11px;color:var(--teal);font-weight:600">Ver detalhes →</span>
+    `;
+  }
+  
+  // ── EXTRATOS AGRUPADOS ──────────────────────────────────────────
+  if (extratos.length) {
+    // Filtros
+    const anos = [...new Set(extratos.map(e => e.periodoId.split('-')[0]))].sort().reverse();
+    const meses = [...new Set(extratos.map(e => e.periodoId))].sort().reverse();
+    const contas = [...new Set(extratos.map(e => e.contaId))];
+    
+    const selectedAno = window._lancExtAno || anos[0];
+    const selectedMes = window._lancExtMes || 'todos';
+    const selectedConta = window._lancExtConta || 'todas';
+    
+    // Filtrar extratos
+    let filtrados = extratos.filter(e => e.periodoId.startsWith(selectedAno));
+    if (selectedMes !== 'todos') {
+      filtrados = filtrados.filter(e => e.periodoId === selectedMes);
+    }
+    if (selectedConta !== 'todas') {
+      filtrados = filtrados.filter(e => e.contaId == selectedConta);
+    }
+    
+    html += `
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+          <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--teal);font-weight:700;display:flex;align-items:center;gap:8px">
+            <span>💰 EXTRATOS BANCÁRIOS</span>
+            <span style="background:rgba(0,232,155,.15);color:var(--teal);padding:2px 8px;border-radius:10px;font-size:10px">${extratos.length}</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select onchange="setLancExtAno(this.value)" style="padding:6px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:11px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer">
+              ${anos.map(a => `<option value="${a}"${a == selectedAno ? ' selected' : ''}>${a}</option>`).join('')}
+            </select>
+            <select onchange="setLancExtMes(this.value)" style="padding:6px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:11px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer">
+              <option value="todos">Todos os meses</option>
+              ${meses.filter(m => m.startsWith(selectedAno)).map(m => {
+                const [y, mm] = m.split('-');
+                const label = MES[parseInt(mm)-1] + '/' + y;
+                return `<option value="${m}"${m == selectedMes ? ' selected' : ''}>${label}</option>`;
+              }).join('')}
+            </select>
+            ${contas.length > 1 ? `
+              <select onchange="setLancExtConta(this.value)" style="padding:6px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#eef4ff;font-size:11px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer">
+                <option value="todas">Todas as contas</option>
+                ${S.contasBancarias.filter(c => contas.includes(c.id)).map(c => 
+                  `<option value="${c.id}"${c.id == selectedConta ? ' selected' : ''}>${c.nome}</option>`
+                ).join('')}
+              </select>
+            ` : ''}
+          </div>
+        </div>
+        
+        <div style="background:rgba(0,232,155,.04);border:1px solid rgba(0,232,155,.15);border-radius:14px;padding:20px">
+          ${renderExtratosAgrupados(filtrados)}
         </div>
       </div>
-    </div>`;
-  });
+    `;
+  }
+  
   html += '</div>';
   body.innerHTML = html;
+}
+
+function renderDRETimeline(year, monthKeys) {
+  // Criar array de 12 meses
+  const timeline = [];
+  for (let m = 1; m <= 12; m++) {
+    const mk = `${year}-${String(m).padStart(2, '0')}`;
+    const hasDRE = monthKeys.includes(mk);
+    const raw = hasDRE && S.raw ? S.raw[mk] : null;
+    const score = hasDRE && S.data && S.data[mk] ? calcScore(mk).score : null;
+    
+    timeline.push({
+      month: m,
+      mk: mk,
+      hasDRE: hasDRE,
+      score: score,
+      raw: raw
+    });
+  }
+  
+  let html = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;margin-bottom:20px">
+  `;
+  
+  timeline.forEach(t => {
+    const active = t.hasDRE;
+    const color = active ? '#3b82f6' : 'rgba(255,255,255,.1)';
+    const label = MES[t.month - 1].substr(0, 3).toUpperCase();
+    
+    html += `
+      <div onclick="${active ? `selectDREMonth('${t.mk}')` : ''}" style="cursor:${active ? 'pointer' : 'default'};text-align:center;padding:12px 8px;background:${active ? 'rgba(59,130,246,.1)' : 'rgba(255,255,255,.02)'};border:2px solid ${color};border-radius:10px;transition:all .2s" ${active ? `onmouseover="this.style.borderColor='#3b82f6';this.style.background='rgba(59,130,246,.15)'" onmouseout="this.style.borderColor='${color}';this.style.background='${active ? 'rgba(59,130,246,.1)' : 'rgba(255,255,255,.02)'}'"` : ''}>
+        <div style="font-size:9px;color:${active ? '#3b82f6' : 'var(--mut)'};font-weight:700;margin-bottom:4px">${label}</div>
+        <div style="font-size:18px;margin-bottom:2px">${active ? '●' : '○'}</div>
+        <div style="font-size:10px;font-weight:700;color:${active ? '#3b82f6' : 'var(--mut)'}">${t.score !== null ? t.score : '--'}</div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  
+  // Card de detalhes do mês selecionado
+  const selectedMk = window._lancSelectedDreMk || monthKeys[0];
+  if (selectedMk) {
+    const [y, m] = selectedMk.split('-');
+    const lbl = MES[parseInt(m) - 1] + '/' + y;
+    const raw = S.raw && S.raw[selectedMk];
+    const kpis = raw ? calcKPIs(raw) : {};
+    const score = S.data && S.data[selectedMk] ? calcScore(selectedMk).score : null;
+    const g = score ? grade(score) : null;
+    
+    html += `
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(59,130,246,.2);border-radius:12px;padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#3b82f6">${lbl}</div>
+            <div style="font-size:11px;color:var(--mut);margin-top:2px">DRE Importado</div>
+          </div>
+          ${g ? `<span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:10px;background:${g.c}18;color:${g.c};border:1px solid ${g.c}44">${g.l} · ${score}</span>` : ''}
+        </div>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:rgba(0,232,155,.08);border:1px solid rgba(0,232,155,.2);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:var(--teal);letter-spacing:1px;font-weight:700;margin-bottom:4px">RECEITA</div>
+            <div style="font-size:16px;font-weight:800;color:var(--teal)">${raw && raw.f_fat ? 'R$ ' + dreFormatNum(raw.f_fat) : '—'}</div>
+          </div>
+          <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:#ef4444;letter-spacing:1px;font-weight:700;margin-bottom:4px">CUSTOS VAR.</div>
+            <div style="font-size:16px;font-weight:800;color:#ef4444">${raw && raw.f_cv ? 'R$ ' + dreFormatNum(raw.f_cv) : '—'}</div>
+          </div>
+          <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px">
+            <div style="font-size:9px;color:#f59e0b;letter-spacing:1px;font-weight:700;margin-bottom:4px">LUCRO LÍQ.</div>
+            <div style="font-size:16px;font-weight:800;color:${(kpis.lucroliq !== null && kpis.lucroliq !== undefined && kpis.lucroliq > 0) ? 'var(--teal)' : '#ef4444'}">${kpis.lucroliq !== null && kpis.lucroliq !== undefined ? kpis.lucroliq.toFixed(1) + '%' : '—'}</div>
+          </div>
+        </div>
+        
+        <div style="display:flex;gap:8px">
+          <button onclick="lancOpenModal('${selectedMk}')" class="bs ghost" style="font-size:11px;padding:6px 14px;flex:1">👁️ Ver Detalhes</button>
+          <button onclick="lancDelete('${selectedMk}')" class="bs ghost" style="font-size:11px;padding:6px 14px;color:rgba(255,61,90,.8);border-color:rgba(255,61,90,.3)">🗑️ Excluir</button>
+        </div>
+      </div>
+    `;
+  }
+  
+  return html;
+}
+
+function renderExtratosAgrupados(extratos) {
+  if (!extratos.length) {
+    return '<div style="padding:40px;text-align:center;color:var(--mut);font-size:13px">Nenhum extrato encontrado com os filtros selecionados</div>';
+  }
+  
+  // Agrupar por período
+  const byPeriod = {};
+  extratos.forEach(e => {
+    if (!byPeriod[e.periodoId]) byPeriod[e.periodoId] = [];
+    byPeriod[e.periodoId].push(e);
+  });
+  
+  const periodos = Object.keys(byPeriod).sort().reverse();
+  const expanded = window._lancExtExpanded || {};
+  
+  let html = '<div style="display:flex;flex-direction:column;gap:10px">';
+  
+  periodos.forEach(pid => {
+    const [y, m] = pid.split('-');
+    const label = MES[parseInt(m) - 1] + '/' + y;
+    const exts = byPeriod[pid];
+    const isExpanded = expanded[pid];
+    
+    // Totais do período
+    const totalIn = exts.reduce((sum, e) => sum + e.totalIn, 0);
+    const totalOut = exts.reduce((sum, e) => sum + e.totalOut, 0);
+    const saldo = totalIn - totalOut;
+    
+    html += `
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;overflow:hidden">
+        <div onclick="toggleExtPeriod('${pid}')" style="padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='transparent'">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="font-size:16px;color:var(--teal);transition:transform .2s;transform:rotate(${isExpanded ? '90deg' : '0deg'})">▶</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#c8dff5">${label}</div>
+              <div style="font-size:10px;color:var(--mut);margin-top:2px">${exts.length} conta(s)</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="text-align:right">
+              <div style="font-size:9px;color:#10b981;letter-spacing:1px;font-weight:700">ENTRADAS</div>
+              <div style="font-size:13px;font-weight:700;color:#10b981">${fmtV(totalIn, 'R$')}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:9px;color:#ef4444;letter-spacing:1px;font-weight:700">SAÍDAS</div>
+              <div style="font-size:13px;font-weight:700;color:#ef4444">${fmtV(totalOut, 'R$')}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:9px;color:var(--teal);letter-spacing:1px;font-weight:700">SALDO</div>
+              <div style="font-size:13px;font-weight:700;color:${saldo >= 0 ? 'var(--teal)' : '#ef4444'}">${fmtV(saldo, 'R$')}</div>
+            </div>
+          </div>
+        </div>
+        
+        ${isExpanded ? `
+          <div style="padding:0 18px 14px;display:flex;flex-direction:column;gap:8px">
+            ${exts.map(e => {
+              const conta = S.contasBancarias.find(c => c.id === e.contaId);
+              const contaNome = conta ? conta.nome : e.contaNome || 'Conta removida';
+              const status = e.saldo >= 0 ? '🟢' : '🔴';
+              
+              return `
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:8px">
+                  <div style="font-size:20px">💳</div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:12px;font-weight:600;color:#c8dff5">${contaNome}</div>
+                    <div style="font-size:10px;color:var(--mut);margin-top:2px">${e.count} transações</div>
+                  </div>
+                  <div style="display:flex;gap:12px;align-items:center">
+                    <div style="text-align:right">
+                      <div style="font-size:8px;color:#10b981;letter-spacing:1px;font-weight:700">ENTRADAS</div>
+                      <div style="font-size:11px;font-weight:700;color:#10b981">${fmtV(e.totalIn, 'R$')}</div>
+                    </div>
+                    <div style="text-align:right">
+                      <div style="font-size:8px;color:#ef4444;letter-spacing:1px;font-weight:700">SAÍDAS</div>
+                      <div style="font-size:11px;font-weight:700;color:#ef4444">${fmtV(e.totalOut, 'R$')}</div>
+                    </div>
+                    <div style="font-size:18px">${status}</div>
+                    <button onclick="viewExtratoDetail(${e.id})" class="bs ghost" style="font-size:10px;padding:4px 10px">👁️</button>
+                    <button onclick="deleteExtrato(${e.id})" class="bs ghost" style="font-size:10px;padding:4px 10px;color:rgba(255,61,90,.8);border-color:rgba(255,61,90,.3)">🗑️</button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  return html;
+}
+
+// Funções de controle de estado
+function setLancDreYear(year) {
+  window._lancDreYear = year;
+  window._lancSelectedDreMk = null; // Reset seleção
+  rLancamentos();
+}
+
+function selectDREMonth(mk) {
+  window._lancSelectedDreMk = mk;
+  rLancamentos();
+}
+
+function setLancExtAno(ano) {
+  window._lancExtAno = ano;
+  window._lancExtMes = 'todos';
+  rLancamentos();
+}
+
+function setLancExtMes(mes) {
+  window._lancExtMes = mes;
+  rLancamentos();
+}
+
+function setLancExtConta(conta) {
+  window._lancExtConta = conta;
+  rLancamentos();
+}
+
+function toggleExtPeriod(pid) {
+  if (!window._lancExtExpanded) window._lancExtExpanded = {};
+  window._lancExtExpanded[pid] = !window._lancExtExpanded[pid];
+  rLancamentos();
 }
 
 function lancOpenModal(mk) {
@@ -4807,9 +5741,9 @@ function lancRenderModal(mk) {
   });
 
   const kpiItems = [
-    { label:'📈 Margem Contrib.', val: kpis.margem !== null ? kpis.margem.toFixed(1)+'%' : '—', col: kpis.margem >= 0 ? 'var(--teal)' : 'var(--red)' },
-    { label:'📊 EBITDA', val: kpis.ebitda !== null ? kpis.ebitda.toFixed(1)+'%' : '—', col: kpis.ebitda >= 0 ? 'var(--teal)' : 'var(--red)' },
-    { label:'💰 Lucro Líquido %', val: kpis.lucroliq !== null ? kpis.lucroliq.toFixed(1)+'%' : '—', col: lucroCol },
+    { label:'📈 Margem Contrib.', val: kpis.margem !== null && kpis.margem !== undefined ? kpis.margem.toFixed(1)+'%' : '—', col: (kpis.margem !== null && kpis.margem !== undefined && kpis.margem >= 0) ? 'var(--teal)' : 'var(--red)' },
+    { label:'📊 EBITDA', val: kpis.ebitda !== null && kpis.ebitda !== undefined ? kpis.ebitda.toFixed(1)+'%' : '—', col: (kpis.ebitda !== null && kpis.ebitda !== undefined && kpis.ebitda >= 0) ? 'var(--teal)' : 'var(--red)' },
+    { label:'💰 Lucro Líquido %', val: kpis.lucroliq !== null && kpis.lucroliq !== undefined ? kpis.lucroliq.toFixed(1)+'%' : '—', col: lucroCol },
   ];
   rightHtml += `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);font-weight:700;margin:8px 0 4px">KPIs Gerados</div>`;
   kpiItems.forEach(it => {
@@ -4910,9 +5844,9 @@ function lancSaveEdits() {
   if (!S.dreLines) S.dreLines = {};
   S.dreLines[mk] = _lancEditLines.map(l => ({ ...l }));
 
-  // Update mappings
+  // Update mappings - TODAS as linhas, inclusive ignorar
   if (!S.dreMappings) S.dreMappings = {};
-  _lancEditLines.filter(l => l.category !== 'ignorar').forEach(l => {
+  _lancEditLines.forEach(l => {
     S.dreMappings[l.name.toLowerCase().trim()] = l.category;
   });
 
@@ -4949,13 +5883,51 @@ function lancSaveEdits() {
   if (!S.raw) S.raw = {};
   S.raw[mk] = raw;
 
+  // Calcular confiabilidade de cada KPI baseada nas linhas que o compõem
+  const kpiConfidence = {};
+  const kpiLineMapping = {
+    'receita': ['receita_bruta'],
+    'cac': ['despesa_comercial'],
+    'margbruta': ['receita_bruta', 'deducao_receita', 'custo_variavel'],
+    'margem': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial'],
+    'ebitda': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
+    'despop': ['despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
+    'lucroliq': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa', 'depreciacao', 'despesa_financeira', 'imposto_lucro'],
+    'pessoal': ['despesa_pessoal'],
+    'admperc': ['despesa_administrativa'],
+    'spread': ['despesa_financeira', 'imposto_lucro'],
+    'eficiencia': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
+    'margseg': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa']
+  };
+  
+  Object.keys(kpiLineMapping).forEach(kpiId => {
+    const relevantCategories = kpiLineMapping[kpiId];
+    const relevantLines = _lancEditLines.filter(l => relevantCategories.includes(l.category));
+    
+    if (relevantLines.length === 0) {
+      kpiConfidence[kpiId] = 'high';
+    } else {
+      const confScores = relevantLines.map(l => 
+        l.confidence === 'high' ? 100 : l.confidence === 'medium' ? 60 : 20
+      );
+      const avgScore = confScores.reduce((a, b) => a + b, 0) / confScores.length;
+      
+      if (avgScore >= 90) kpiConfidence[kpiId] = 'high';
+      else if (avgScore >= 50) kpiConfidence[kpiId] = 'medium';
+      else kpiConfidence[kpiId] = 'low';
+    }
+  });
+
   // Recalculate KPIs
   const kpis = calcKPIs(raw);
   if (!S.data) S.data = {};
   if (!S.data[mk]) S.data[mk] = {};
   IND.forEach(ind => {
     const v = kpis[ind.id];
-    if (v !== null) S.data[mk][ind.id] = { value: parseFloat(v.toFixed(4)), confidence: 'high' };
+    if (v !== null) S.data[mk][ind.id] = { 
+      value: parseFloat(v.toFixed(4)), 
+      confidence: kpiConfidence[ind.id] || 'high'
+    };
   });
   if (S.diagCache) delete S.diagCache[mk];
 
@@ -5249,12 +6221,1135 @@ function dreModelClear() {
 }
 
 // ═══════════════════════════════════════════
-// PROJETOS - Stub (implementação está em projects.js)
+// VOICE INPUT (Speech-to-Text)
 // ═══════════════════════════════════════════
-// A função rProjects() é definida em projects.js
-// Este é apenas um placeholder para evitar erros se projects.js não carregar
-if (typeof rProjects === 'undefined') {
-  window.rProjects = function() {
-    console.warn('projects.js não carregado ainda');
-  };
+
+let _voiceRecognition = null;
+let _voiceAnimationFrame = null;
+let _audioContext = null;
+let _analyser = null;
+let _voiceStream = null;
+
+function initVoiceRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  if (!SpeechRecognition) {
+    toast('⚠️ Seu navegador não suporta reconhecimento de voz');
+    return null;
+  }
+  
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'pt-BR';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  
+  return recognition;
 }
+
+function toggleVoiceInput() {
+  if (_voiceRecognition && _voiceRecognition.listening) {
+    stopVoiceInput();
+  } else {
+    startVoiceInput();
+  }
+}
+
+async function startVoiceInput() {
+  if (!_voiceRecognition) {
+    _voiceRecognition = initVoiceRecognition();
+    if (!_voiceRecognition) return;
+  }
+  
+  try {
+    _voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    initVoiceVisualization(_voiceStream);
+    
+    document.getElementById('voiceVisualizer').style.display = 'block';
+    document.getElementById('voiceBtn').style.display = 'none';
+    
+    _voiceRecognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById('advisorQuestion').value = transcript;
+      stopVoiceInput();
+      toast('✓ Transcrição concluída');
+    };
+    
+    _voiceRecognition.onerror = (event) => {
+      console.error('Erro:', event.error);
+      if (event.error === 'no-speech') {
+        toast('⚠️ Nenhuma fala detectada');
+      } else {
+        toast('⚠️ Erro no reconhecimento de voz');
+      }
+      stopVoiceInput();
+    };
+    
+    _voiceRecognition.onend = () => {
+      _voiceRecognition.listening = false;
+    };
+    
+    _voiceRecognition.listening = true;
+    _voiceRecognition.start();
+    
+    document.getElementById('voiceStatus').innerHTML = '🎤 Fale agora...';
+    
+  } catch (error) {
+    console.error('Erro ao acessar microfone:', error);
+    toast('⚠️ Não foi possível acessar o microfone');
+    stopVoiceInput();
+  }
+}
+
+function stopVoiceInput() {
+  if (_voiceRecognition && _voiceRecognition.listening) {
+    _voiceRecognition.stop();
+    _voiceRecognition.listening = false;
+  }
+  
+  if (_voiceAnimationFrame) {
+    cancelAnimationFrame(_voiceAnimationFrame);
+    _voiceAnimationFrame = null;
+  }
+  
+  if (_voiceStream) {
+    _voiceStream.getTracks().forEach(track => track.stop());
+    _voiceStream = null;
+  }
+  
+  if (_audioContext) {
+    _audioContext.close();
+    _audioContext = null;
+  }
+  
+  document.getElementById('voiceVisualizer').style.display = 'none';
+  document.getElementById('voiceBtn').style.display = 'flex';
+}
+
+function initVoiceVisualization(stream) {
+  const canvas = document.getElementById('voiceCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  _audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  _analyser = _audioContext.createAnalyser();
+  const source = _audioContext.createMediaStreamSource(stream);
+  source.connect(_analyser);
+  _analyser.fftSize = 256;
+  
+  const bufferLength = _analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  
+  const draw = () => {
+    _voiceAnimationFrame = requestAnimationFrame(draw);
+    _analyser.getByteFrequencyData(dataArray);
+    
+    ctx.fillStyle = 'rgba(10, 24, 40, 0.3)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let barHeight;
+    let x = 0;
+    
+    for (let i = 0; i < bufferLength; i++) {
+      barHeight = (dataArray[i] / 255) * canvas.height * 0.8;
+      const hue = (i / bufferLength) * 120 + 180;
+      ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+      ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+      x += barWidth + 1;
+    }
+  };
+  
+  draw();
+}
+
+// ═══════════════════════════════════════════
+// VOICE OUTPUT (Text-to-Speech)
+// ═══════════════════════════════════════════
+
+let _currentSpeech = null;
+let _orbAnimation = null;
+
+function speakText(text) {
+  if (!window.speechSynthesis) {
+    toast('⚠️ Seu navegador não suporta síntese de voz');
+    return;
+  }
+  
+  if (_currentSpeech) {
+    window.speechSynthesis.cancel();
+  }
+  
+  _currentSpeech = new SpeechSynthesisUtterance(text);
+  _currentSpeech.lang = 'pt-BR';
+  _currentSpeech.rate = 1.0;
+  _currentSpeech.pitch = 1.0;
+  _currentSpeech.volume = 1.0;
+  
+  const voices = window.speechSynthesis.getVoices();
+  const ptBRVoice = voices.find(v => v.lang === 'pt-BR');
+  if (ptBRVoice) {
+    _currentSpeech.voice = ptBRVoice;
+  }
+  
+  _currentSpeech.onstart = () => { showSpeakingOrb(); };
+  _currentSpeech.onend = () => { hideSpeakingOrb(); _currentSpeech = null; };
+  _currentSpeech.onerror = (error) => { console.error('Erro:', error); hideSpeakingOrb(); _currentSpeech = null; };
+  
+  window.speechSynthesis.speak(_currentSpeech);
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  hideSpeakingOrb();
+  _currentSpeech = null;
+}
+
+function showSpeakingOrb() {
+  let overlay = document.getElementById('speakingOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'speakingOverlay';
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.8); z-index: 9999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+    `;
+    overlay.innerHTML = `
+      <div style="font-size:18px;font-weight:700;color:#3b82f6">🔊 Respondendo...</div>
+      <canvas id="orbCanvas" width="300" height="300"></canvas>
+      <button class="bs" onclick="stopSpeaking()" style="padding:10px 24px;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#ef4444">⏹ Parar</button>
+    `;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  startOrbAnimation();
+}
+
+function hideSpeakingOrb() {
+  const overlay = document.getElementById('speakingOverlay');
+  if (overlay) overlay.style.display = 'none';
+  if (_orbAnimation) {
+    cancelAnimationFrame(_orbAnimation);
+    _orbAnimation = null;
+  }
+}
+
+function startOrbAnimation() {
+  const canvas = document.getElementById('orbCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  let time = 0;
+  
+  const draw = () => {
+    _orbAnimation = requestAnimationFrame(draw);
+    time += 0.02;
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    for (let layer = 0; layer < 3; layer++) {
+      const particles = 30;
+      const radius = 80 + layer * 30;
+      for (let i = 0; i < particles; i++) {
+        const angle = (i / particles) * Math.PI * 2 + time + layer * 0.5;
+        const wave = Math.sin(time * 2 + i * 0.3) * 10;
+        const x = centerX + Math.cos(angle) * (radius + wave);
+        const y = centerY + Math.sin(angle) * (radius + wave);
+        const hue = (time * 50 + i * 10 + layer * 30) % 360;
+        const alpha = 0.6 - layer * 0.15;
+        ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 3 - layer * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  };
+  draw();
+}
+
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {};
+}
+
+// ═══════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════
+
+function fmt(val) {
+  if (!val && val !== 0) return '—';
+  return 'R$ ' + Number(val).toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+}
+
+// ═══════════════════════════════════════════
+// EXECUTIVE DASHBOARD
+// ═══════════════════════════════════════════
+
+function renderExecutiveDashboard() {
+  console.log('🎯 renderExecutiveDashboard chamado');
+  
+  // USA MÊS SELECIONADO (S.sel) ao invés do último
+  if (!S.sel) {
+    console.log('⚠️ Nenhum mês selecionado');
+    showExecPlaceholders();
+    return;
+  }
+  
+  const known = getKnownMonths();
+  console.log('📅 Meses conhecidos:', known);
+  console.log('📅 Mês selecionado:', S.sel);
+  
+  if (!known || known.length === 0) {
+    console.log('⚠️ Sem dados - mostrando placeholders');
+    showExecPlaceholders();
+    return;
+  }
+  
+  const latestKey = S.sel; // USA SELECIONADO!
+  const latestIndex = known.indexOf(latestKey);
+  const previousKey = latestIndex > 0 ? known[latestIndex - 1] : null;
+  
+  console.log('📊 Mês atual:', latestKey);
+  console.log('📊 Mês anterior:', previousKey);
+  
+  const latestRaw = S.raw && S.raw[latestKey] ? S.raw[latestKey] : {};
+  const previousRaw = previousKey && S.raw && S.raw[previousKey] ? S.raw[previousKey] : {};
+  
+  console.log('💾 Raw atual:', latestRaw);
+  console.log('💾 Raw anterior:', previousRaw);
+  
+  const latestKpis = calcKPIs(latestRaw);
+  const previousKpis = previousKey ? calcKPIs(previousRaw) : {};
+  
+  console.log('📈 KPIs atual:', latestKpis);
+  console.log('📈 KPIs anterior:', previousKpis);
+  
+  // Calcular métricas
+  const margem = latestKpis.lucroliq || 0; // % já calculado
+  const receita = latestRaw.f_fat || 0; // Receita bruta
+  const ded = latestRaw.f_ded || 0;
+  const receitaLiq = receita - ded; // Receita líquida (base)
+  const lucro = receitaLiq * (margem / 100); // Lucro em R$ = base * margem%
+  
+  console.log('💰 Lucro (calc):', lucro);
+  console.log('💵 Receita:', receita);
+  console.log('📊 Margem:', margem);
+  
+  // Variações vs mês anterior
+  const prevMargem = previousKpis.lucroliq || 0;
+  const prevReceita = previousRaw.f_fat || 0;
+  const prevDed = previousRaw.f_ded || 0;
+  const prevReceitaLiq = prevReceita - prevDed;
+  const prevLucro = prevReceitaLiq * (prevMargem / 100);
+  
+  const lucroVar = previousKey && prevLucro !== 0 ? ((lucro - prevLucro) / Math.abs(prevLucro)) * 100 : 0;
+  const receitaVar = previousKey && prevReceita !== 0 ? ((receita - prevReceita) / prevReceita) * 100 : 0;
+  const margemVar = previousKey ? margem - prevMargem : 0;
+  
+  // Atualizar cards de métricas
+  document.getElementById('execLucro').textContent = fmt(lucro);
+  document.getElementById('execLucro').style.color = lucro >= 0 ? 'var(--teal)' : 'var(--red)';
+  document.getElementById('execLucroVar').innerHTML = formatVariation(lucroVar, lucro);
+  
+  document.getElementById('execMargem').textContent = margem.toFixed(1) + '%';
+  document.getElementById('execMargem').style.color = margem >= 10 ? 'var(--teal)' : margem >= 5 ? 'var(--amber)' : 'var(--red)';
+  document.getElementById('execMargemVar').innerHTML = formatVariation(margemVar, margem, 'pp');
+  
+  document.getElementById('execReceita').textContent = fmt(receita);
+  document.getElementById('execReceita').style.color = '#c8dff5';
+  document.getElementById('execReceitaVar').innerHTML = formatVariation(receitaVar, receita);
+  
+  console.log('✅ Cards atualizados');
+  
+  // Renderizar mini gráfico
+  renderExecChart();
+  
+  // Renderizar diagnóstico
+  renderExecDiag();
+  
+  // Renderizar ações
+  renderExecAcoes();
+  
+  console.log('✅ Dashboard executivo renderizado completamente');
+}
+
+function showExecPlaceholders() {
+  document.getElementById('execLucro').textContent = '—';
+  document.getElementById('execLucroVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
+  document.getElementById('execMargem').textContent = '—';
+  document.getElementById('execMargemVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
+  document.getElementById('execReceita').textContent = '—';
+  document.getElementById('execReceitaVar').innerHTML = '<span style="color:var(--mut)">Sem dados</span>';
+  document.getElementById('execDiagBullets').innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem dados</div>';
+  document.getElementById('execAcoes').innerHTML = '<div style="color:var(--mut);font-size:11px;padding:30px 0;text-align:center">Nenhuma ação salva</div>';
+}
+
+function formatVariation(variation, value, suffix = '') {
+  if (!variation || Math.abs(variation) < 0.1) {
+    return `<span style="color:var(--mut)">—</span>`;
+  }
+  
+  const arrow = variation > 0 ? '↗️' : '↘️';
+  const color = variation > 0 ? 'var(--teal)' : 'var(--red)';
+  const sign = variation > 0 ? '+' : '';
+  
+  return `<span style="color:${color}">${arrow} ${sign}${variation.toFixed(1)}${suffix}</span>`;
+}
+
+function renderExecChart() {
+  const canvas = document.getElementById('execChart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width = canvas.offsetWidth * 2;
+  const height = canvas.height = 160;
+  
+  const known = getKnownMonths();
+  const months = known.slice(-6);
+  if (months.length === 0) return;
+  
+  const lucros = months.map(mk => {
+    const raw = S.raw && S.raw[mk] ? S.raw[mk] : {};
+    const kpis = calcKPIs(raw);
+    const margem = kpis.lucroliq || 0;
+    const receita = raw.f_fat || 0;
+    const ded = raw.f_ded || 0;
+    const receitaLiq = receita - ded;
+    const lucro = receitaLiq * (margem / 100);
+    return lucro;
+  });
+  
+  const max = Math.max(...lucros, 0);
+  const min = Math.min(...lucros, 0);
+  const range = max - min || 1;
+  
+  const padding = 20;
+  const chartWidth = width - padding * 2;
+  const chartHeight = height - padding * 2;
+  const step = chartWidth / (months.length - 1 || 1);
+  
+  ctx.clearRect(0, 0, width, height);
+  
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding + (chartHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding, y);
+    ctx.lineTo(width - padding, y);
+    ctx.stroke();
+  }
+  
+  // Linha
+  ctx.strokeStyle = 'rgba(0,232,155,0.8)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  ctx.stroke();
+  
+  // Pontos
+  ctx.fillStyle = 'rgba(0,232,155,1)';
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  // Área sombreada
+  ctx.globalAlpha = 0.1;
+  ctx.fillStyle = 'rgba(0,232,155,1)';
+  ctx.beginPath();
+  ctx.moveTo(padding, height - padding);
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    ctx.lineTo(x, y);
+  });
+  ctx.lineTo(padding + chartWidth, height - padding);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+async function renderExecDiag() {
+  const diagEl = document.getElementById('execDiagBullets');
+  if (!diagEl) {
+    console.log('⚠️ execDiagBullets element not found');
+    return;
+  }
+  
+  const known = getKnownMonths();
+  if (!known || known.length === 0) {
+    console.log('⚠️ No known months');
+    diagEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem dados lançados</div>';
+    return;
+  }
+  
+  const latestKey = S.sel || known[known.length - 1];
+  console.log('📅 Mês selecionado para diagnóstico:', latestKey);
+  
+  let latestData = S.data && S.data[latestKey] ? S.data[latestKey] : {};
+  console.log('💾 S.data[' + latestKey + ']:', latestData);
+  console.log('📋 Bullets disponíveis:', latestData.bullets);
+  console.log('📄 Diagnosis disponível:', latestData.diagnosis ? 'SIM' : 'NÃO');
+  
+  // Se já tem bullets, mostra
+  if (latestData.bullets && latestData.bullets.length > 0) {
+    console.log('✅ Usando bullets salvos');
+    diagEl.innerHTML = latestData.bullets.slice(0, 3).map(b => 
+      `<div style="display:flex;gap:8px;align-items:flex-start">
+        <span style="color:var(--teal);font-weight:700">•</span>
+        <span>${b}</span>
+      </div>`
+    ).join('');
+    return;
+  }
+  
+  // Se tem diagnosis mas sem bullets, extrai
+  if (latestData.diagnosis && (!latestData.bullets || latestData.bullets.length === 0)) {
+    console.log('⚙️ Tem diagnosis, extraindo bullets...');
+    const lines = latestData.diagnosis.split('\n').map(l => l.trim()).filter(l => l);
+    const bullets = [];
+    let mode = null;
+    lines.forEach(line => {
+      const lu = line.toUpperCase();
+      if (lu.startsWith('ALERTAS') || lu.startsWith('ALERTA')) {
+        mode = 'alert';
+        return;
+      }
+      if (lu.startsWith('ACOES') || lu.startsWith('AÇÕES')) {
+        mode = null;
+        return;
+      }
+      if (mode === 'alert' && (line.startsWith('•') || line.startsWith('-'))) {
+        bullets.push(line.replace(/^[•\-]\s*/, ''));
+      }
+    });
+    
+    if (bullets.length > 0) {
+      if (!S.data[latestKey]) S.data[latestKey] = {};
+      S.data[latestKey].bullets = bullets;
+      sv();
+      console.log('✅ Bullets extraídos e salvos');
+      diagEl.innerHTML = bullets.slice(0, 3).map(b => 
+        `<div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="color:var(--teal);font-weight:700">•</span>
+          <span>${b}</span>
+        </div>`
+      ).join('');
+      return;
+    }
+  }
+  
+  // Se não tem diagnosis, GERA AUTOMATICAMENTE
+  console.log('🔄 Sem diagnosis, gerando automaticamente...');
+  diagEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center"><div class="spin" style="width:20px;height:20px;margin:0 auto 8px"></div>Gerando diagnóstico...</div>';
+  
+  const res = calcScore(latestKey);
+  if (!res) {
+    console.log('⚠️ Sem dados para calcular score');
+    diagEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem dados suficientes</div>';
+    return;
+  }
+  
+  try {
+    const sorted = [...res.details].sort((a, b) => a.adjPct - b.adjPct);
+    const worst = sorted.slice(0, 3);
+    const best = sorted.slice(-2);
+    const [y, mo] = latestKey.split('-');
+    const kpiAll = res.details.map(d => d.ind.name + ': ' + Math.round(d.adjPct) + '% da meta').join(' | ');
+    const scoreLabel = res.score >= 90 ? 'SAUDÁVEL' : res.score >= 70 ? 'ATENÇÃO' : res.score >= 50 ? 'CRÍTICO' : 'GRAVE';
+    
+    const prompt = 'Você é um CFO experiente analisando ' + S.company + (S.sector ? ' (' + S.sector + ')' : '') + '. ' +
+      'Mês: ' + MES[parseInt(mo) - 1] + '/' + y + '. Score: ' + res.score + '% (' + scoreLabel + '). ' +
+      'KPIs: ' + kpiAll + '. ' +
+      'Críticos: ' + worst.map(d => d.ind.name + ' ' + Math.round(d.adjPct) + '%').join(', ') + '. ' +
+      'Destaques: ' + best.map(d => d.ind.name + ' ' + Math.round(d.adjPct) + '%').join(', ') + '. ' +
+      'Escreva um diagnóstico executivo OBJETIVO em até 200 palavras. ' +
+      'Sem markdown. Formato: SITUACAO: [frase]. ALERTAS: • item1 • item2 • item3. ACOES: 1. acao 2. acao 3. acao';
+    
+    const response = await fetch('/api/diagnose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    
+    const diagData = await response.json();
+    if (diagData.error) throw new Error(diagData.error);
+    
+    const txt = diagData.text || '';
+    if (!txt) throw new Error('Resposta vazia');
+    
+    // Salva diagnosis
+    if (!S.data[latestKey]) S.data[latestKey] = {};
+    S.data[latestKey].diagnosis = txt;
+    
+    // Extrai bullets
+    const lines = txt.split('\n').map(l => l.trim()).filter(l => l);
+    const bullets = [];
+    let mode = null;
+    lines.forEach(line => {
+      const lu = line.toUpperCase();
+      if (lu.startsWith('ALERTAS') || lu.startsWith('ALERTA')) {
+        mode = 'alert';
+        return;
+      }
+      if (lu.startsWith('ACOES') || lu.startsWith('AÇÕES')) {
+        mode = null;
+        return;
+      }
+      if (mode === 'alert' && (line.startsWith('•') || line.startsWith('-'))) {
+        bullets.push(line.replace(/^[•\-]\s*/, ''));
+      }
+    });
+    
+    S.data[latestKey].bullets = bullets.length > 0 ? bullets : null;
+    sv(); // Salva no Firebase
+    
+    console.log('✅ Diagnóstico gerado e salvo automaticamente');
+    
+    // Atualiza UI
+    if (bullets.length > 0) {
+      diagEl.innerHTML = bullets.slice(0, 3).map(b => 
+        `<div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="color:var(--teal);font-weight:700">•</span>
+          <span>${b}</span>
+        </div>`
+      ).join('');
+    } else {
+      diagEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Diagnóstico gerado (expandir para ver)</div>';
+    }
+    
+  } catch (error) {
+    console.error('❌ Erro ao gerar diagnóstico:', error.message);
+    diagEl.innerHTML = '<div style="color:var(--red);font-size:11px;padding:20px 0;text-align:center">Erro ao gerar diagnóstico</div>';
+  }
+}
+
+function renderExecGastos() {
+  const gastosEl = document.getElementById('execGastos');
+  if (!gastosEl) return;
+  
+  const known = getKnownMonths();
+  if (!known || known.length === 0) {
+    gastosEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem dados</div>';
+    return;
+  }
+  
+  const latestKey = known[known.length - 1];
+  const latestData = S.data && S.data[latestKey] ? S.data[latestKey] : {};
+  
+  if (!latestData.lines || latestData.lines.length === 0) {
+    gastosEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem dados do DRE</div>';
+    return;
+  }
+  
+  // Pega linhas de despesa e ordena por valor
+  const expenses = latestData.lines
+    .filter(l => l.value < 0)
+    .map(l => ({ name: l.name, value: Math.abs(l.value) }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+  
+  if (expenses.length === 0) {
+    gastosEl.innerHTML = '<div style="color:var(--mut);font-size:11px;padding:20px 0;text-align:center">Sem despesas registradas</div>';
+    return;
+  }
+  
+  const total = expenses.reduce((sum, e) => sum + e.value, 0);
+  
+  gastosEl.innerHTML = expenses.map((e, i) => {
+    const pct = (e.value / total * 100).toFixed(0);
+    const icon = i === 0 ? '💼' : i === 1 ? '🏢' : '📢';
+    return `
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">${icon}</span>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600;color:#e8f0ff;margin-bottom:2px">${e.name}</div>
+          <div style="font-size:11px;color:var(--mut)">${fmt(e.value)}</div>
+        </div>
+        <div style="font-size:11px;color:var(--red);font-weight:700">${pct}%</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderExecAcoes() {
+  const acoesEl = document.getElementById('execAcoes');
+  if (!acoesEl) return;
+  
+  // Busca ações salvas
+  const actions = S.actions || [];
+  
+  if (actions.length === 0) {
+    acoesEl.innerHTML = `
+      <div style="color:var(--mut);font-size:11px;padding:30px 0;text-align:center">
+        <div style="margin-bottom:8px">Nenhuma ação salva</div>
+        <button onclick="go('advisor',document.querySelector('[data-page=advisor]'))" class="bs ghost" style="font-size:11px;padding:6px 14px">
+          Consultar Conselheiro
+        </button>
+      </div>
+    `;
+    document.getElementById('execAcoesBar').style.width = '0%';
+    return;
+  }
+  
+  // Mostra top 3 ações
+  const topActions = actions.slice(0, 3);
+  const completed = actions.filter(a => a.done).length;
+  const progress = (completed / actions.length * 100).toFixed(0);
+  
+  acoesEl.innerHTML = topActions.map(a => {
+    const prazo = a.prazo ? parsePrazo(a.prazo) : null;
+    const isLate = prazo && prazo < new Date();
+    const daysLeft = prazo ? Math.ceil((prazo - new Date()) / (1000 * 60 * 60 * 24)) : null;
+    
+    let prazoHtml = '';
+    if (a.prazo && !a.done) {
+      if (isLate) {
+        prazoHtml = `<div style="font-size:10px;color:var(--red);margin-top:2px">⚠️ Atrasado ${Math.abs(daysLeft)} dias</div>`;
+      } else if (daysLeft <= 3) {
+        prazoHtml = `<div style="font-size:10px;color:var(--amber);margin-top:2px">⏱ Vence em ${daysLeft} dias</div>`;
+      } else {
+        prazoHtml = `<div style="font-size:10px;color:var(--mut);margin-top:2px">⏱ Vence em ${daysLeft} dias</div>`;
+      }
+    }
+    
+    // Responsável
+    const respHtml = a.responsible ? `<div style="font-size:10px;color:var(--mut);margin-top:2px">👤 ${a.responsible}</div>` : '';
+    
+    return `
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:8px;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid rgba(255,255,255,.04)" onmouseover="this.style.borderColor='rgba(0,232,155,.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,.04)'">
+        <input type="checkbox" ${a.done ? 'checked' : ''} onchange="toggleExecAction('${a.id}')" style="margin-top:2px;accent-color:var(--teal);width:14px;height:14px;cursor:pointer;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;line-height:1.5;color:${a.done ? 'var(--mut)' : '#c8dff5'};${a.done ? 'text-decoration:line-through' : ''}">${a.text}</div>
+          ${prazoHtml}
+          ${respHtml}
+        </div>
+      </label>
+    `;
+  }).join('');
+  
+  document.getElementById('execAcoesBar').style.width = progress + '%';
+  document.getElementById('execAcoesCount').textContent = `${completed}/${actions.length}`;
+}
+
+function toggleExecAction(id) {
+  const action = S.actions.find(a => a.id === id);
+  if (action) {
+    action.done = !action.done;
+    sv();
+    renderExecAcoes();
+    toast(action.done ? '✓ Ação concluída' : 'Ação marcada como pendente');
+  }
+}
+
+function renderExecAlertas() {
+  const alertasEl = document.getElementById('execAlertas');
+  if (!alertasEl) return;
+  
+  const alerts = [];
+  const known = getKnownMonths();
+  
+  if (known && known.length >= 2) {
+    const latestKey = known[known.length - 1];
+    const previousKey = known[known.length - 2];
+    
+    const latestRaw = S.raw && S.raw[latestKey] ? S.raw[latestKey] : {};
+    const previousRaw = S.raw && S.raw[previousKey] ? S.raw[previousKey] : {};
+    
+    const latestKpis = calcKPIs(latestRaw);
+    const previousKpis = calcKPIs(previousRaw);
+    
+    const margem = latestKpis.lucroliq || 0;
+    const receita = latestRaw.f_fat || 0;
+    const ded = latestRaw.f_ded || 0;
+    const receitaLiq = receita - ded;
+    const lucro = receitaLiq * (margem / 100);
+    
+    const prevMargem = previousKpis.lucroliq || 0;
+    const prevReceita = previousRaw.f_fat || 0;
+    const prevDed = previousRaw.f_ded || 0;
+    const prevReceitaLiq = prevReceita - prevDed;
+    const prevLucro = prevReceitaLiq * (prevMargem / 100);
+    
+    const margemVar = margem - prevMargem;
+    
+    // Alerta: Margem caiu
+    if (margemVar < -2) {
+      alerts.push({
+        icon: '🔴',
+        text: `Margem caiu ${Math.abs(margemVar).toFixed(1)}pp`,
+        color: 'var(--red)'
+      });
+    }
+    
+    // Alerta: Lucro negativo
+    if (lucro < 0) {
+      alerts.push({
+        icon: '🔴',
+        text: 'Prejuízo no período',
+        color: 'var(--red)'
+      });
+    }
+    
+    // Alerta: Margem baixa mas positiva
+    if (lucro >= 0 && margem < 5) {
+      alerts.push({
+        icon: '🟡',
+        text: `Margem apertada (${margem.toFixed(1)}%)`,
+        color: 'var(--amber)'
+      });
+    }
+    
+    // Boa notícia: Margem cresceu
+    if (margemVar > 2) {
+      alerts.push({
+        icon: '🟢',
+        text: `Margem cresceu ${margemVar.toFixed(1)}pp`,
+        color: 'var(--teal)'
+      });
+    }
+    
+    // Boa notícia: Lucro cresceu
+    const lucroVar = prevLucro !== 0 ? ((lucro - prevLucro) / Math.abs(prevLucro)) * 100 : 0;
+    if (lucroVar > 10) {
+      alerts.push({
+        icon: '🟢',
+        text: `Lucro cresceu ${lucroVar.toFixed(0)}%`,
+        color: 'var(--teal)'
+      });
+    }
+  }
+  
+  if (alerts.length === 0) {
+    alertasEl.innerHTML = '<div style="color:var(--mut);font-size:11px">Nenhum alerta no momento</div>';
+    return;
+  }
+  
+  alertasEl.innerHTML = alerts.map(a => `
+    <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,255,255,.06)">
+      <span style="font-size:14px">${a.icon}</span>
+      <span style="font-size:11px;color:${a.color};font-weight:600">${a.text}</span>
+    </div>
+  `).join('');
+}
+
+function openKpiModal() {
+  // Por enquanto, vai para página de KPIs
+  toast('💡 Feature: Modal detalhado de KPIs em desenvolvimento');
+}
+
+function openAcoesModal() {
+  // Por enquanto, vai para página do conselheiro
+  go('advisor', document.querySelector('[data-page=advisor]'));
+}
+
+
+// ═══════════════════════════════════════════
+// FULLSCREEN & EXPAND
+// ═══════════════════════════════════════════
+
+let _dashFullscreen = false;
+
+function toggleFullDash() {
+  _dashFullscreen = !_dashFullscreen;
+  const container = document.getElementById('dashContainer');
+  const sidebar = document.getElementById('sb');
+  const topbar = document.querySelector('.top');
+  const btn = document.getElementById('fullDashBtn');
+  
+  if (_dashFullscreen) {
+    // Entra fullscreen
+    if (sidebar) sidebar.style.display = 'none';
+    if (topbar) topbar.style.display = 'none';
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.right = '0';
+    container.style.bottom = '0';
+    container.style.zIndex = '99999'; // ACIMA DE TUDO!
+    container.style.background = 'var(--bg)';
+    btn.innerHTML = '⛶ Sair';
+    btn.title = 'Sair do modo tela cheia';
+  } else {
+    // Sai fullscreen
+    if (sidebar) sidebar.style.display = '';
+    if (topbar) topbar.style.display = '';
+    container.style.position = '';
+    container.style.top = '';
+    container.style.left = '';
+    container.style.right = '';
+    container.style.bottom = '';
+    container.style.zIndex = '';
+    container.style.background = '';
+    btn.innerHTML = '⛶ Expandir';
+    btn.title = 'Expandir dashboard para tela cheia';
+  }
+}
+
+function expandCard(cardType) {
+  // Cria modal real de expansão
+  let modalContent = '';
+  let modalTitle = '';
+  
+  switch(cardType) {
+    case 'roda':
+      modalTitle = '🎯 RODA DE KPIs';
+      modalContent = `
+        <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%">
+          <div style="position:relative;width:600px;height:600px;max-width:90vw;max-height:90vh">
+            <svg id="hwModal" style="width:100%;height:100%"></svg>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+              <div style="color:#dde8ff;font-size:72px;font-weight:800;line-height:1" id="snModal">—</div>
+              <div style="font-size:12px;letter-spacing:2px;color:var(--mut);font-weight:700;margin-top:8px">SAÚDE</div>
+              <div style="font-size:14px;font-weight:600;margin-top:4px" id="sgModal">Sem dados</div>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+      
+    case 'resumo':
+      modalTitle = '📊 RESUMO EXECUTIVO';
+      modalContent = `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;margin-bottom:32px">
+          <div style="text-align:center">
+            <div style="font-size:12px;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:8px">💰 LUCRO LÍQUIDO</div>
+            <div id="execLucroModal" style="font-size:48px;font-weight:800;line-height:1;color:var(--teal)">—</div>
+            <div id="execLucroVarModal" style="font-size:14px;font-weight:600;margin-top:8px"></div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:12px;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:8px">📊 MARGEM LÍQUIDA</div>
+            <div id="execMargemModal" style="font-size:48px;font-weight:800;line-height:1">—</div>
+            <div id="execMargemVarModal" style="font-size:14px;font-weight:600;margin-top:8px"></div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:12px;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:8px">💵 RECEITA TOTAL</div>
+            <div id="execReceitaModal" style="font-size:48px;font-weight:800;line-height:1">—</div>
+            <div id="execReceitaVarModal" style="font-size:14px;font-weight:600;margin-top:8px"></div>
+          </div>
+        </div>
+        <div style="background:rgba(0,0,0,.2);border-radius:12px;padding:24px">
+          <div style="font-size:12px;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:16px">📈 EVOLUÇÃO LUCRO (6 meses)</div>
+          <canvas id="execChartModal" style="width:100%;height:200px"></canvas>
+        </div>
+      `;
+      break;
+      
+    case 'diag':
+      modalTitle = '🩺 DIAGNÓSTICO COMPLETO';
+      const diagData = S.data && S.data[S.sel] ? S.data[S.sel] : {};
+      const fullDiag = diagData.diagnosis || 'Diagnóstico não disponível para este período.';
+      modalContent = `
+        <div style="font-size:14px;line-height:1.8;color:#c8dff5;white-space:pre-wrap">${fullDiag}</div>
+        <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:center">
+          <button onclick="closeExpandModal();go('diag',document.querySelector('[data-page=diag]'))" class="bs" style="padding:10px 24px;font-size:13px;font-weight:600">
+            📄 Ver Página Completa do Diagnóstico →
+          </button>
+        </div>
+      `;
+      break;
+      
+    case 'acoes':
+      modalTitle = '✅ TODAS AS AÇÕES';
+      const allActions = S.actions || [];
+      if (allActions.length === 0) {
+        modalContent = `
+          <div style="text-align:center;padding:60px 0;color:var(--mut)">Nenhuma ação salva</div>
+          <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:center">
+            <button onclick="closeExpandModal();go('actions',document.querySelector('[data-page=actions]'))" class="bs" style="padding:10px 24px;font-size:13px;font-weight:600">
+              📋 Ver Página de Planos de Ação →
+            </button>
+          </div>
+        `;
+      } else {
+        modalContent = `
+          <div style="display:flex;flex-direction:column;gap:12px">
+            ${allActions.map(a => {
+              const prazo = a.prazo ? parsePrazo(a.prazo) : null;
+              const isLate = prazo && prazo < new Date();
+              const daysLeft = prazo ? Math.ceil((prazo - new Date()) / (1000 * 60 * 60 * 24)) : null;
+              let prazoHtml = '';
+              if (a.prazo && !a.done) {
+                if (isLate) prazoHtml = `<span style="color:var(--red)">⚠️ Atrasado ${Math.abs(daysLeft)} dias</span>`;
+                else if (daysLeft <= 3) prazoHtml = `<span style="color:var(--amber)">⏱ Vence em ${daysLeft} dias</span>`;
+                else prazoHtml = `<span style="color:var(--mut)">⏱ Vence em ${daysLeft} dias</span>`;
+              }
+              const respHtml = a.responsible ? `<span style="color:var(--mut)">👤 ${a.responsible}</span>` : '';
+              return `
+                <label style="display:flex;gap:12px;padding:16px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.06);cursor:pointer">
+                  <input type="checkbox" ${a.done ? 'checked' : ''} onchange="toggleExecAction('${a.id}');setTimeout(()=>expandCard('acoes'),100)" style="margin-top:2px;accent-color:var(--teal);width:16px;height:16px;cursor:pointer;flex-shrink:0">
+                  <div style="flex:1">
+                    <div style="font-size:14px;line-height:1.6;color:${a.done ? 'var(--mut)' : '#e8f0ff'};${a.done ? 'text-decoration:line-through' : ''}">${a.text}</div>
+                    ${prazoHtml || respHtml ? `<div style="font-size:12px;margin-top:6px;display:flex;gap:12px">${prazoHtml}${respHtml}</div>` : ''}
+                  </div>
+                </label>
+              `;
+            }).join('')}
+          </div>
+          <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:center">
+            <button onclick="closeExpandModal();go('actions',document.querySelector('[data-page=actions]'))" class="bs" style="padding:10px 24px;font-size:13px;font-weight:600">
+              📋 Ver Página Completa de Planos de Ação →
+            </button>
+          </div>
+        `;
+      }
+      break;
+  }
+  
+  // Cria modal
+  const modal = document.createElement('div');
+  modal.id = 'expandModal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,.9);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    animation: fadeIn .2s;
+  `;
+  
+  modal.innerHTML = `
+    <div style="background:var(--glass);border:1px solid var(--bdr);border-radius:16px;max-width:1200px;width:100%;max-height:100%;overflow:auto;position:relative">
+      <div style="padding:24px 32px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--glass);z-index:1">
+        <div style="font-size:16px;font-weight:700;letter-spacing:1px">${modalTitle}</div>
+        <button onclick="closeExpandModal()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--mut);font-size:14px;padding:8px 16px;cursor:pointer;font-weight:600">✕ Fechar</button>
+      </div>
+      <div style="padding:32px">${modalContent}</div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Se for roda, redesenha com tamanho maior
+  if (cardType === 'roda') {
+    setTimeout(() => {
+      const svg = document.getElementById('hwModal');
+      if (svg) {
+        svg.setAttribute('viewBox', '0 0 600 600');
+        rWheel(window._lastDets || null, 600, 'hwModal');
+        document.getElementById('snModal').textContent = document.getElementById('sn').textContent;
+        document.getElementById('sgModal').textContent = document.getElementById('sg').textContent;
+      }
+    }, 50);
+  }
+  
+  // Se for resumo, copia dados e redesenha gráfico
+  if (cardType === 'resumo') {
+    setTimeout(() => {
+      document.getElementById('execLucroModal').textContent = document.getElementById('execLucro').textContent;
+      document.getElementById('execLucroVarModal').innerHTML = document.getElementById('execLucroVar').innerHTML;
+      document.getElementById('execMargemModal').textContent = document.getElementById('execMargem').textContent;
+      document.getElementById('execMargemVarModal').innerHTML = document.getElementById('execMargemVar').innerHTML;
+      document.getElementById('execReceitaModal').textContent = document.getElementById('execReceita').textContent;
+      document.getElementById('execReceitaVarModal').innerHTML = document.getElementById('execReceitaVar').innerHTML;
+      renderExecChartModal();
+    }, 50);
+  }
+}
+
+function closeExpandModal() {
+  const modal = document.getElementById('expandModal');
+  if (modal) modal.remove();
+}
+
+function renderExecChartModal() {
+  const canvas = document.getElementById('execChartModal');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width = canvas.offsetWidth * 2;
+  const height = canvas.height = 400;
+  
+  const known = getKnownMonths();
+  const months = known.slice(-6);
+  if (months.length === 0) return;
+  
+  const lucros = months.map(mk => {
+    const raw = S.raw && S.raw[mk] ? S.raw[mk] : {};
+    const kpis = calcKPIs(raw);
+    const margem = kpis.lucroliq || 0;
+    const receita = raw.f_fat || 0;
+    const ded = raw.f_ded || 0;
+    const receitaLiq = receita - ded;
+    return receitaLiq * (margem / 100);
+  });
+  
+  const max = Math.max(...lucros, 0);
+  const min = Math.min(...lucros, 0);
+  const range = max - min || 1;
+  
+  const padding = 40;
+  const chartWidth = width - padding * 2;
+  const chartHeight = height - padding * 2;
+  const step = chartWidth / (months.length - 1 || 1);
+  
+  ctx.clearRect(0, 0, width, height);
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding + (chartHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding, y);
+    ctx.lineTo(width - padding, y);
+    ctx.stroke();
+  }
+  
+  ctx.strokeStyle = 'rgba(0,232,155,0.8)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  
+  ctx.fillStyle = 'rgba(0,232,155,1)';
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  
+  ctx.globalAlpha = 0.1;
+  ctx.fillStyle = 'rgba(0,232,155,1)';
+  ctx.beginPath();
+  ctx.moveTo(padding, height - padding);
+  lucros.forEach((val, i) => {
+    const x = padding + step * i;
+    const y = padding + chartHeight - ((val - min) / range) * chartHeight;
+    ctx.lineTo(x, y);
+  });
+  ctx.lineTo(padding + chartWidth, height - padding);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+

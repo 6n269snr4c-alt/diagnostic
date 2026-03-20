@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="projects.css">
+  <link rel="stylesheet" href="style-mobile.css">
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -29,6 +29,14 @@
   <div style="font-size:11px;color:rgba(255,255,255,.2);margin-top:24px">Vital Diagnostic · Acesso restrito</div>
 </div>
 <div id="appShell" style="display:none">
+<!-- Mobile top bar — hidden on desktop via JS, shown on mobile via CSS -->
+<div id="mobTopBar" style="display:none">
+  <button id="mobMenuBtn" onclick="mobToggleSidebar()">☰</button>
+  <div id="mobTopTitle">VITAL <em>DIAGNOSTIC</em></div>
+  <div id="mobTopRight"></div>
+</div>
+<!-- Sidebar overlay for mobile -->
+<div id="mobSidebarOverlay" onclick="mobCloseSidebar()"></div>
 <div class="shell">
 <aside class="sidebar" id="sidebar">
   <!-- Top: logo + toggle -->
@@ -49,90 +57,167 @@
   </div>
   <!-- Nav items -->
   <nav class="nav-items">
-    <button class="tb" data-page="input" onclick="go('input',this)"><span class="tb-icon">📥</span><span class="tb-label">Importar DRE</span></button>
     <button class="tb active" data-page="dashboard" onclick="go('dashboard',this)"><span class="tb-icon">📊</span><span class="tb-label">Dashboard</span></button>
+    <button class="tb" data-page="lancamentos" onclick="go('lancamentos',this)"><span class="tb-icon">🗂️</span><span class="tb-label">Lançamentos</span></button>
     <button class="tb" data-page="diag" onclick="go('diag',this)"><span class="tb-icon">🤖</span><span class="tb-label">Diagnóstico</span></button>
     <button class="tb" data-page="advisor" onclick="go('advisor',this)"><span class="tb-icon">🧠</span><span class="tb-label">Conselheiro</span></button>
     <button class="tb" data-page="sim" onclick="go('sim',this)"><span class="tb-icon">🧪</span><span class="tb-label">Simulador</span></button>
     <button class="tb" data-page="actions" onclick="go('actions',this)"><span class="tb-icon">📋</span><span class="tb-label">Planos de Ação</span></button>
-    <button class="tb" data-page="projects" onclick="go('projects',this)"><span class="tb-icon">📂</span><span class="tb-label">Projetos</span></button>
-    <button class="tb" data-page="lancamentos" onclick="go('lancamentos',this)"><span class="tb-icon">🗂️</span><span class="tb-label">Lançamentos</span></button>
+    <button class="tb" data-page="cashflow" onclick="go('cashflow',this)"><span class="tb-icon">💰</span><span class="tb-label">Saúde de Caixa</span></button>
     <button class="tb" data-page="config" onclick="go('config',this)"><span class="tb-icon">⚙️</span><span class="tb-label">Configuração</span></button>
     <button class="tb" data-page="meth" onclick="go('meth',this)"><span class="tb-icon">📖</span><span class="tb-label">Metodologia</span></button>
   </nav>
   <!-- Bottom: user + logout -->
   <div class="sidebar-bottom">
-    <button class="logout-btn" onclick="toggleFullscreen()" id="fsBtnSide" style="margin-bottom:6px;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);color:var(--mut)" title="Tela cheia (F11)">⛶ Tela cheia</button>
+    <button class="logout-btn" onclick="toggleFullscreen()" id="fsBtnSide" style="margin-bottom:6px" title="Tela cheia (F11)">⛶ Tela cheia</button>
     <span id="userEmail"></span>
     <button class="logout-btn" onclick="doLogout()">Sair</button>
   </div>
 </aside>
 <div class="main-content">
 <div class="page active" id="page-dashboard">
-  <div class="dash-layout">
-    <div class="dash-left">
-      <div class="dash-top">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 4px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="dash-title">DIAGNÓSTICO ESTRATÉGICO</div>
-            <button id="kpiToggleBtn" title="Expandir roda / ocultar lista de KPIs" onclick="toggleKpiList()" style="background:none;border:1px solid rgba(255,255,255,.12);border-radius:6px;color:var(--mut);font-size:10px;padding:2px 8px;cursor:pointer;transition:all .2s">Expandir roda</button>
-          </div>
-          <div style="display:flex;gap:5px">
-            <button class="adm" style="border-color:rgba(168,85,247,.4);color:#a855f7" onclick="go('sim',document.querySelector('[data-page=sim]'))">🔮 Simular</button>
-            <button class="adm" style="border-color:rgba(0,240,200,.4);color:var(--teal);font-weight:700" onclick="openMeeting()">▶ Reunião</button>
-          </div>
+  <!-- ONE PAGE EXECUTIVE DASHBOARD -->
+  <div id="dashContainer" style="height:100vh;overflow:hidden;display:flex;flex-direction:column;transition:all .3s">
+    
+    <!-- Header compacto (1 linha) -->
+    <div style="padding:12px 24px;border-bottom:1px solid var(--bdr);flex-shrink:0;background:var(--bg)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div class="dash-title" style="font-size:16px;margin:0">DASHBOARD EXECUTIVO</div>
+          <div class="mpills" id="mpills" style="display:flex;gap:6px"></div>
         </div>
-        <div class="mpills" id="mpills" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none"></div>
-      </div>
-      <div class="wheel-col" id="wheelCol">
-        <div id="wheelWrap">
-          <svg id="hw"></svg>
-          <div class="wc">
-            <div class="score-big" id="sn" style="color:#dde8ff">—</div>
-            <div class="score-lbl">SAÚDE</div>
-            <div class="score-grade" id="sg">Sem dados</div>
-          </div>
-        </div>
-      </div>
-      <div class="sp-wrap">
-        <div class="tStats" id="tStats"></div>
-        <div class="sp-right">
-          <svg id="spSvg" height="52" style="width:100%;overflow:visible"></svg>
-          <div class="spLbs" id="spLbs"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="toggleFullDash()" id="fullDashBtn" class="adm" style="border-color:rgba(100,116,139,.4);color:#94a3b8;padding:6px 12px;font-size:11px" title="Expandir dashboard para tela cheia">
+            ⛶ Expandir
+          </button>
+          <button class="adm" style="border-color:rgba(168,85,247,.4);color:#a855f7;padding:6px 12px;font-size:11px" onclick="go('sim',document.querySelector('[data-page=sim]'))">🔮 Simular</button>
+          <button class="adm" style="border-color:rgba(0,240,200,.4);color:var(--teal);font-weight:700;padding:6px 12px;font-size:11px" onclick="openMeeting()">▶ Reunião</button>
         </div>
       </div>
     </div>
-    <div class="dash-right">
-      <!-- Score + confidence summary -->
-      <div id="lucroCard" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;margin:10px 14px 0;align-items:center;justify-content:space-between;gap:12px">
-        <div>
-          <div style="font-size:9px;letter-spacing:2px;font-weight:700;color:var(--mut);margin-bottom:3px">💰 LUCRO LÍQUIDO</div>
-          <div id="lucroVal" style="font-size:22px;font-weight:800;line-height:1"></div>
-          <div id="lucroLbl" style="font-size:10px;font-weight:600;margin-top:2px"></div>
+
+    <!-- Main content (grid one page) -->
+    <div style="flex:1;padding:20px 24px;overflow:auto">
+      <div style="display:grid;grid-template-columns:420px 1fr;gap:20px;height:100%">
+        
+        <!-- COLUNA ESQUERDA: RODA GRANDE -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          
+          <!-- RODA KPIs (GRANDE) -->
+          <div style="background:var(--glass);border:1px solid var(--bdr);border-radius:14px;padding:24px;display:flex;flex-direction:column;align-items:center;position:relative;flex:1">
+            <button onclick="expandCard('roda')" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--mut);font-size:10px;padding:4px 8px;cursor:pointer" title="Expandir">⛶</button>
+            <div style="font-size:10px;letter-spacing:2px;color:var(--mut);font-weight:700;text-transform:uppercase;margin-bottom:16px">RODA DE KPIs</div>
+            <div style="position:relative;width:100%;max-width:380px;aspect-ratio:1;display:flex;align-items:center;justify-content:center">
+              <svg id="hw" style="width:100%;height:100%"></svg>
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+                <div class="score-big" id="sn" style="color:#dde8ff;font-size:56px;font-weight:800;line-height:1">—</div>
+                <div class="score-lbl" style="font-size:10px;letter-spacing:2px;color:var(--mut);font-weight:700;margin-top:6px">SAÚDE</div>
+                <div class="score-grade" id="sg" style="font-size:12px;font-weight:600;margin-top:4px">Sem dados</div>
+              </div>
+            </div>
+            <button onclick="go('advisor',document.querySelector('[data-page=advisor]'))" class="bs" style="margin-top:20px;padding:8px 20px;font-size:12px;width:100%;max-width:280px">
+              🧠 Consultar Conselheiro →
+            </button>
+          </div>
+
+        </div>
+
+        <!-- COLUNA DIREITA: RESUMO + DIAGNÓSTICO/AÇÕES -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          
+          <!-- RESUMO EXECUTIVO -->
+          <div style="background:var(--glass);border:1px solid var(--bdr);border-radius:14px;padding:20px;position:relative">
+            <button onclick="expandCard('resumo')" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--mut);font-size:10px;padding:4px 8px;cursor:pointer" title="Expandir">⛶</button>
+            <div style="font-size:10px;letter-spacing:2px;color:var(--mut);font-weight:700;text-transform:uppercase;margin-bottom:16px">RESUMO EXECUTIVO</div>
+            
+            <!-- Métricas principais -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+              <!-- Lucro -->
+              <div>
+                <div style="font-size:9px;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:4px">💰 LUCRO LÍQUIDO</div>
+                <div id="execLucro" style="font-size:26px;font-weight:800;line-height:1;color:var(--teal)">—</div>
+                <div id="execLucroVar" style="font-size:11px;font-weight:600;margin-top:4px"></div>
+              </div>
+              <!-- Margem -->
+              <div>
+                <div style="font-size:9px;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:4px">📊 MARGEM LÍQUIDA</div>
+                <div id="execMargem" style="font-size:26px;font-weight:800;line-height:1">—</div>
+                <div id="execMargemVar" style="font-size:11px;font-weight:600;margin-top:4px"></div>
+              </div>
+              <!-- Receita -->
+              <div>
+                <div style="font-size:9px;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:4px">💵 RECEITA TOTAL</div>
+                <div id="execReceita" style="font-size:26px;font-weight:800;line-height:1">—</div>
+                <div id="execReceitaVar" style="font-size:11px;font-weight:600;margin-top:4px"></div>
+              </div>
+            </div>
+
+            <!-- Mini gráfico evolução -->
+            <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px">
+              <div style="font-size:9px;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:8px">📈 EVOLUÇÃO LUCRO (6 meses)</div>
+              <canvas id="execChart" style="width:100%;height:80px"></canvas>
+            </div>
+          </div>
+
+          <!-- DIAGNÓSTICO + AÇÕES (lado a lado, quadrados) -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1">
+            
+            <!-- DIAGNÓSTICO (bullets) -->
+            <div style="background:var(--glass);border:1px solid var(--bdr);border-radius:14px;padding:20px;position:relative;display:flex;flex-direction:column">
+              <button onclick="expandCard('diag')" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--mut);font-size:10px;padding:4px 8px;cursor:pointer" title="Expandir">⛶</button>
+              <div style="font-size:10px;letter-spacing:2px;color:var(--mut);font-weight:700;text-transform:uppercase;margin-bottom:12px">🩺 DIAGNÓSTICO</div>
+              <div id="execDiagBullets" style="flex:1;display:flex;flex-direction:column;gap:8px;font-size:12px;line-height:1.6;color:#c8dff5">
+                <!-- Populated by JS with bullets -->
+              </div>
+            </div>
+
+            <!-- AÇÕES PRIORITÁRIAS -->
+            <div style="background:var(--glass);border:1px solid var(--bdr);border-radius:14px;padding:20px;position:relative;display:flex;flex-direction:column">
+              <button onclick="expandCard('acoes')" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--mut);font-size:10px;padding:4px 8px;cursor:pointer" title="Expandir">⛶</button>
+              <div style="font-size:10px;letter-spacing:2px;color:var(--mut);font-weight:700;text-transform:uppercase;margin-bottom:12px">✅ AÇÕES PRIORITÁRIAS</div>
+              <div id="execAcoes" style="flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto">
+                <!-- Populated by JS -->
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)">
+                <div id="execAcoesProgress" style="flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">
+                  <div id="execAcoesBar" style="height:100%;background:var(--teal);width:0;transition:width .3s"></div>
+                </div>
+                <div id="execAcoesCount" style="font-size:10px;color:var(--mut);white-space:nowrap">0/0</div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </div>
-      <div class="dash-rt">
-        <div><div class="rp-sec">Score</div><div class="rp-val" id="rScore" style="color:var(--teal)">—</div><div class="rp-bw"><div class="rp-b" id="rScoreBar" style="width:0;background:var(--teal)"></div></div></div>
-        <div><div class="rp-sec">Confiab.</div><div class="rp-val" id="rConf" style="color:var(--mut)">—</div><div class="rp-bw"><div class="rp-b" id="rConfBar" style="width:0"></div></div><div style="display:flex;gap:3px;margin-top:3px" id="rConfChips"></div></div>
-      </div>
-      <div style="padding:2px 14px;font-size:10px;color:var(--amber);flex-shrink:0" id="rConfWarn"></div>
-      <!-- AI Bullets -->
-      <div class="dash-bullets" id="dashBullets">
-        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:6px">Pontos de Atenção</div>
-        <div id="bulletContent"><div class="empty" style="padding:8px 0"><p style="font-size:11px">Gerado ao salvar os dados</p></div></div>
-      </div>
-      <!-- CTA: go to full diagnosis -->
-      <div style="padding:10px 14px;border-top:1px solid var(--bdr);flex-shrink:0">
-        <button onclick="go('diag',document.querySelector('[data-page=diag]'))" style="width:100%;background:rgba(0,232,155,.08);border:1px solid rgba(0,232,155,.2);border-radius:9px;color:var(--teal);font-size:12px;font-weight:700;padding:8px;cursor:pointer;font-family:Outfit,sans-serif;transition:all .2s" onmouseover="this.style.background='rgba(0,232,155,.15)'" onmouseout="this.style.background='rgba(0,232,155,.08)'">
-          🤖 Ver Diagnóstico Completo →
-        </button>
-      </div>
-      <!-- hidden elements kept for compatibility -->
-      <div style="display:none" id="indList"></div>
-      <div style="display:none" id="diagC"></div>
-      <div style="display:none" id="diagPeriod"></div>
     </div>
-</div>
+  </div>
+
+  <!-- Hidden elements kept for compatibility -->
+  <div style="display:none">
+    <div class="sp-wrap">
+      <div class="tStats" id="tStats"></div>
+      <div class="sp-right">
+        <svg id="spSvg" height="52" style="width:100%;overflow:visible"></svg>
+        <div class="spLbs" id="spLbs"></div>
+      </div>
+    </div>
+    <div id="wheelCol"></div>
+    <div id="lucroCard"></div>
+    <div id="rScore"></div>
+    <div id="rConf"></div>
+    <div id="rScoreBar"></div>
+    <div id="rConfBar"></div>
+    <div id="rConfChips"></div>
+    <div id="rConfWarn"></div>
+    <div id="dashBullets"></div>
+    <div id="bulletContent"></div>
+    <div id="indList"></div>
+    <div id="diagC"></div>
+    <div id="diagPeriod"></div>
+    <div id="execGastos"></div>
+    <div id="execAlertas"></div>
+  </div>
 </div>
 <div class="page" id="page-diag">
   <div class="diag-layout">
@@ -141,7 +226,14 @@
       <div class="diag-header">
         <div>
           <div class="pt" style="font-size:16px">🤖 Diagnóstico IA</div>
-          <div class="ps" id="diagPagePeriod">Selecione um período no Dashboard</div>
+          <div style="display:flex;gap:12px;align-items:center;margin-top:6px">
+            <select id="diagMesSel" class="m-sel" style="font-size:13px" onchange="onDiagMonthChange()">
+              <!-- Populated by JS -->
+            </select>
+            <select id="diagAnoSel" class="m-sel" style="font-size:13px;width:90px" onchange="onDiagMonthChange()">
+              <!-- Populated by JS -->
+            </select>
+          </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <button onclick="openMeeting()" class="adm" style="border-color:rgba(0,240,200,.4);color:var(--teal);font-weight:700">▶ Reunião</button>
@@ -300,6 +392,7 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="bs ghost" onclick="clearAllData()" style="font-size:11px;padding:5px 10px">🗑 Limpar todos os dados</button>
           <button class="bs ghost" onclick="clearMappings()" style="font-size:11px;padding:5px 10px" id="clearMappingsBtn">🧠 Limpar aprendizado do DRE</button>
+          <button class="bs ghost" onclick="clearExtratos()" style="font-size:11px;padding:5px 10px">💰 Limpar extratos bancários</button>
         </div>
         <div id="mappingsCount" style="font-size:10px;color:var(--mut);margin-top:4px"></div>
       </div>
@@ -314,6 +407,18 @@
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" id="cfgAdvisorCards"></div>
     </div>
 
+    <!-- ── CONTAS BANCÁRIAS ── -->
+    <div class="cfg-sec">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div class="cfg-sec-t" style="margin-bottom:2px">💳 Contas Bancárias</div>
+          <div style="font-size:11px;color:var(--mut)">Gerencie as contas usadas na importação de extratos bancários</div>
+        </div>
+        <button class="bs" onclick="showNovaContaModal()" style="font-size:11px;padding:5px 12px;flex-shrink:0">+ Adicionar Conta</button>
+      </div>
+      <div id="contasBancariasTable"></div>
+    </div>
+
     <!-- ── MAPEAMENTOS APRENDIDOS ── -->
     <div class="cfg-sec">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -325,19 +430,10 @@
       </div>
       <div id="mappingsTableWrap"></div>
     </div>
+    
+    <!-- ── MODELO DE DRE ── MOVIDO PARA CÁ -->
     <div class="cfg-sec">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="cfg-sec-t" style="margin-bottom:0">Metas por KPI e Mês</div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:11px;color:var(--mut)">Ano:</span>
-          <select class="csel" id="goalsYear" style="width:72px" onchange="rGoalsTable()"></select>
-          <button class="bs ghost" onclick="fillAllMonths()" style="font-size:11px;padding:4px 10px">↔ Replicar padrão</button>
-        </div>
-      </div>
-      <div class="gtw"><table class="gt" id="goalsTable"></table></div>
-    </div>
-    <div class="cfg-sec">
-      <div class="cfg-sec-t">Modelo de DRE da Empresa</div>
+      <div class="cfg-sec-t">📋 Modelo de DRE da Empresa</div>
       <div style="font-size:11px;color:var(--mut);line-height:1.7;margin-bottom:12px">
         Suba um DRE com as contas da sua empresa — pode ser com valores zerados ou qualquer mês passado.
         O sistema vai classificar cada linha uma vez e usar isso como base para todas as importações futuras.
@@ -361,8 +457,20 @@
         </button>
       </div>
     </div>
+    
     <div class="cfg-sec">
-      <div class="cfg-sec-t">Peso, Benchmark e Direção por KPI</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="cfg-sec-t" style="margin-bottom:0">Metas por KPI e Mês</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--mut)">Ano:</span>
+          <select class="csel" id="goalsYear" style="width:72px" onchange="rGoalsTable()"></select>
+          <button class="bs ghost" onclick="fillAllMonths()" style="font-size:11px;padding:4px 10px">↔ Replicar padrão</button>
+        </div>
+      </div>
+      <div class="gtw"><table class="gt" id="goalsTable"></table></div>
+    </div>
+    <div class="cfg-sec">
+      <div class="cfg-sec-t">⚙️ Peso e Direção dos KPIs</div>
       <table class="kct" id="cfgGrid"></table>
     </div>
   </div>
@@ -462,10 +570,27 @@
       <!-- Sugestões -->
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px" id="advisorSuggestions"></div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px">
         <div style="font-size:10px;color:var(--mut)">Cmd+Enter para enviar</div>
-        <button class="bs" onclick="advisorAsk()" id="advisorSendBtn" style="padding:8px 24px">
-          Consultar Conselheiro →
+        <div style="display:flex;gap:8px">
+          <button class="bs ghost" onclick="toggleVoiceInput()" id="voiceBtn" style="padding:8px 16px;display:flex;align-items:center;gap:6px" title="Falar com a IA">
+            <span id="voiceBtnIcon">🎤</span>
+            <span id="voiceBtnText">Falar</span>
+          </button>
+          <button class="bs" onclick="advisorAsk()" id="advisorSendBtn" style="padding:8px 24px">
+            Consultar Conselheiro →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voice visualization -->
+    <div id="voiceVisualizer" style="display:none;background:var(--glass);border:1px solid var(--bdr);border-radius:14px;padding:24px;text-align:center">
+      <div id="voiceStatus" style="font-size:14px;font-weight:700;color:var(--teal);margin-bottom:16px">🎤 Gravando...</div>
+      <canvas id="voiceCanvas" width="400" height="100" style="width:100%;max-width:400px;height:100px;margin:0 auto"></canvas>
+      <div style="margin-top:16px">
+        <button class="bs" onclick="stopVoiceInput()" style="padding:8px 24px;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#ef4444">
+          ⏹ Parar Gravação
         </button>
       </div>
     </div>
@@ -552,23 +677,14 @@
   </div>
 </div>
 
-<!-- ============================================ -->
-<!-- PÁGINA DE PROJETOS -->
-<!-- ============================================ -->
-<div class="scrollpage" id="page-projects">
-  <div class="ph">
-    <div>
-      <div class="pt">📂 Projetos</div>
-      <div class="ps">Gerencie projetos agrupando múltiplos planos de ação com acompanhamento de progresso</div>
-    </div>
-    <button class="btn-ok" onclick="newProject()" style="white-space:nowrap">➕ Novo Projeto</button>
-  </div>
-  <div style="padding:0 24px 32px">
-    <div id="projectsList"></div>
-  </div>
-</div>
-
 <div id="meetingOverlay">
+  <!-- Mobile notice — only visible on mobile via CSS -->
+  <div id="mobMeetingNotice" style="display:none">
+    <div class="mob-notice-icon">🖥️</div>
+    <div class="mob-notice-title">Modo Apresentação</div>
+    <div class="mob-notice-desc">O modo de apresentação foi desenvolvido para desktop. Acesse em um computador para aproveitar todos os recursos.</div>
+    <button class="mob-notice-close" onclick="closeMeeting()">← Voltar</button>
+  </div>
   <div class="mhdr">
     <div class="mhdr-l">
       <img class="mhdr-logo" id="meetLogo" alt="">
@@ -605,7 +721,7 @@
   </div>
 </div>
 <script src="app.js"></script>
-<script src="projects.js"></script>
+<script src="cashflow.js"></script>
 <div id="chatPopup" style="display:none;position:fixed;bottom:16px;right:16px;width:min(400px,calc(100vw - 32px));height:min(520px,calc(100vh - 80px));background:#0c1628;border:1px solid rgba(0,240,200,.2);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);z-index:9999;flex-direction:column;overflow:hidden">
   <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(0,232,155,.08),rgba(0,184,212,.05));flex-shrink:0">
     <div>
@@ -630,6 +746,17 @@
     </div>
   </div>
   <div style="padding:16px 24px 40px" id="lancBody"></div>
+</div>
+
+<!-- ══════════════ SAÚDE DE CAIXA ══════════════ -->
+<div class="scrollpage" id="page-cashflow">
+  <div class="ph">
+    <div>
+      <div class="pt">💰 Saúde de Caixa</div>
+      <div class="ps">Análise automática do seu fluxo bancário</div>
+    </div>
+  </div>
+  <div style="padding:16px 24px 40px" id="cashflowBody"></div>
 </div>
 
 <!-- ══════════════ LANCAMENTO DETAIL MODAL ══════════════ -->

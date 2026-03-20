@@ -5,6 +5,25 @@
 // Estado temporário do projeto sendo editado
 let _editingProject = null;
 
+// Helper: toast notification
+function toast(msg) {
+  if (typeof window.toast === 'function') {
+    window.toast(msg);
+  } else {
+    // Fallback: criar toast simples
+    const toastEl = document.getElementById('toast') || (() => {
+      const el = document.createElement('div');
+      el.id = 'toast';
+      document.body.appendChild(el);
+      return el;
+    })();
+    
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2500);
+  }
+}
+
 // ═══════════════════════════════════════════
 // RENDERIZAÇÃO DA LISTA DE PROJETOS
 // ═══════════════════════════════════════════
@@ -656,30 +675,47 @@ function saveProject() {
     return;
   }
   
-  const projectData = {
-    id: _editingProject !== null ? S.projects[_editingProject].id : 'proj_' + Date.now(),
-    name,
-    objective,
-    deadline,
-    actionIds: _editingProject !== null ? S.projects[_editingProject].actionIds || [] : [],
-    tasks: _editingProject !== null ? S.projects[_editingProject].tasks || [] : [], // NOVO: Array de tarefas
-    createdAt: _editingProject !== null ? S.projects[_editingProject].createdAt : new Date().toISOString()
-  };
-  
-  if (_editingProject !== null) {
-    // Editar existente
-    S.projects[_editingProject] = projectData;
-    toast('✓ Projeto atualizado');
-  } else {
-    // Criar novo
-    if (!S.projects) S.projects = [];
-    S.projects.push(projectData);
-    toast('✓ Projeto criado');
+  try {
+    const projectData = {
+      id: _editingProject !== null ? S.projects[_editingProject].id : 'proj_' + Date.now(),
+      name,
+      objective,
+      deadline,
+      actionIds: _editingProject !== null ? S.projects[_editingProject].actionIds || [] : [],
+      tasks: _editingProject !== null ? S.projects[_editingProject].tasks || [] : [],
+      createdAt: _editingProject !== null ? S.projects[_editingProject].createdAt : new Date().toISOString()
+    };
+    
+    if (_editingProject !== null) {
+      // Editar existente
+      S.projects[_editingProject] = projectData;
+      toast('✓ Projeto atualizado');
+    } else {
+      // Criar novo
+      if (!S.projects) S.projects = [];
+      S.projects.push(projectData);
+      toast('✓ Projeto criado');
+    }
+    
+    // Salvar no Firebase
+    if (typeof sv === 'function') {
+      sv();
+    } else {
+      console.warn('Função sv() não encontrada - salvando manualmente');
+      // Fallback: salvar diretamente
+      if (window.S && window.db && window.auth && window.auth.currentUser) {
+        const uid = window.auth.currentUser.uid;
+        window.db.collection('users').doc(uid).set(JSON.parse(JSON.stringify(S)), {merge: true})
+          .catch(e => console.error('Erro ao salvar:', e));
+      }
+    }
+    
+    document.querySelector('.modal-overlay').remove();
+    rProjects();
+  } catch (error) {
+    console.error('Erro ao salvar projeto:', error);
+    toast('❌ Erro ao salvar projeto: ' + error.message);
   }
-  
-  sv();
-  document.querySelector('.modal-overlay').remove();
-  rProjects();
 }
 
 // ═══════════════════════════════════════════
@@ -689,16 +725,26 @@ function deleteProject(idx) {
   const proj = S.projects[idx];
   if (!proj) return;
   
-  showDelDialog(
-    '🗑️ Excluir Projeto',
-    `Tem certeza que deseja excluir o projeto "${proj.name}"? As ações vinculadas não serão excluídas.`,
-    () => {
+  // Usar showDelDialog se existir, senão usar confirm
+  if (typeof showDelDialog === 'function') {
+    showDelDialog(
+      '🗑️ Excluir Projeto',
+      `Tem certeza que deseja excluir o projeto "${proj.name}"? As ações vinculadas não serão excluídas.`,
+      () => {
+        S.projects.splice(idx, 1);
+        if (typeof sv === 'function') sv();
+        toast('✓ Projeto excluído');
+        rProjects();
+      }
+    );
+  } else {
+    if (confirm(`Tem certeza que deseja excluir o projeto "${proj.name}"? As ações vinculadas não serão excluídas.`)) {
       S.projects.splice(idx, 1);
-      sv();
+      if (typeof sv === 'function') sv();
       toast('✓ Projeto excluído');
       rProjects();
     }
-  );
+  }
 }
 
 // ═══════════════════════════════════════════

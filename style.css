@@ -23,12 +23,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);back
   border-bottom:1px solid var(--bdr);
   min-height:64px;
 }
-.sidebar-logo-wrap{display:flex;align-items:center;gap:10px;flex:1;overflow:hidden;min-width:0}
-#navLogo{height:32px;max-width:80px;object-fit:contain;display:block;filter:drop-shadow(0 0 8px rgba(59,130,246,.3));flex-shrink:0}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;white-space:nowrap;overflow:hidden;color:#fff}
+.sidebar-logo-wrap{display:flex;align-items:center;gap:12px;flex:1;overflow:hidden;min-width:0}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;white-space:nowrap;overflow:hidden;color:#fff}
 .logo em{color:var(--teal);font-style:normal}
 .sidebar.collapsed .logo{display:none}
-.sidebar.collapsed #navLogo{display:block!important}
+#navLogo{height:28px;max-width:60px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,240,200,.15))}
+.sidebar.collapsed #navLogo{display:none!important}
+.sidebar.collapsed #companyName{display:none}
 
 /* Collapse toggle button */
 .sb-toggle{

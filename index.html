@@ -16,8 +16,8 @@
 </head>
 <body>
 <div id="loginScreen" style="display:flex;position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#060e1f 0%,#0b1a35 60%,#071428 100%);align-items:center;justify-content:center;flex-direction:column">
-  <div style="text-align:center;margin-bottom:32px">
-    <img src="logo-full.png" alt="Fluxa" style="height:80px;margin-bottom:16px">
+  <div style="text-align:center;margin-bottom:32px;max-width:400px;width:90%">
+    <img src="logo-full.png" alt="Fluxa" style="width:100%;max-width:350px;margin-bottom:16px;filter:drop-shadow(0 4px 12px rgba(59,130,246,.3))">
     <div style="font-size:13px;color:rgba(255,255,255,.35);letter-spacing:2px;margin-top:6px">GESTÃO FINANCEIRA INTELIGENTE</div>
   </div>
   <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:36px 40px;width:340px;display:flex;flex-direction:column;gap:14px">
@@ -43,10 +43,15 @@
   <!-- Top: logo + toggle -->
   <div class="sidebar-top">
     <div class="sidebar-logo-wrap">
-      <img id="navLogo" src="logo-icon.png" alt="Fluxa" style="width:32px;height:32px">
+      <img src="logo-icon.png" alt="Fluxa" style="width:36px;height:36px">
       <div class="logo">FLUXA</div>
     </div>
     <button class="sb-toggle" onclick="toggleSidebar()" title="Recolher menu">‹</button>
+  </div>
+  <!-- Logo do cliente -->
+  <div style="padding:12px 16px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px">
+    <img id="navLogo" alt="logo" style="height:28px;max-width:60px;object-fit:contain;display:none">
+    <div id="companyName" style="font-size:13px;font-weight:600;color:var(--fg);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
   </div>
   <!-- Company badge -->
   <div class="cobadge">

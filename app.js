@@ -7019,14 +7019,28 @@ function expandCard(cardType) {
       modalTitle = '🩺 DIAGNÓSTICO COMPLETO';
       const diagData = S.data && S.data[S.sel] ? S.data[S.sel] : {};
       const fullDiag = diagData.diagnosis || 'Diagnóstico não disponível para este período.';
-      modalContent = `<div style="font-size:14px;line-height:1.8;color:#c8dff5;white-space:pre-wrap">${fullDiag}</div>`;
+      modalContent = `
+        <div style="font-size:14px;line-height:1.8;color:#c8dff5;white-space:pre-wrap">${fullDiag}</div>
+        <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:center">
+          <button onclick="closeExpandModal();go('diag',document.querySelector('[data-page=diag]'))" class="bs" style="padding:10px 24px;font-size:13px;font-weight:600">
+            📄 Ver Página Completa do Diagnóstico →
+          </button>
+        </div>
+      `;
       break;
       
     case 'acoes':
       modalTitle = '✅ TODAS AS AÇÕES';
       const allActions = S.actions || [];
       if (allActions.length === 0) {
-        modalContent = '<div style="text-align:center;padding:60px 0;color:var(--mut)">Nenhuma ação salva</div>';
+        modalContent = `
+          <div style="text-align:center;padding:60px 0;color:var(--mut)">Nenhuma ação salva</div>
+          <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:center">
+            <button onclick="closeExpandModal();go('actions',document.querySelector('[data-page=actions]'))" class="bs" style="padding:10px 24px;font-size:13px;font-weight:600">
+              📋 Ver Página de Planos de Ação →
+            </button>
+          </div>
+        `;
       } else {
         modalContent = `
           <div style="display:flex;flex-direction:column;gap:12px">
@@ -7051,6 +7065,11 @@ function expandCard(cardType) {
                 </label>
               `;
             }).join('')}
+          </div>
+          <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:center">
+            <button onclick="closeExpandModal();go('actions',document.querySelector('[data-page=actions]'))" class="bs" style="padding:10px 24px;font-size:13px;font-weight:600">
+              📋 Ver Página Completa de Planos de Ação →
+            </button>
           </div>
         `;
       }

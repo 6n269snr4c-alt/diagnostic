@@ -17,7 +17,10 @@
 <body>
 <div id="loginScreen" style="display:flex;position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#060e1f 0%,#0b1a35 60%,#071428 100%);align-items:center;justify-content:center;flex-direction:column">
   <div style="text-align:center;margin-bottom:32px;max-width:400px;width:90%">
-    <img src="logo-full.png" alt="Fluxa" style="width:100%;max-width:350px;margin-bottom:16px;filter:drop-shadow(0 4px 12px rgba(59,130,246,.3))">
+    <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:16px">
+      <img src="logo-icon.png" alt="Fluxa" style="height:80px;filter:drop-shadow(0 4px 16px rgba(59,130,246,.4))">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:64px;letter-spacing:8px;color:#fff;text-shadow:0 4px 16px rgba(59,130,246,.3)">FLUXA</div>
+    </div>
     <div style="font-size:13px;color:rgba(255,255,255,.35);letter-spacing:2px;margin-top:6px">GESTÃO FINANCEIRA INTELIGENTE</div>
   </div>
   <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:36px 40px;width:340px;display:flex;flex-direction:column;gap:14px">
@@ -43,8 +46,7 @@
   <!-- Top: logo + toggle -->
   <div class="sidebar-top">
     <div class="sidebar-logo-wrap">
-      <img src="logo-icon.png" alt="Fluxa" style="width:36px;height:36px">
-      <div class="logo">FLUXA</div>
+      <img src="logo-full.png" alt="Fluxa" style="height:28px;width:auto;filter:drop-shadow(0 0 8px rgba(59,130,246,.2))">
     </div>
     <button class="sb-toggle" onclick="toggleSidebar()" title="Recolher menu">‹</button>
   </div>

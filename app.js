@@ -341,11 +341,16 @@ function rActions(){
 
   var filtered=S.actions.filter(function(a){
     if(mesSel&&a.mk!==mesSel)return false;
-    if(statusSel&&a.status!==statusSel)return false;
+    // Converter done para status se necessário
+    var actionStatus = a.status || (a.done ? 'done' : 'open');
+    if(statusSel&&actionStatus!==statusSel)return false;
     return true;
   }).sort(function(a,b){return b.criadoEm.localeCompare(a.criadoEm);});
 
-  var open=S.actions.filter(function(a){return a.status==='open';}).length;
+  var open=S.actions.filter(function(a){
+    var actionStatus = a.status || (a.done ? 'done' : 'open');
+    return actionStatus==='open';
+  }).length;
   var sumEl=document.getElementById('actSummary');
   if(sumEl)sumEl.textContent=open+' em aberto · '+S.actions.length+' total';
 
@@ -387,10 +392,12 @@ function rActions(){
   // Body
   var tbody=document.createElement('tbody');
   filtered.forEach(function(a){
-    var sc=statusCfg[a.status]||statusCfg.open;
+    // Converter done para status se necessário
+    var actionStatus = a.status || (a.done ? 'done' : 'open');
+    var sc=statusCfg[actionStatus]||statusCfg.open;
     var tr=document.createElement('tr');
     var _prazoDate=parsePrazo(a.prazo||'');
-    var _prazoOverdue=_prazoDate&&a.status==='open'&&_prazoDate<(function(){var d=new Date();d.setHours(0,0,0,0);return d;})();
+    var _prazoOverdue=_prazoDate&&actionStatus==='open'&&_prazoDate<(function(){var d=new Date();d.setHours(0,0,0,0);return d;})();
     tr.className='act-row'+(_prazoOverdue?' act-row-overdue':'');
 
     // Mês

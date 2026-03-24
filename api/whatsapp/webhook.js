@@ -4,6 +4,12 @@ import {
   twilioParamsFromBody,
   validateTwilioSignature
 } from '../_lib/twilioSignature.js';
+import {
+  completeWhatsAppLink,
+  getUidForWhatsappPhone,
+  getUserWhatsappContext,
+  normalizeWhatsappE164
+} from '../_lib/whatsappLink.js';
 
 const WHATSAPP_SYSTEM = `Você é o assistente financeiro do Fluxa no WhatsApp.
 
@@ -11,11 +17,25 @@ REGRAS:
 - Responda sempre em português do Brasil.
 - Tom: claro, direto, profissional e acessível (empresário MEI/pequeno negócio).
 - O usuário NÃO está autenticado no app: você NÃO tem acesso a dados reais da empresa dele (DRE, fluxo de caixa, etc.).
-- Se a pergunta depender dos dados do Fluxa, explique com uma frase que, para análises com os números dele, ele pode usar o app Fluxa, e responda o que for possível de forma geral ou educativa.
+- Se a pergunta depender dos dados do Fluxa, explique com uma frase que, para análises com os números dele, ele pode usar o app Fluxa e vincular o WhatsApp em Configuração, e responda o que for possível de forma geral ou educativa.
 - Use texto simples para celular: parágrafos curtos, listas com hífen quando ajudar. Evite Markdown pesado (sem ** ou #).
 - Seja objetivo; se faltar contexto, faça no máximo 1–2 perguntas curtas de esclarecimento.`;
 
+const WHATSAPP_SYSTEM_LINKED_HEAD = `Você é o assistente financeiro do Fluxa no WhatsApp. Esta pessoa já vinculou o número ao mesmo login do app — use o CONTEXTO abaixo como fonte principal (gerado quando ela salva dados no app).
+
+REGRAS:
+- Responda em português do Brasil.
+- Tom: claro, direto, profissional.
+- Ancore respostas nos números e fatos do CONTEXTO quando existirem.
+- Se o contexto estiver vazio ou claramente incompleto, diga que ela pode abrir o app e salvar (Configuração ou após editar um mês) para atualizar o que você vê aqui.
+- Texto simples para celular; evite Markdown pesado.
+- No máximo 1–2 perguntas curtas se precisar esclarecer.
+
+CONTEXTO:
+`;
+
 const MAX_OUT_TOKENS = 1024;
+const MAX_LINKED_TOKENS = 1400;
 const WHATSAPP_CHUNK = 1500;
 
 function splitForWhatsApp(text, maxLen = WHATSAPP_CHUNK) {
@@ -73,6 +93,39 @@ function emptyTwiMLResponse(res) {
   res.status(200).end(xml);
 }
 
+const LINK_MESSAGES = {
+  invalid:
+    'Código inválido. No app Fluxa: Configuração → WhatsApp → Gerar código. Envie exatamente: FLUXA e o código (ex.: FLUXA A1B2C3).',
+  expired:
+    'Esse código expirou (válido por 15 min). Gere outro no app em Configuração → WhatsApp.',
+  nouser:
+    'Ainda não há dados salvos no app para esta conta. Abra o Fluxa, faça login e aguarde carregar; depois gere um novo código em Configuração → WhatsApp.'
+};
+
+async function tryHandleFluxaLink(bodyTrim, phoneE164, phoneForTwilio) {
+  const m = bodyTrim.match(/^FLUXA\s+([A-F0-9]{6})$/i);
+  if (!m) return false;
+
+  try {
+    const result = await completeWhatsAppLink(m[1].toUpperCase(), phoneE164);
+    if (result.ok) {
+      await enviarWhatsApp(
+        phoneForTwilio,
+        'Conta vinculada com sucesso. Agora posso usar os dados do seu Fluxa (atualizados quando você salva no app). Em que posso ajudar?'
+      );
+    } else {
+      await enviarWhatsApp(phoneForTwilio, LINK_MESSAGES[result.reason] || LINK_MESSAGES.invalid);
+    }
+  } catch (e) {
+    console.error('WhatsApp vínculo:', e);
+    await enviarWhatsApp(
+      phoneForTwilio,
+      'Não foi possível concluir o vínculo agora. Confira se o app está com as credenciais do Firebase no servidor ou tente de novo em instantes.'
+    );
+  }
+  return true;
+}
+
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -97,12 +150,17 @@ export default async function handler(req, res) {
 
   const bodyText = params.Body;
   const fromRaw = params.From || '';
-  const phoneNumber = fromRaw.replace(/^whatsapp:/i, '');
+  const phoneE164 = normalizeWhatsappE164(fromRaw);
+  const phoneForTwilio = phoneE164 || fromRaw.replace(/^whatsapp:/i, '');
   const numMedia = parseInt(params.NumMedia || '0', 10) || 0;
+
+  if (!phoneForTwilio) {
+    return emptyTwiMLResponse(res);
+  }
 
   if (numMedia > 0) {
     await enviarWhatsApp(
-      phoneNumber,
+      phoneForTwilio,
       'No momento só consigo ler mensagens de texto por aqui. Envie sua dúvida em texto, por favor.'
     );
     return emptyTwiMLResponse(res);
@@ -112,22 +170,48 @@ export default async function handler(req, res) {
     return emptyTwiMLResponse(res);
   }
 
+  const bodyTrim = bodyText.trim();
+
+  if (phoneE164) {
+    const handled = await tryHandleFluxaLink(bodyTrim, phoneE164, phoneForTwilio);
+    if (handled) return emptyTwiMLResponse(res);
+  }
+
+  let system = WHATSAPP_SYSTEM;
+  let maxTokens = MAX_OUT_TOKENS;
+
+  if (phoneE164) {
+    try {
+      const uid = await getUidForWhatsappPhone(phoneE164);
+      if (uid) {
+        const { contextText } = await getUserWhatsappContext(uid);
+        system =
+          WHATSAPP_SYSTEM_LINKED_HEAD +
+          (contextText ||
+            '(Contexto ainda não foi salvo — peça para abrir o app e salvar: Configuração ou após editar um mês.)');
+        maxTokens = MAX_LINKED_TOKENS;
+      }
+    } catch (e) {
+      console.warn('WhatsApp contexto Firestore:', e.message);
+    }
+  }
+
   try {
     const reply = await callAnthropicMessages({
-      system: WHATSAPP_SYSTEM,
-      messages: [{ role: 'user', content: bodyText.trim() }],
-      maxTokens: MAX_OUT_TOKENS
+      system,
+      messages: [{ role: 'user', content: bodyTrim }],
+      maxTokens
     });
 
     const chunks = splitForWhatsApp(reply || 'Não consegui gerar uma resposta agora. Tente de novo em instantes.');
     for (const chunk of chunks) {
-      await enviarWhatsApp(phoneNumber, chunk);
+      await enviarWhatsApp(phoneForTwilio, chunk);
     }
   } catch (err) {
     console.error('WhatsApp webhook:', err);
     try {
       await enviarWhatsApp(
-        phoneNumber,
+        phoneForTwilio,
         'Desculpe, tive um problema ao processar sua mensagem. Tente novamente em alguns minutos.'
       );
     } catch (sendErr) {

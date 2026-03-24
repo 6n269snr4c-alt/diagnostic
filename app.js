@@ -200,7 +200,21 @@ function sv(){
   clearTimeout(_svTimer);
   _svTimer=setTimeout(async()=>{
     const u=auth.currentUser;if(!u)return;
-    try{await db.collection('users').doc(u.uid).set(JSON.parse(JSON.stringify(S)),{merge:true});}
+    try{
+      const payload=JSON.parse(JSON.stringify(S));
+      delete payload.whatsappPhoneE164;
+      delete payload.whatsappLinkedAt;
+      try{
+        if(typeof _buildAdvisorContext==='function'){
+          const ctx=_buildAdvisorContext();
+          if(ctx&&String(ctx).trim()){
+            payload.whatsappContextText=String(ctx).trim();
+            payload.whatsappContextUpdatedAt=Date.now();
+          }
+        }
+      }catch(ctxErr){console.warn('whatsappContextText:',ctxErr);}
+      await db.collection('users').doc(u.uid).set(payload,{merge:true});
+    }
     catch(e){console.warn('Save error:',e);}
   },1500);
 }
@@ -231,6 +245,8 @@ async function loadUserData(uid){
       if(d.advisorHistory)S.advisorHistory=d.advisorHistory;
       if(d.extratos)S.extratos=d.extratos;
       if(d.contasBancarias)S.contasBancarias=d.contasBancarias;
+      if(d.whatsappPhoneE164)S.whatsappPhoneE164=d.whatsappPhoneE164;else delete S.whatsappPhoneE164;
+      if(d.whatsappLinkedAt!=null)S.whatsappLinkedAt=d.whatsappLinkedAt;else delete S.whatsappLinkedAt;
     }
   }catch(e){console.warn('Load error:',e);}
 }
@@ -2310,6 +2326,65 @@ function saveForecast(){
   S.forecast[mk]=fc;sv();toast('✓ Previsão salva!');showAssert(mk);_buildInpDelBtns(mk);
 }
 
+async function requestWhatsAppLinkCode(){
+  const u=auth.currentUser;
+  if(!u){toast('⚠️ Faça login');return;}
+  try{
+    const idToken=await u.getIdToken();
+    const r=await fetch('/api/whatsapp/request-link-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken})});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.error||'Erro ao gerar código');
+    const line='FLUXA '+data.code;
+    const lineEl=document.getElementById('whatsappCodeLine');
+    const panel=document.getElementById('whatsappCodePanel');
+    if(lineEl)lineEl.textContent=line;
+    if(panel)panel.style.display='block';
+    toast('✓ Código gerado — envie essa frase pelo WhatsApp do Fluxa');
+  }catch(e){toast('⚠️ '+(e.message||'Erro'));}
+}
+
+async function unlinkWhatsApp(){
+  const u=auth.currentUser;
+  if(!u)return;
+  if(!confirm('Desvincular este WhatsApp da sua conta Fluxa?'))return;
+  try{
+    const idToken=await u.getIdToken();
+    const r=await fetch('/api/whatsapp/unlink',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken})});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.error||'Erro');
+    delete S.whatsappPhoneE164;
+    delete S.whatsappLinkedAt;
+    rWhatsAppCfg();
+    const panel=document.getElementById('whatsappCodePanel');
+    if(panel)panel.style.display='none';
+    toast('✓ WhatsApp desvinculado');
+  }catch(e){toast('⚠️ '+(e.message||'Erro'));}
+}
+
+function rWhatsAppCfg(){
+  const statusEl=document.getElementById('whatsappLinkStatus');
+  const unlinkBtn=document.getElementById('whatsappUnlinkBtn');
+  if(!statusEl)return;
+  if(S.whatsappPhoneE164){
+    statusEl.textContent='';
+    const ok=document.createElement('span');
+    ok.style.color='var(--teal)';
+    ok.textContent='✓ Número vinculado: ';
+    statusEl.appendChild(ok);
+    const strong=document.createElement('strong');
+    strong.textContent=S.whatsappPhoneE164;
+    statusEl.appendChild(strong);
+    const tail=document.createElement('span');
+    tail.style.color='var(--mut)';
+    tail.textContent=' — a IA no WhatsApp usa os dados salvos no app (atualizados ao salvar).';
+    statusEl.appendChild(tail);
+    if(unlinkBtn)unlinkBtn.style.display='inline-block';
+  }else{
+    statusEl.textContent='Nenhum número vinculado. Gere um código e envie a mensagem exata pelo WhatsApp do número Fluxa.';
+    if(unlinkBtn)unlinkBtn.style.display='none';
+  }
+}
+
 function rConfig(){
   document.getElementById('cfgCo').value=S.company;
   document.getElementById('cfgSec').value=S.sector||'';
@@ -2325,6 +2400,7 @@ function rConfig(){
   dreModelRenderStatus();
   rMappingsTable();
   rAdvisorCfgCards();
+  rWhatsAppCfg();
   
   // Renderizar contas bancárias (se a função existir no cashflow.js)
   if (typeof rContasBancariasTable === 'function') {

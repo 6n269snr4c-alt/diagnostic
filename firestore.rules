@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /whatsappLinkCodes/{code} {
+      allow read, write: if false;
+    }
+    match /whatsappUserLinkCode/{uid} {
+      allow read, write: if false;
+    }
+    match /whatsappPhoneToUser/{phoneId} {
+      allow read, write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId
+        && !('whatsappPhoneE164' in request.resource.data)
+        && !('whatsappLinkedAt' in request.resource.data);
+      // Cliente não pode criar/alterar campos de vínculo WhatsApp (só Admin SDK).
+      allow update: if request.auth != null && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['whatsappPhoneE164', 'whatsappLinkedAt']);
+    }
+  }
+}

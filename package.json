@@ -1,5 +1,8 @@
 {
   "name": "fluxa",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
 }

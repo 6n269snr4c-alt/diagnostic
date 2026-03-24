@@ -1,8 +1,8 @@
 // api/whatsapp/webhook.js
-// Endpoint que RECEBE mensagens do WhatsApp e RESPONDE com Claude
+// Versão SIMPLIFICADA - SEM validação (apenas para testes)
  
 export default async function handler(req, res) {
-  // Apenas aceita POST (Twilio envia POST)
+  // Apenas aceita POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   try {
     // 1. EXTRAIR dados da mensagem do Twilio
     const { From, Body, MessageSid } = req.body;
-    const phoneNumber = From.replace('whatsapp:', ''); // Remove prefixo
+    const phoneNumber = From ? From.replace('whatsapp:', '') : 'unknown';
  
     console.log('📱 Mensagem recebida:', {
       de: phoneNumber,
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       id: MessageSid
     });
  
-    // 2. RESPONDER de volta (por enquanto, eco simples)
+    // 2. RESPONDER de volta (eco simples)
     const respostaTexto = `Olá! Recebi sua mensagem: "${Body}"\n\n🔧 O Fluxa WhatsApp está em construção. Em breve você poderá consultar seus dados financeiros por aqui!`;
  
     await enviarWhatsApp(phoneNumber, respostaTexto);

@@ -57,7 +57,6 @@ export async function completeWhatsAppLink(code, phoneE164) {
       whatsappPhoneE164: phoneE164,
       whatsappLinkedAt: admin.firestore.FieldValue.serverTimestamp()
     },
-    { merge: true }
   );
 
   await batch.commit();

@@ -1642,13 +1642,14 @@ function _openKpiModal(id, raw){
   const adm    = fv('f_adm');
   const dep    = fv('f_dep');
   const depfin = fv('f_depfin');
+  const recnop = fv('f_recnop');  // Receita Não Operacional
   const recLiq = fat - ded;
   const base   = recLiq > 0 ? recLiq : fat;
   const lucBruto = fat ? recLiq - cmv : 0;
   const mc_r     = lucBruto - cvc;
   const dfEfetivo = (pess > 0 || adm > 0) ? pess + adm : fv('f_df');
   const ebitda_r = mc_r - dc - dfEfetivo;
-  const lucro_r  = ebitda_r - dep - depfin;
+  const lucro_r  = ebitda_r - dep - depfin + recnop;  // CORRIGIDO: agora soma recnop
   const fmt = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
   const fmtP = v => v !== null && !isNaN(v) ? v.toFixed(1)+'%' : '—';
 
@@ -1704,6 +1705,7 @@ function _openKpiModal(id, raw){
       {op:'',  label:'EBITDA R$',          val:fmt(ebitda_r)},
       {op:'−', label:'Depreciação',        val:fmt(dep)},
       {op:'−', label:'Desp. Financeiras + IR/CSLL', val:fmt(depfin)},
+      {op:'+', label:'Receita Não Operacional', val:fmt(recnop), sub: recnop > 0 ? 'Receitas excepcionais, venda de ativos' : 'Nenhuma lançada'},
       {op:'=', label:'Lucro Líquido R$',   val:fmt(lucro_r)},
       {op:'÷', label:'Receita Líquida',    val:fmt(base)},
       {op:'=', label:'Lucro Líquido %',    val:fmtP(base?lucro_r/base*100:null), bold:true, color:col},

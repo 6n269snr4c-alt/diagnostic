@@ -19,6 +19,7 @@ export default async function handler(req, res) {
     { id: 'despesa_financeira',       desc: 'Juros, IOF, tarifas bancárias, despesas com empréstimos' },
     { id: 'imposto_lucro',            desc: 'Imposto de Renda (IR/IRPJ), CSLL — impostos sobre o LUCRO' },
     { id: 'depreciacao',              desc: 'Depreciação de ativos fixos, amortização' },
+    { id: 'receita_nao_operacional',  desc: 'Receitas excepcionais, venda de ativos, juros recebidos, ganhos não operacionais' },
     { id: 'ignorar',                  desc: 'TOTAIS, subtotais, linhas de resultado (Lucro Bruto, EBITDA, Margem Bruta, Margem Contribuição, Resultado Líquido), linhas zeradas, cabeçalhos, percentuais' },
   ];
 

@@ -5173,6 +5173,7 @@ function dreRenderSummary() {
     f_dc:      a.f_dc      || undefined,
     f_df:      (a.f_pessoal + a.f_adm) || undefined,
     f_depfin:  a.f_depfin  || undefined,
+    f_recnop:  a.f_recnop  || undefined,  // NOVO: Receita Não Operacional
     f_cmv:     a.f_cmv     || undefined,
     f_cvc:     a.f_cvc     || undefined,
     f_ded:     a.f_ded     || undefined,
@@ -5193,6 +5194,7 @@ function dreRenderSummary() {
     { label: '👥 Despesa Pessoal',         val: a.f_pessoal, color: '#a855f7', hide: !a.f_pessoal },
     { label: '🏢 Despesa Adm.',            val: a.f_adm,     color: '#f59e0b', hide: !a.f_adm },
     { label: '🏦 Desp. Fin. + IR',         val: a.f_depfin,  color: '#ef4444', hide: !a.f_depfin },
+    { label: '💎 Receita Não Op.',         val: a.f_recnop,  color: '#10b981', hide: !a.f_recnop },
   ];
   let html = `<div class="dre-sum-title">Resumo de valores</div>`;
   items.forEach(it => {
@@ -5258,6 +5260,7 @@ function _dreGetLiveRaw() {
     f_dc:      a.f_dc      || undefined,
     f_df:      (a.f_pessoal + a.f_adm) || undefined,
     f_depfin:  a.f_depfin  || undefined,
+    f_recnop:  a.f_recnop  || undefined,  // NOVO: Receita Não Operacional
     f_cmv:     a.f_cmv     || undefined,
     f_cvc:     a.f_cvc     || undefined,
     f_ded:     a.f_ded     || undefined,

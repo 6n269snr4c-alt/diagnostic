@@ -5295,6 +5295,7 @@ function dreConfirm() {
     f_dc:      agg.f_dc               || undefined,
     f_df:      (agg.f_pessoal + agg.f_adm) || undefined,
     f_depfin:  agg.f_depfin           || undefined,
+    f_recnop:  agg.f_recnop           || undefined,  // NOVO: Receita Não Operacional
     f_cmv:     agg.f_cmv              || undefined,
     f_cvc:     agg.f_cvc              || undefined,
     f_ded:     agg.f_ded              || undefined,
@@ -5318,7 +5319,7 @@ function dreConfirm() {
     'margem': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial'],
     'ebitda': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
     'despop': ['despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
-    'lucroliq': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa', 'depreciacao', 'despesa_financeira', 'imposto_lucro'],
+    'lucroliq': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa', 'depreciacao', 'despesa_financeira', 'imposto_lucro', 'receita_nao_operacional'],
     'pessoal': ['despesa_pessoal'],
     'admperc': ['despesa_administrativa'],
     'spread': ['despesa_financeira', 'imposto_lucro'],
@@ -5975,7 +5976,7 @@ function lancSaveEdits() {
   });
 
   // Recalculate aggregation
-  const agg = { f_fat:0, f_ded:0, f_cmv:0, f_cvc:0, f_pessoal:0, f_adm:0, f_dep:0, f_dc:0, f_depfin:0 };
+  const agg = { f_fat:0, f_ded:0, f_cmv:0, f_cvc:0, f_pessoal:0, f_adm:0, f_dep:0, f_dc:0, f_depfin:0, f_recnop:0 };
   _lancEditLines.forEach(l => {
     const v = l.value;
     if      (l.category === 'receita_bruta')            agg.f_fat     += v;
@@ -5988,6 +5989,7 @@ function lancSaveEdits() {
     else if (l.category === 'depreciacao')              agg.f_dep     += v;
     else if (l.category === 'despesa_financeira')       agg.f_depfin  += v;
     else if (l.category === 'imposto_lucro')            agg.f_depfin  += v;
+    else if (l.category === 'receita_nao_operacional')  agg.f_recnop  += v;
   });
 
   const raw = {
@@ -5996,6 +5998,7 @@ function lancSaveEdits() {
     f_dc:      agg.f_dc                       || undefined,
     f_df:      (agg.f_pessoal + agg.f_adm)    || undefined,
     f_depfin:  agg.f_depfin                   || undefined,
+    f_recnop:  agg.f_recnop                   || undefined,
     f_cmv:     agg.f_cmv                      || undefined,
     f_cvc:     agg.f_cvc                      || undefined,
     f_ded:     agg.f_ded                      || undefined,
@@ -6016,7 +6019,7 @@ function lancSaveEdits() {
     'margem': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial'],
     'ebitda': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
     'despop': ['despesa_comercial', 'despesa_pessoal', 'despesa_administrativa'],
-    'lucroliq': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa', 'depreciacao', 'despesa_financeira', 'imposto_lucro'],
+    'lucroliq': ['receita_bruta', 'deducao_receita', 'custo_variavel', 'despesa_comercial', 'despesa_pessoal', 'despesa_administrativa', 'depreciacao', 'despesa_financeira', 'imposto_lucro', 'receita_nao_operacional'],
     'pessoal': ['despesa_pessoal'],
     'admperc': ['despesa_administrativa'],
     'spread': ['despesa_financeira', 'imposto_lucro'],

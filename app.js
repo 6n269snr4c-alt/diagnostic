@@ -22,8 +22,8 @@ const IND = [
    formula:'(Desp. Comercial + Pessoal + Adm.) ÷ Receita Líquida × 100',
    desc:'Peso total das despesas operacionais sobre a receita líquida. Estrutura pesada compromete a rentabilidade.'},
   {id:'lucroliq',  name:'Lucro Líquido %',               short:'Lucro Líq.', group:'rentab', icon:'💰', unit:'%',  goalDef:10,     hb:true,
-   formula:'(EBITDA − Depreciação − Desp. Financeiras − IR/CSLL) ÷ Receita Líquida × 100',
-   desc:'O que sobrou de verdade após todas as despesas, juros e impostos. O KPI mais importante da empresa.'},
+   formula:'(EBITDA − Depreciação − Desp. Financeiras − IR/CSLL + Receita Não Op.) ÷ Receita Líquida × 100',
+   desc:'O que sobrou de verdade após todas as despesas, juros e impostos, mais receitas não operacionais. O KPI mais importante da empresa.'},
   {id:'pessoal',   name:'Peso do Pessoal %',             short:'Pessoal%',   group:'rentab', icon:'👥', unit:'%',  goalDef:25,     hb:false,
    formula:'Despesas com Pessoal ÷ Receita Líquida × 100',
    desc:'Percentual da receita líquida consumido pela folha de pagamento. Alto peso reduz a flexibilidade operacional.'},
@@ -3012,6 +3012,7 @@ function rMeth(){
         {label:'= EBITDA',          color:'#10d4a8', desc:'Lucro antes de juros, impostos, depreciação e amortização', bold:true},
         {label:'( − ) Depreciação', color:'#64748b', desc:'Depreciação e amortização de ativos — excluída do EBITDA por definição'},
         {label:'( − ) Desp. Financeiras + IR', color:'#ef4444', desc:'Juros, IOF, empréstimos, IR/CSLL sobre o lucro'},
+        {label:'( + ) Receita Não Op.', color:'#10b981', desc:'Receitas excepcionais, vendas de ativos, ganhos não recorrentes'},
         {label:'= Lucro Líquido',   color:'#00e89b', desc:'Resultado final após todas as despesas e impostos', bold:true},
       ].map(r=>`
         <div style="display:grid;grid-template-columns:200px 1fr;gap:12px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);align-items:center">
@@ -3067,9 +3068,9 @@ function rMeth(){
     },
     {
       id:'lucroliq', name:'Lucro Líquido %', icon:'💰', group:'rentab',
-      formula:'(EBITDA − Depreciação − Desp. Financeiras − IR/CSLL) ÷ Receita Líquida × 100',
+      formula:'(EBITDA − Depreciação − Desp. Financeiras − IR/CSLL + Receita Não Op.) ÷ Receita Líquida × 100',
       denominador:'Receita Líquida',
-      fonte:'Resultado final após todas as deduções',
+      fonte:'Resultado final após todas as deduções e adição de receitas não operacionais',
       hb:'Maior = melhor',
     },
     {

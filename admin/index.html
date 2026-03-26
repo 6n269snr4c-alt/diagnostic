@@ -56,28 +56,20 @@
     .header-actions { display: flex; gap: 12px; align-items: center; }
     .user-info { font-size: 13px; color: #94a3b8; margin-right: 12px; }
     
-    /* Tabs */
-    .tabs { display: flex; gap: 8px; margin-bottom: 24px; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 8px; }
-    .tab { flex: 1; padding: 12px 24px; background: transparent; border: none; border-radius: 8px; color: #94a3b8; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .tab:hover { color: #e2e8f0; background: rgba(255,255,255,0.05); }
-    .tab.active { background: linear-gradient(135deg, #00f0c8 0%, #00d4aa 100%); color: #0f172a; }
-    
     /* Stats */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
     .stat-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; text-align: center; }
     .stat-value { font-size: 36px; font-weight: 700; color: #00f0c8; margin-bottom: 4px; }
     .stat-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
     
-    /* Main Grid */
-    .main-grid { display: grid; grid-template-columns: 1fr 400px; gap: 24px; }
+    /* Panel */
     .panel { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; }
     .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
     .panel-title { font-size: 18px; font-weight: 600; color: #00f0c8; display: flex; align-items: center; gap: 8px; }
     
     /* Categories */
-    .category-item { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: move; transition: all 0.2s; }
-    .category-item:hover { background: rgba(255,255,255,0.12); border-color: rgba(0,240,200,0.4); transform: translateX(4px); }
-    .category-item.result { background: rgba(100,200,255,0.1); border-left: 4px solid #64c8ff; cursor: default; }
+    .category-item { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: all 0.2s; }
+    .category-item:hover { background: rgba(255,255,255,0.12); border-color: rgba(0,240,200,0.4); }
     .category-header { display: flex; align-items: center; justify-content: space-between; }
     .category-info { display: flex; align-items: center; gap: 12px; flex: 1; }
     .category-icon { font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(255,255,255,0.1); }
@@ -85,7 +77,6 @@
     .category-label { font-size: 16px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
     .category-meta { font-size: 12px; color: #94a3b8; display: flex; gap: 12px; }
     .category-actions { display: flex; gap: 8px; }
-    .connector { display: flex; align-items: center; justify-content: center; margin: 8px 0; color: #64748b; font-size: 20px; }
     .add-category-btn { width: 100%; padding: 16px; background: rgba(0,240,200,0.1); border: 2px dashed rgba(0,240,200,0.3); border-radius: 12px; color: #00f0c8; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .add-category-btn:hover { background: rgba(0,240,200,0.15); border-color: rgba(0,240,200,0.5); }
     
@@ -117,8 +108,8 @@
     .fade-in { animation: fadeIn 0.3s ease-out; }
     
     /* Loading */
-    .loading { display: flex; align-items: center; justify-content: center; min-height: 400px; font-size: 18px; color: #94a3b8; }
-    .spinner { width: 40px; height: 40px; border: 4px solid rgba(0,240,200,0.2); border-top-color: #00f0c8; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 16px; }
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 400px; font-size: 18px; color: #94a3b8; flex-direction: column; gap: 16px; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(0,240,200,0.2); border-top-color: #00f0c8; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     
     .error-message { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #f87171; padding: 12px; border-radius: 8px; font-size: 13px; text-align: center; }
@@ -134,7 +125,7 @@
     const { useState, useEffect, useRef } = React;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // FIREBASE CONFIG - USANDO O MESMO DO FLUXA!
+    // FIREBASE CONFIG - MESMO DO FLUXA
     // ═══════════════════════════════════════════════════════════════════════
     
     const firebaseConfig = {
@@ -154,22 +145,22 @@
     const db = firebase.firestore();
 
     // ═══════════════════════════════════════════════════════════════════════
-    // INITIAL CONFIG
+    // CATEGORIAS ATUAIS DO SISTEMA (do app.js linha 4799)
     // ═══════════════════════════════════════════════════════════════════════
 
-    const INITIAL_CATEGORIES = [
-      { id: 'receita_bruta', field: 'f_fat', label: 'Receita Bruta', icon: '💰', color: '#00e89b', type: 'income', order: 1 },
-      { id: 'deducao_receita', field: 'f_ded', label: 'Dedução de Receita', icon: '➖', color: '#f59e0b', type: 'expense', order: 2 },
-      { id: 'custo_variavel', field: 'f_cmv', label: 'CMV / Custo do Produto', icon: '📦', color: '#ef4444', type: 'expense', order: 3 },
-      { id: 'custo_variavel_comercial', field: 'f_cvc', label: 'Custo Variável Comercial', icon: '🤝', color: '#f97316', type: 'expense', order: 4 },
-      { id: 'despesa_comercial', field: 'f_dc', label: 'Despesa Comercial', icon: '📣', color: '#3b82f6', type: 'expense', order: 5 },
-      { id: 'despesa_pessoal', field: 'f_pessoal', label: 'Despesa com Pessoal', icon: '👥', color: '#a855f7', type: 'expense', order: 6 },
-      { id: 'despesa_administrativa', field: 'f_adm', label: 'Despesa Administrativa', icon: '🏢', color: '#f59e0b', type: 'expense', order: 7 },
-      { id: 'despesa_financeira', field: 'f_depfin', label: 'Despesa Financeira', icon: '🏦', color: '#ef4444', type: 'expense', order: 8 },
-      { id: 'imposto_lucro', field: 'f_depfin', label: 'Imposto s/ Lucro (IR/CSLL)', icon: '🏛', color: '#dc2626', type: 'expense', order: 9 },
-      { id: 'depreciacao', field: 'f_dep', label: 'Depreciação / Amortização', icon: '📉', color: '#64748b', type: 'expense', order: 10 },
-      { id: 'receita_nao_operacional', field: 'f_recnop', label: 'Receita Não Operacional', icon: '💎', color: '#10b981', type: 'income', order: 11 },
-      { id: 'ignorar', label: 'Ignorar (total/subtotal)', icon: '🚫', color: '#374151', type: null, order: 99 },
+    const CURRENT_CATEGORIES = [
+      {id:'receita_bruta',            label:'Receita Bruta',                color:'#00e89b', icon:'💰'},
+      {id:'deducao_receita',          label:'Dedução de Receita',           color:'#f59e0b', icon:'➖'},
+      {id:'custo_variavel',           label:'CMV / Custo do Produto',       color:'#ef4444', icon:'📦'},
+      {id:'custo_variavel_comercial', label:'Custo Variável Comercial',     color:'#f97316', icon:'🤝'},
+      {id:'despesa_comercial',        label:'Despesa Comercial',            color:'#3b82f6', icon:'📣'},
+      {id:'despesa_pessoal',          label:'Despesa com Pessoal',          color:'#a855f7', icon:'👥'},
+      {id:'despesa_administrativa',   label:'Despesa Administrativa',       color:'#f59e0b', icon:'🏢'},
+      {id:'despesa_financeira',       label:'Despesa Financeira',           color:'#ef4444', icon:'🏦'},
+      {id:'imposto_lucro',            label:'Imposto s/ Lucro (IR/CSLL)',   color:'#dc2626', icon:'🏛'},
+      {id:'depreciacao',              label:'Depreciação / Amortização',    color:'#64748b', icon:'📉'},
+      {id:'receita_nao_operacional',  label:'Receita Não Operacional',      color:'#10b981', icon:'💎'},
+      {id:'ignorar',                  label:'Ignorar (total/subtotal)',     color:'#374151', icon:'🚫'},
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -178,26 +169,49 @@
 
     function App() {
       const [user, setUser] = useState(null);
+      const [isAdmin, setIsAdmin] = useState(false);
       const [loading, setLoading] = useState(true);
+      const [checkingAdmin, setCheckingAdmin] = useState(false);
 
       useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(user => {
+        const unsubscribe = auth.onAuthStateChanged(async (user) => {
           setUser(user);
+          
+          if (user) {
+            // ✅ VERIFICAR SE É ADMIN
+            setCheckingAdmin(true);
+            try {
+              const userDoc = await db.collection('users').doc(user.uid).get();
+              const isAdminUser = userDoc.exists && userDoc.data().isAdmin === true;
+              setIsAdmin(isAdminUser);
+              
+              if (!isAdminUser) {
+                // NÃO É ADMIN - FAZER LOGOUT
+                await auth.signOut();
+              }
+            } catch (err) {
+              console.error('Erro ao verificar admin:', err);
+              await auth.signOut();
+            } finally {
+              setCheckingAdmin(false);
+            }
+          }
+          
           setLoading(false);
         });
         return unsubscribe;
       }, []);
 
-      if (loading) {
+      if (loading || checkingAdmin) {
         return (
           <div className="loading">
             <div className="spinner"></div>
-            Carregando...
+            <div>Verificando permissões...</div>
           </div>
         );
       }
 
-      if (!user) {
+      if (!user || !isAdmin) {
         return <LoginScreen />;
       }
 
@@ -221,9 +235,13 @@
 
         try {
           await auth.signInWithEmailAndPassword(email, password);
+          // Verificação de admin acontece no useEffect do App
         } catch (err) {
-          setError('Email ou senha incorretos');
-        } finally {
+          if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+            setError('Email ou senha incorretos');
+          } else {
+            setError('Erro ao fazer login. Tente novamente.');
+          }
           setLoading(false);
         }
       };
@@ -234,6 +252,7 @@
             <div className="login-logo">
               <h1>🏗️ Admin DRE</h1>
               <p>Vital Diagnostic / Fluxa</p>
+              <p style={{ marginTop: '8px', fontSize: '12px', color: '#64748b' }}>Apenas administradores</p>
             </div>
 
             <form className="login-form" onSubmit={handleLogin}>
@@ -248,6 +267,7 @@
                   onChange={e => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
+                  autoFocus
                 />
               </div>
 
@@ -268,7 +288,7 @@
                 className="btn btn-primary"
                 disabled={loading}
               >
-                {loading ? 'Entrando...' : '🔐 Entrar'}
+                {loading ? 'Verificando...' : '🔐 Entrar como Admin'}
               </button>
             </form>
           </div>
@@ -281,7 +301,8 @@
     // ═══════════════════════════════════════════════════════════════════════
 
     function DREAdmin({ user }) {
-      const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+      const [categories, setCategories] = useState([]);
+      const [loadingCategories, setLoadingCategories] = useState(true);
       const [showCategoryModal, setShowCategoryModal] = useState(false);
       const [showCodeModal, setShowCodeModal] = useState(false);
       const [editingCategory, setEditingCategory] = useState(null);
@@ -289,19 +310,33 @@
       const [isDirty, setIsDirty] = useState(false);
       const [saving, setSaving] = useState(false);
 
-      // Carregar config do Firestore
+      // ✅ CARREGAR CATEGORIAS ATUAIS
       useEffect(() => {
-        loadConfig();
+        loadCurrentCategories();
       }, []);
 
-      const loadConfig = async () => {
+      const loadCurrentCategories = async () => {
+        setLoadingCategories(true);
         try {
+          // Tentar carregar do Firestore primeiro
           const doc = await db.collection('system').doc('dre-admin-config').get();
-          if (doc.exists && doc.data().categories) {
+          
+          if (doc.exists && doc.data().categories && doc.data().categories.length > 0) {
+            // Tem config salva - usar ela
             setCategories(doc.data().categories);
+            showAlert('✅ Categorias carregadas do sistema!', 'success');
+          } else {
+            // Não tem config salva - usar as categorias atuais do app.js
+            setCategories(CURRENT_CATEGORIES);
+            showAlert('📋 Mostrando categorias atuais do sistema', 'warning');
           }
         } catch (err) {
           console.error('Erro ao carregar:', err);
+          // Em caso de erro, usar as categorias atuais
+          setCategories(CURRENT_CATEGORIES);
+          showAlert('⚠️ Usando categorias padrão', 'warning');
+        } finally {
+          setLoadingCategories(false);
         }
       };
 
@@ -325,7 +360,7 @@
           });
 
           setIsDirty(false);
-          showAlert('✅ Configuração salva no Firebase!', 'success');
+          showAlert('✅ Configuração salva! Clique em "Gerar Código" para aplicar.', 'success');
         } catch (err) {
           showAlert('❌ Erro ao salvar: ' + err.message, 'error');
         } finally {
@@ -334,6 +369,10 @@
       };
 
       const handleGenerateCode = () => {
+        if (isDirty) {
+          alert('Salve as alterações antes de gerar o código!');
+          return;
+        }
         setShowCodeModal(true);
       };
 
@@ -348,10 +387,14 @@
       };
 
       const handleDeleteCategory = (id) => {
+        if (id === 'ignorar') {
+          alert('Não pode remover a categoria "Ignorar"!');
+          return;
+        }
         if (!confirm('Remover esta categoria?')) return;
         setCategories(categories.filter(c => c.id !== id));
         setIsDirty(true);
-        showAlert('Categoria removida!', 'success');
+        showAlert('Categoria removida! Não esqueça de salvar.', 'warning');
       };
 
       const handleSaveCategory = (categoryData) => {
@@ -360,24 +403,35 @@
             c.id === editingCategory.id ? { ...c, ...categoryData } : c
           ));
         } else {
-          setCategories([...categories, { ...categoryData, order: categories.length + 1 }]);
+          setCategories([...categories.filter(c => c.id !== 'ignorar'), categoryData, categories.find(c => c.id === 'ignorar')]);
         }
         setIsDirty(true);
         setShowCategoryModal(false);
         showAlert(editingCategory ? 'Categoria atualizada!' : 'Categoria adicionada!', 'success');
       };
 
+      if (loadingCategories) {
+        return (
+          <div className="loading">
+            <div className="spinner"></div>
+            <div>Carregando categorias atuais...</div>
+          </div>
+        );
+      }
+
       return (
         <div className="app-container">
           <div className="header fade-in">
-            <h1><span>🏗️</span>Configuração do DRE</h1>
+            <h1><span>🏗️</span>Admin DRE - Categorias</h1>
             <div className="header-actions">
               <span className="user-info">👤 {user.email}</span>
-              {isDirty && <span style={{ color: '#fb923c', fontSize: '14px' }}>⚠️ Não salvo</span>}
+              {isDirty && <span style={{ color: '#fb923c', fontSize: '14px', fontWeight: 600 }}>⚠️ NÃO SALVO</span>}
               <button className="btn btn-secondary" onClick={handleLogout}>🚪 Sair</button>
-              <button className="btn btn-secondary" onClick={handleGenerateCode}>📦 Gerar Código</button>
-              <button className="btn btn-primary" onClick={handleSaveConfig} disabled={saving}>
-                {saving ? '💾 Salvando...' : '💾 Salvar Config'}
+              <button className="btn btn-secondary" onClick={handleGenerateCode} disabled={isDirty}>
+                📦 Gerar Código
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveConfig} disabled={saving || !isDirty}>
+                {saving ? '💾 Salvando...' : '💾 Salvar'}
               </button>
             </div>
           </div>
@@ -392,24 +446,27 @@
           <div className="stats-grid fade-in">
             <div className="stat-card">
               <div className="stat-value">{categories.filter(c => c.id !== 'ignorar').length}</div>
-              <div className="stat-label">Categorias</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">2</div>
-              <div className="stat-label">Blocos de Código</div>
+              <div className="stat-label">Categorias Ativas</div>
             </div>
             <div className="stat-card">
               <div className="stat-value">{isDirty ? '⚠️' : '✅'}</div>
-              <div className="stat-label">Status</div>
+              <div className="stat-label">{isDirty ? 'Não Salvo' : 'Sincronizado'}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">1</div>
+              <div className="stat-label">Bloco de Código</div>
             </div>
           </div>
 
           <div className="panel fade-in">
             <div className="panel-header">
-              <div className="panel-title"><span>📊</span>Categorias do DRE</div>
+              <div className="panel-title">
+                <span>📊</span>
+                Categorias do DRE (Atuais do Sistema)
+              </div>
             </div>
 
-            {categories.filter(c => c.id !== 'ignorar').map(cat => (
+            {categories.map(cat => (
               <div key={cat.id} className="category-item">
                 <div className="category-header">
                   <div className="category-info">
@@ -419,14 +476,16 @@
                     <div className="category-text">
                       <div className="category-label">{cat.label}</div>
                       <div className="category-meta">
-                        <span>{cat.type === 'income' ? '➕ Receita' : '➖ Despesa'}</span>
-                        <span>🔖 {cat.field}</span>
+                        <span>🔖 {cat.id}</span>
+                        <span>🎨 {cat.color}</span>
                       </div>
                     </div>
                   </div>
                   <div className="category-actions">
                     <button className="icon-btn" onClick={() => handleEditCategory(cat)}>✏️</button>
-                    <button className="icon-btn delete" onClick={() => handleDeleteCategory(cat.id)}>🗑️</button>
+                    {cat.id !== 'ignorar' && (
+                      <button className="icon-btn delete" onClick={() => handleDeleteCategory(cat.id)}>🗑️</button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -462,24 +521,16 @@
 
     function CategoryModal({ category, onSave, onClose, existingIds }) {
       const [formData, setFormData] = useState(category || {
-        id: '', field: '', label: '', icon: '📌', color: '#fb923c', type: 'expense'
+        id: '', label: '', icon: '📌', color: '#fb923c'
       });
 
       const handleChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
-        if (field === 'label' && !category) {
-          const fieldName = 'f_' + value.toLowerCase()
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9]/g, '_')
-            .replace(/_+/g, '_')
-            .replace(/^_|_$/g, '');
-          setFormData(prev => ({ ...prev, field: fieldName }));
-        }
       };
 
       const handleSubmit = () => {
-        if (!formData.id || !formData.label || !formData.field) {
-          alert('Preencha todos os campos!');
+        if (!formData.id || !formData.label) {
+          alert('Preencha ID e Nome!');
           return;
         }
         if (!category && existingIds.includes(formData.id)) {
@@ -500,16 +551,12 @@
             <div className="form-group">
               <label className="form-label">ID *</label>
               <input className="form-input" value={formData.id} onChange={e => handleChange('id', e.target.value)} disabled={!!category} />
+              <div className="form-hint">Identificador único (ex: despesa_terceiros)</div>
             </div>
 
             <div className="form-group">
               <label className="form-label">Nome *</label>
               <input className="form-input" value={formData.label} onChange={e => handleChange('label', e.target.value)} />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Campo *</label>
-              <input className="form-input" value={formData.field} onChange={e => handleChange('field', e.target.value)} />
             </div>
 
             <div className="form-group">
@@ -524,14 +571,6 @@
                 <input type="color" value={formData.color} onChange={e => handleChange('color', e.target.value)} />
                 <input className="form-input" value={formData.color} onChange={e => handleChange('color', e.target.value)} style={{ flex: 1 }} />
               </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Tipo *</label>
-              <select className="form-select" value={formData.type} onChange={e => handleChange('type', e.target.value)}>
-                <option value="expense">Despesa (subtrai)</option>
-                <option value="income">Receita (soma)</option>
-              </select>
             </div>
 
             <div className="modal-actions">
@@ -551,10 +590,10 @@
       const [copiedBlock, setCopiedBlock] = useState(null);
 
       const generateDRECatsCode = () => {
-        const cats = categories.filter(c => c.id !== 'ignorar').map(c => (
+        const cats = categories.map(c => (
           `  {id:'${c.id}', label:'${c.label}', color:'${c.color}', icon:'${c.icon}'}`
         )).join(',\n');
-        return `const DRE_CATS = [\n${cats},\n  {id:'ignorar', label:'Ignorar (total/subtotal)', color:'#374151', icon:'🚫'},\n];`;
+        return `const DRE_CATS = [\n${cats},\n];`;
       };
 
       const handleCopy = (code, blockName) => {
@@ -576,11 +615,13 @@
             <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '8px' }}>
               <div style={{ fontWeight: 600, marginBottom: '8px' }}>📋 Instruções:</div>
               <ol style={{ marginLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
-                <li>Copie o bloco abaixo</li>
-                <li>Vá no GitHub → fluxa-main → app.js</li>
-                <li>Encontre a linha <code>const DRE_CATS = [</code> (aproximadamente linha 4799)</li>
-                <li>Substitua TODO o bloco DRE_CATS</li>
-                <li>Commit → Vercel faz deploy automático</li>
+                <li>Copie o bloco abaixo clicando em "Copiar"</li>
+                <li>Vá no GitHub → fluxa-main → app.js → Editar</li>
+                <li>Ctrl+F e procure: <code>const DRE_CATS = [</code></li>
+                <li>Encontrará na linha ~4799</li>
+                <li>Selecione TODO o bloco DRE_CATS (até o <code>];</code>)</li>
+                <li>Cole o código novo</li>
+                <li>Commit → Vercel faz deploy (~2 min)</li>
                 <li>Pronto! ✅</li>
               </ol>
             </div>
@@ -597,7 +638,7 @@
             <div className="code-block">{dreCatsCode}</div>
 
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={onClose}>Fechar</button>
+              <button className="btn btn-primary" onClick={onClose}>Fechar</button>
             </div>
           </div>
         </div>

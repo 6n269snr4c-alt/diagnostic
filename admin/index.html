@@ -41,6 +41,8 @@
     .btn-small { padding: 8px 16px; font-size: 13px; }
     .btn-info { background: rgba(100,200,255,0.2); border: 1px solid rgba(100,200,255,0.4); color: #64c8ff; padding: 8px 16px; font-size: 13px; }
     .btn-info:hover { background: rgba(100,200,255,0.3); }
+    .btn-warning { background: rgba(251,146,60,0.2); border: 1px solid rgba(251,146,60,0.4); color: #fb923c; }
+    .btn-warning:hover { background: rgba(251,146,60,0.3); }
     .icon-btn { width: 32px; height: 32px; border: none; border-radius: 6px; background: rgba(255,255,255,0.1); color: #e2e8f0; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
     .icon-btn:hover { background: rgba(255,255,255,0.2); }
     .icon-btn.delete:hover { background: rgba(239,68,68,0.2); color: #ef4444; }
@@ -192,7 +194,7 @@
       }
     };
 
-    // 🎯 FUNÇÃO DE AUTO-UPDATE DE KPIs
+    // 🎯 FUNÇÃO DE AUTO-UPDATE DE KPIs (chamada manualmente)
     function autoUpdateKPIsFromStructure(structure, currentKPIs) {
       const updatedKPIs = {...currentKPIs};
       
@@ -217,29 +219,24 @@
         const kpi = updatedKPIs[kpiId];
         let newCategories = [];
         
-        // Margem Bruta: receita_liquida + custo_variavel
         if (kpiId === 'margbruta') {
           newCategories = ['receita_bruta', 'deducao_receita', ...resultRanges.lucro_bruto];
         }
-        // Margem de Contribuição: lucro_bruto + custo_variavel_comercial
         else if (kpiId === 'margem') {
           newCategories = ['receita_bruta', 'deducao_receita', ...resultRanges.lucro_bruto, ...resultRanges.margem_contribuicao];
         }
-        // EBITDA: margem_contribuicao até ebitda
         else if (kpiId === 'ebitda') {
           newCategories = ['receita_bruta', 'deducao_receita', ...resultRanges.lucro_bruto, ...resultRanges.margem_contribuicao, ...resultRanges.ebitda];
         }
-        // Despesas Operacionais: mesmas categorias entre margem_contribuicao e ebitda
         else if (kpiId === 'despop' || kpiId === 'eficiencia') {
           newCategories = resultRanges.ebitda;
         }
-        // Lucro Líquido: tudo até lucro_liquido
         else if (kpiId === 'lucroliq') {
           newCategories = ['receita_bruta', 'deducao_receita', ...resultRanges.lucro_bruto, ...resultRanges.margem_contribuicao, ...resultRanges.ebitda, ...resultRanges.lucro_liquido];
         }
         
         if (newCategories.length > 0) {
-          updatedKPIs[kpiId].categories = [...new Set(newCategories)]; // Remove duplicatas
+          updatedKPIs[kpiId].categories = [...new Set(newCategories)];
         }
       });
       
@@ -426,13 +423,9 @@
         const newItem = {id: cat.id, type: 'category', operation: 'subtract'};
         const newStructure = [...config.structure];
         newStructure.splice(lastIndex, 0, newItem);
-        
-        // 🎯 AUTO-UPDATE KPIs BASEADO NA NOVA ESTRUTURA
-        const updatedKPIs = autoUpdateKPIsFromStructure(newStructure, config.kpis);
-        
-        setConfig({...config, structure: newStructure, kpis: updatedKPIs});
+        setConfig({...config, structure: newStructure});
         setIsDirty(true);
-        showAlert(`${cat.label} adicionada! KPIs atualizados automaticamente! 🎉`, 'success');
+        showAlert(`${cat.label} adicionada! Ajuste a posição e clique "🔄 Atualizar KPIs"`, 'success');
       };
       
       const handleSaveCategory = (categoryData) => {
@@ -508,13 +501,9 @@
             const newStructure = [...config.structure];
             const [moved] = newStructure.splice(evt.oldIndex, 1);
             newStructure.splice(evt.newIndex, 0, moved);
-            
-            // 🎯 AUTO-UPDATE KPIs quando reordenar
-            const updatedKPIs = autoUpdateKPIsFromStructure(newStructure, config.kpis);
-            
-            setConfig({ ...config, structure: newStructure, kpis: updatedKPIs });
+            setConfig({ ...config, structure: newStructure });
             setIsDirty(true);
-            showAlert('Ordem alterada! KPIs atualizados! 🎉', 'info');
+            showAlert('Ordem alterada! Clique "🔄 Atualizar KPIs" quando terminar.', 'info');
           }
         });
         return () => sortable.destroy();
@@ -537,13 +526,17 @@
         if (!confirm(`Remover ${config.categories.find(c => c.id === step.id)?.label} da estrutura?`)) return;
         const newStructure = [...config.structure];
         newStructure.splice(index, 1);
-        
-        // 🎯 AUTO-UPDATE KPIs quando remover
-        const updatedKPIs = autoUpdateKPIsFromStructure(newStructure, config.kpis);
-        
-        setConfig({ ...config, structure: newStructure, kpis: updatedKPIs });
+        setConfig({ ...config, structure: newStructure });
         setIsDirty(true);
-        showAlert('Removido! KPIs atualizados! 🎉', 'warning');
+        showAlert('Removido! Clique "🔄 Atualizar KPIs"', 'warning');
+      };
+      
+      // 🎯 BOTÃO ATUALIZAR KPIs MANUALMENTE
+      const handleUpdateKPIs = () => {
+        const updatedKPIs = autoUpdateKPIsFromStructure(config.structure, config.kpis);
+        setConfig({ ...config, kpis: updatedKPIs });
+        setIsDirty(true);
+        showAlert('🎉 KPIs atualizados baseado na estrutura atual!', 'success');
       };
 
       const getCategoryById = (id) => config.categories.find(c => c.id === id);
@@ -551,11 +544,11 @@
       return (
         <div className="panel">
           <div className="panel-header">
-            <div className="panel-title"><span>🔗</span>Estrutura do DRE (Editável)</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Arraste • Clique +/− para mudar operação</div>
+            <div className="panel-title"><span>🔗</span>Estrutura do DRE</div>
+            <button className="btn btn-warning" onClick={handleUpdateKPIs}>🔄 Atualizar KPIs</button>
           </div>
 
-          <div className="info-box"><strong>💡 Auto-Update ATIVO!</strong><br/>• Quando você adiciona/remove/reordena categorias, os KPIs são atualizados automaticamente!<br/>• Sistema identifica entre quais resultados a categoria está e atualiza KPIs relevantes<br/>• Não precisa mais editar KPIs manualmente! 🎉</div>
+          <div className="info-box"><strong>💡 Como usar:</strong><br/>1. Arraste categorias para a posição correta<br/>2. Clique +/− para mudar operação (soma/subtrai)<br/>3. Quando terminar, clique <strong>"🔄 Atualizar KPIs"</strong> → Sistema analisa a estrutura e atualiza todos os KPIs automaticamente! 🎉</div>
 
           <div ref={containerRef}>
             {config.structure.map((step, index) => {
@@ -636,7 +629,7 @@
       return (
         <div className="panel">
           <div className="panel-header"><div className="panel-title"><span>🎯</span>KPIs (12 Total)</div></div>
-          <div className="info-box"><strong>🤖 Auto-Update ATIVO!</strong> KPIs são atualizados automaticamente quando você modifica a estrutura DRE! As categorias são adicionadas/removidas baseado na posição na estrutura. 🎉</div>
+          <div className="info-box"><strong>🔄 Atualizados via Estrutura DRE!</strong> Quando você organiza a estrutura DRE e clica "🔄 Atualizar KPIs", os KPIs são recalculados automaticamente baseado na posição de cada categoria!</div>
 
           {Object.entries(config.kpis).map(([kpiId, kpi]) => (
             <div key={kpiId} className="kpi-card">
@@ -644,7 +637,7 @@
                 <div><div className="kpi-title">{kpi.icon} {kpi.name}</div><div className="kpi-subtitle">{kpi.desc}</div></div>
                 <button className="btn btn-secondary btn-small" onClick={() => handleEditKPI(kpiId)}>✏️ Editar</button>
               </div>
-              <div className="kpi-meta"><span>🔖 {kpiId}</span><span>📏 {kpi.unit}</span><span>🎯 Meta: {kpi.goalDef}{kpi.unit}</span><span>🤖 Auto-updated</span></div>
+              <div className="kpi-meta"><span>🔖 {kpiId}</span><span>📏 {kpi.unit}</span><span>🎯 Meta: {kpi.goalDef}{kpi.unit}</span></div>
               <div style={{ marginTop: '12px' }}><div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Fórmula ({kpi.categories.length} cats):</div><div className="formula-preview">{generateDynamicFormula(kpi)}</div></div>
             </div>
           ))}
@@ -680,7 +673,6 @@
         <div className="modal" onClick={onClose} style={{ alignItems: 'flex-start', paddingTop: '40px' }}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ margin: '0 auto' }}>
             <div className="modal-header"><div className="modal-title">✏️ {kpi.name}</div><button className="icon-btn" onClick={onClose}>✖️</button></div>
-            <div className="info-box" style={{fontSize:'12px'}}>⚠️ Este KPI usa auto-update. As categorias são gerenciadas automaticamente pela estrutura DRE. Edições manuais podem ser sobrescritas.</div>
             <div className="form-group"><label className="form-label">Nome</label><input className="form-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
             <div className="form-group"><label className="form-label">Nome Curto</label><input className="form-input" value={formData.short} onChange={e => setFormData({ ...formData, short: e.target.value })} /></div>
             <div className="form-group"><label className="form-label">Emoji</label><input className="form-input" value={formData.icon} onChange={e => setFormData({ ...formData, icon: e.target.value })} maxLength={2} style={{fontSize:'28px',textAlign:'center'}} /></div>
@@ -688,7 +680,7 @@
             <div className="form-group"><label className="form-label">Meta</label><input type="number" className="form-input" value={formData.goalDef} onChange={e => setFormData({ ...formData, goalDef: Number(e.target.value) })} /></div>
             <div className="form-group"><label className="form-label">Fórmula (texto)</label><textarea className="form-textarea" value={formData.formula} onChange={e => setFormData({ ...formData, formula: e.target.value })} /></div>
             <div className="form-group"><label className="form-label">Descrição</label><textarea className="form-textarea" value={formData.desc} onChange={e => setFormData({ ...formData, desc: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Categorias (editável, mas auto-update pode sobrescrever)</label><div className="category-checkboxes">{config.categories.filter(c => c.id !== 'ignorar').map(cat => (<label key={cat.id} className="checkbox-item"><input type="checkbox" checked={formData.categories.includes(cat.id)} onChange={() => handleToggleCategory(cat.id)} /><span className="checkbox-label"><span>{cat.icon}</span><span>{cat.label}</span></span></label>))}</div></div>
+            <div className="form-group"><label className="form-label">Categorias (editável manualmente)</label><div className="category-checkboxes">{config.categories.filter(c => c.id !== 'ignorar').map(cat => (<label key={cat.id} className="checkbox-item"><input type="checkbox" checked={formData.categories.includes(cat.id)} onChange={() => handleToggleCategory(cat.id)} /><span className="checkbox-label"><span>{cat.icon}</span><span>{cat.label}</span></span></label>))}</div></div>
             <div><div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Preview:</div><div className="formula-preview">{generatePreview()}</div></div>
             <div className="modal-actions"><button className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={() => onSave(kpiId, formData)}>💾 Salvar</button></div>
           </div>

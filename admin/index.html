@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin DRE - Sistema Completo v2</title>
+  <title>Admin Fluxa - Sistema DRE</title>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -31,15 +31,16 @@
     .form-input, .form-select, .form-textarea { width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #e2e8f0; font-size: 14px; font-family: inherit; }
     .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: #00f0c8; background: rgba(255,255,255,0.08); }
     .form-textarea { min-height: 80px; resize: vertical; }
-    .form-hint { font-size: 12px; color: #94a3b8; margin-top: 4px; }
     
     .btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn-primary { background: linear-gradient(135deg, #00f0c8 0%, #00d4aa 100%); color: #0f172a; }
     .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,240,200,0.3); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-secondary { background: rgba(255,255,255,0.1); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.2); }
     .btn-secondary:hover { background: rgba(255,255,255,0.15); }
     .btn-small { padding: 8px 16px; font-size: 13px; }
+    .btn-info { background: rgba(100,200,255,0.2); border: 1px solid rgba(100,200,255,0.4); color: #64c8ff; padding: 8px 16px; font-size: 13px; }
+    .btn-info:hover { background: rgba(100,200,255,0.3); }
     .icon-btn { width: 32px; height: 32px; border: none; border-radius: 6px; background: rgba(255,255,255,0.1); color: #e2e8f0; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
     .icon-btn:hover { background: rgba(255,255,255,0.2); }
     .icon-btn.delete:hover { background: rgba(239,68,68,0.2); color: #ef4444; }
@@ -62,14 +63,13 @@
     .category-item, .structure-item { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: all 0.2s; cursor: grab; }
     .category-item:hover, .structure-item:hover { background: rgba(255,255,255,0.12); border-color: rgba(0,240,200,0.4); }
     .structure-item.result { background: rgba(100,200,255,0.1); border-left: 4px solid #64c8ff; cursor: default; }
-    .structure-item.dragging { opacity: 0.5; }
     .category-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .category-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
     .category-icon { font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
     .category-text { flex: 1; min-width: 0; }
     .category-label { font-size: 16px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
     .category-meta { font-size: 12px; color: #94a3b8; display: flex; gap: 12px; flex-wrap: wrap; }
-    .category-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .category-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
     
     .kpi-card { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
     .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; gap: 12px; }
@@ -81,13 +81,8 @@
     .checkbox-item:hover { background: rgba(255,255,255,0.08); }
     .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #00f0c8; }
     .checkbox-label { flex: 1; font-size: 14px; color: #e2e8f0; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-    .formula-preview { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; font-family: 'Courier New', monospace; font-size: 13px; color: #00f0c8; overflow-x: auto; line-height: 1.6; }
-    .formula-line { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-    .formula-op { color: #fb923c; font-weight: 700; min-width: 20px; }
-    .formula-cat { color: #e2e8f0; }
-    .formula-result { color: #60a5fa; font-weight: 600; }
+    .formula-preview { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; font-family: 'Courier New', monospace; font-size: 13px; color: #00f0c8; overflow-x: auto; line-height: 1.6; white-space: pre-wrap; }
     
-    .connector { display: flex; align-items: center; justify-content: center; margin: 8px 0; color: #64748b; font-size: 20px; }
     .add-btn { width: 100%; padding: 16px; background: rgba(0,240,200,0.1); border: 2px dashed rgba(0,240,200,0.3); border-radius: 12px; color: #00f0c8; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .add-btn:hover { background: rgba(0,240,200,0.15); border-color: rgba(0,240,200,0.5); }
     
@@ -118,14 +113,15 @@
     .sync-badge.synced { background: rgba(34,197,94,0.2); color: #4ade80; }
     .sync-badge.dirty { background: rgba(251,146,60,0.2); color: #fb923c; }
     
-    .operation-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-size: 16px; font-weight: 700; flex-shrink: 0; }
+    .operation-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-size: 16px; font-weight: 700; flex-shrink: 0; cursor: pointer; transition: all 0.2s; }
+    .operation-badge:hover { transform: scale(1.1); }
     .operation-badge.add { background: rgba(34,197,94,0.2); color: #4ade80; }
     .operation-badge.subtract { background: rgba(239,68,68,0.2); color: #f87171; }
     .operation-badge.result { background: rgba(59,130,246,0.2); color: #60a5fa; }
     
     .info-box { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 16px; margin: 16px 0; font-size: 14px; color: #60a5fa; line-height: 1.6; }
-    .drag-handle { cursor: grab; padding: 4px; }
-    .drag-handle:active { cursor: grabbing; }
+    .drag-handle { cursor: grab; padding: 4px; font-size: 20px; color: #94a3b8; }
+    .connector { display: flex; align-items: center; justify-content: center; margin: 8px 0; color: #64748b; font-size: 20px; }
   </style>
 </head>
 <body>
@@ -238,7 +234,7 @@
         try {
           await auth.signInWithEmailAndPassword(email, password);
         } catch (err) {
-          setError('Email ou senha incorretos, ou você não tem permissão de admin');
+          setError('Email ou senha incorretos');
           setLoading(false);
         }
       };
@@ -299,7 +295,7 @@
         } catch (err) {
           console.error('Erro:', err);
           setConfig(INITIAL_DATA);
-          showAlert('⚠️ Erro ao carregar', 'warning');
+          showAlert('⚠️ Erro', 'warning');
         } finally {
           setLoading(false);
         }
@@ -321,7 +317,7 @@
             updatedBy: user.email
           });
           setIsDirty(false);
-          showAlert('🎉 SALVO! Sistema atualizado!', 'success');
+          showAlert('🎉 SALVO!', 'success');
         } catch (err) {
           showAlert('❌ Erro: ' + err.message, 'error');
         } finally {
@@ -337,18 +333,18 @@
             <h1><span>🏗️</span>Admin Sistema DRE</h1>
             <div className="header-actions">
               <span className="user-info">👤 {user.email}</span>
-              <span className={`sync-badge ${isDirty ? 'dirty' : 'synced'}`}>{isDirty ? '⚠️ Não Salvo' : '✅ Sincronizado'}</span>
-              <button className="btn btn-secondary" onClick={() => auth.signOut()}>🚪 Sair</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving || !isDirty}>{saving ? '💾 Salvando...' : '💾 Salvar Tudo'}</button>
+              <span className={`sync-badge ${isDirty ? 'dirty' : 'synced'}`}>{isDirty ? '⚠️ Não Salvo' : '✅ OK'}</span>
+              <button className="btn btn-secondary" onClick={() => auth.signOut()}>Sair</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving || !isDirty}>{saving ? '💾 Salvando...' : '💾 Salvar'}</button>
             </div>
           </div>
 
           {alert && <div className={`alert alert-${alert.type}`}><span>{alert.type === 'success' ? '✅' : alert.type === 'error' ? '❌' : alert.type === 'info' ? 'ℹ️' : '⚠️'}</span><span>{alert.message}</span></div>}
 
           <div className="tabs">
-            <button className={`tab ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}><span>📊</span>Categorias DRE</button>
+            <button className={`tab ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}><span>📊</span>Categorias</button>
             <button className={`tab ${activeTab === 'structure' ? 'active' : ''}`} onClick={() => setActiveTab('structure')}><span>🔗</span>Estrutura DRE</button>
-            <button className={`tab ${activeTab === 'kpis' ? 'active' : ''}`} onClick={() => setActiveTab('kpis')}><span>🎯</span>KPIs (12 Total)</button>
+            <button className={`tab ${activeTab === 'kpis' ? 'active' : ''}`} onClick={() => setActiveTab('kpis')}><span>🎯</span>KPIs (12)</button>
           </div>
 
           {activeTab === 'categories' && <CategoriesTab config={config} setConfig={setConfig} setIsDirty={setIsDirty} showAlert={showAlert} showModal={showCategoryModal} setShowModal={setShowCategoryModal} editingCategory={editingCategory} setEditingCategory={setEditingCategory} />}
@@ -358,20 +354,29 @@
       );
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // CATEGORIAS (igual ao anterior)
-    // ═══════════════════════════════════════════════════════════════════════
-
     function CategoriesTab({ config, setConfig, setIsDirty, showAlert, showModal, setShowModal, editingCategory, setEditingCategory }) {
       const handleAddCategory = () => { setEditingCategory(null); setShowModal(true); };
       const handleEditCategory = (cat) => { setEditingCategory(cat); setShowModal(true); };
       const handleDeleteCategory = (id) => {
         if (id === 'ignorar') { alert('Não pode remover "Ignorar"!'); return; }
-        if (!confirm('Remover esta categoria?')) return;
+        if (!confirm('Remover?')) return;
         setConfig({ ...config, categories: config.categories.filter(c => c.id !== id), structure: config.structure.filter(s => s.id !== id) });
         setIsDirty(true);
-        showAlert('Categoria removida!', 'warning');
+        showAlert('Removida!', 'warning');
       };
+      
+      const handleAddToStructure = (cat) => {
+        const exists = config.structure.find(s => s.id === cat.id && s.type === 'category');
+        if (exists) { showAlert('Já está na estrutura!', 'warning'); return; }
+        const lastIndex = config.structure.length - 1;
+        const newItem = {id: cat.id, type: 'category', operation: 'subtract'};
+        const newStructure = [...config.structure];
+        newStructure.splice(lastIndex, 0, newItem);
+        setConfig({...config, structure: newStructure});
+        setIsDirty(true);
+        showAlert(`${cat.label} adicionada!`, 'success');
+      };
+      
       const handleSaveCategory = (categoryData) => {
         if (editingCategory) {
           setConfig({ ...config, categories: config.categories.map(c => c.id === editingCategory.id ? { ...c, ...categoryData } : c) });
@@ -380,7 +385,7 @@
         }
         setIsDirty(true);
         setShowModal(false);
-        showAlert(editingCategory ? 'Categoria atualizada!' : 'Categoria adicionada!', 'info');
+        showAlert(editingCategory ? 'Atualizada!' : 'Adicionada!', 'info');
       };
 
       return (
@@ -397,13 +402,14 @@
                   </div>
                 </div>
                 <div className="category-actions">
+                  <button className="btn btn-info" onClick={() => handleAddToStructure(cat)}>➕ Adicionar à Estrutura</button>
                   <button className="icon-btn" onClick={() => handleEditCategory(cat)}>✏️</button>
                   {cat.id !== 'ignorar' && <button className="icon-btn delete" onClick={() => handleDeleteCategory(cat.id)}>🗑️</button>}
                 </div>
               </div>
             </div>
           ))}
-          <button className="add-btn" onClick={handleAddCategory}><span>➕</span>Adicionar Nova Categoria</button>
+          <button className="add-btn" onClick={handleAddCategory}><span>➕</span>Nova Categoria</button>
           {showModal && <CategoryModal category={editingCategory} onSave={handleSaveCategory} onClose={() => setShowModal(false)} existingIds={config.categories.map(c => c.id)} />}
         </div>
       );
@@ -423,17 +429,13 @@
             <div className="modal-header"><div className="modal-title">{category ? '✏️ Editar' : '➕ Nova'} Categoria</div><button className="icon-btn" onClick={onClose}>✖️</button></div>
             <div className="form-group"><label className="form-label">ID *</label><input className="form-input" value={formData.id} onChange={e => setFormData({ ...formData, id: e.target.value })} disabled={!!category} /></div>
             <div className="form-group"><label className="form-label">Nome *</label><input className="form-input" value={formData.label} onChange={e => setFormData({ ...formData, label: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Emoji</label><input className="form-input" value={formData.icon} onChange={e => setFormData({ ...formData, icon: e.target.value })} maxLength={2} /></div>
+            <div className="form-group"><label className="form-label">Emoji</label><input className="form-input" value={formData.icon} onChange={e => setFormData({ ...formData, icon: e.target.value })} maxLength={2} style={{fontSize:'28px',textAlign:'center'}} placeholder="💰" /></div>
             <div className="form-group"><label className="form-label">Cor</label><div className="color-picker-group"><div className="color-preview" style={{ background: formData.color }}></div><input type="color" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} style={{ width: '60px', height: '40px', cursor: 'pointer', border: 'none', borderRadius: '8px' }} /><input className="form-input" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} style={{ flex: 1 }} /></div></div>
             <div className="modal-actions"><button className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={handleSubmit}>Salvar</button></div>
           </div>
         </div>
       );
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // ESTRUTURA DRE - EDITÁVEL COM DRAG & DROP
-    // ═══════════════════════════════════════════════════════════════════════
 
     function StructureTab({ config, setConfig, setIsDirty, showAlert }) {
       const containerRef = useRef(null);
@@ -466,6 +468,17 @@
         setIsDirty(true);
         showAlert('Operação alterada!', 'info');
       };
+      
+      const handleRemoveFromStructure = (index) => {
+        const step = config.structure[index];
+        if (step.type === 'result') { showAlert('Não pode remover resultados!', 'error'); return; }
+        if (!confirm(`Remover ${config.categories.find(c => c.id === step.id)?.label} da estrutura?`)) return;
+        const newStructure = [...config.structure];
+        newStructure.splice(index, 1);
+        setConfig({ ...config, structure: newStructure });
+        setIsDirty(true);
+        showAlert('Removido!', 'warning');
+      };
 
       const getCategoryById = (id) => config.categories.find(c => c.id === id);
 
@@ -473,21 +486,16 @@
         <div className="panel">
           <div className="panel-header">
             <div className="panel-title"><span>🔗</span>Estrutura do DRE (Editável)</div>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Arraste para reordenar • Clique na operação (+/-) para mudar</div>
+            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Arraste • Clique +/− para mudar operação</div>
           </div>
 
-          <div className="info-box">
-            <strong>💡 Como editar:</strong><br/>
-            • Arraste os itens para reordenar<br/>
-            • Clique no círculo (+/-) para mudar a operação<br/>
-            • Resultados (=) não podem ser movidos
-          </div>
+          <div className="info-box"><strong>💡 Como usar:</strong><br/>• Arraste os itens para reordenar<br/>• Clique no círculo (+/−) para mudar operação<br/>• Resultados (=) não podem ser movidos</div>
 
           <div ref={containerRef}>
             {config.structure.map((step, index) => {
               if (step.type === 'result') {
                 return (
-                  <div key={step.id}>
+                  <div key={step.id + index}>
                     {index > 0 && <div className="connector">↓</div>}
                     <div className="structure-item result">
                       <div className="category-header">
@@ -495,7 +503,7 @@
                           <div className="category-icon operation-badge result">=</div>
                           <div className="category-text">
                             <div className="category-label">{step.label}</div>
-                            <div className="category-meta"><span>📊 Resultado calculado</span><span>🔖 {step.id}</span></div>
+                            <div className="category-meta"><span>📊 Resultado</span></div>
                           </div>
                         </div>
                       </div>
@@ -506,21 +514,22 @@
               const category = getCategoryById(step.id);
               if (!category) return null;
               return (
-                <div key={step.id}>
+                <div key={step.id + index}>
                   {index > 0 && <div className="connector">↓</div>}
                   <div className="structure-item">
                     <div className="category-header">
-                      <div className="drag-handle" style={{ fontSize: '20px', color: '#94a3b8' }}>⠿</div>
+                      <div className="drag-handle">⠿</div>
                       <div className="category-info">
-                        <div className={`operation-badge ${step.operation === 'add' ? 'add' : step.operation === 'subtract' ? 'subtract' : 'result'}`} onClick={() => handleToggleOperation(index)} style={{ cursor: 'pointer' }}>
+                        <div className={`operation-badge ${step.operation === 'add' ? 'add' : step.operation === 'subtract' ? 'subtract' : 'result'}`} onClick={() => handleToggleOperation(index)}>
                           {step.operation === 'add' ? '+' : step.operation === 'subtract' ? '−' : '='}
                         </div>
                         <div className="category-icon" style={{ background: category.color + '22' }}>{category.icon}</div>
                         <div className="category-text">
                           <div className="category-label">{category.label}</div>
-                          <div className="category-meta"><span>{step.operation === 'add' ? '➕ Soma' : step.operation === 'subtract' ? '➖ Subtrai' : '🎯 Inicia'}</span><span>🔖 {category.id}</span></div>
+                          <div className="category-meta"><span>{step.operation === 'add' ? '➕ Soma' : step.operation === 'subtract' ? '➖ Subtrai' : '🎯 Inicia'}</span></div>
                         </div>
                       </div>
+                      <button className="icon-btn delete" onClick={() => handleRemoveFromStructure(index)}>✖️</button>
                     </div>
                   </div>
                 </div>
@@ -530,10 +539,6 @@
         </div>
       );
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // KPIs - COM FÓRMULA DINÂMICA
-    // ═══════════════════════════════════════════════════════════════════════
 
     function KPIsTab({ config, setConfig, setIsDirty, showAlert, showModal, setShowModal, editingKPI, setEditingKPI }) {
       const handleEditKPI = (kpiId) => {
@@ -548,9 +553,8 @@
         showAlert('KPI atualizado!', 'info');
       };
 
-      const generateDynamicFormula = (kpiId, kpi) => {
-        if (!kpi.categories || kpi.categories.length === 0) return 'Nenhuma categoria selecionada';
-        
+      const generateDynamicFormula = (kpi) => {
+        if (!kpi.categories || kpi.categories.length === 0) return 'Nenhuma categoria';
         const lines = [];
         kpi.categories.forEach(catId => {
           const cat = config.categories.find(c => c.id === catId);
@@ -565,21 +569,17 @@
 
       return (
         <div className="panel">
-          <div className="panel-header"><div className="panel-title"><span>🎯</span>KPIs (12 Total)</div><div style={{ fontSize: '12px', color: '#94a3b8' }}>Marcar categorias → Fórmula atualiza em tempo real</div></div>
-
-          <div className="info-box"><strong>💡 Como funciona:</strong> Marque as categorias que compõem cada KPI. A fórmula mostra as operações (+/−) baseadas na estrutura do DRE. O dashboard calcula automaticamente!</div>
+          <div className="panel-header"><div className="panel-title"><span>🎯</span>KPIs (12 Total)</div></div>
+          <div className="info-box"><strong>💡 Como funciona:</strong> Marque as categorias que compõem cada KPI. A fórmula mostra as operações (+/−) da estrutura DRE.</div>
 
           {Object.entries(config.kpis).map(([kpiId, kpi]) => (
             <div key={kpiId} className="kpi-card">
               <div className="kpi-header">
-                <div>
-                  <div className="kpi-title">{kpi.icon} {kpi.name}</div>
-                  <div className="kpi-subtitle">{kpi.desc}</div>
-                </div>
+                <div><div className="kpi-title">{kpi.icon} {kpi.name}</div><div className="kpi-subtitle">{kpi.desc}</div></div>
                 <button className="btn btn-secondary btn-small" onClick={() => handleEditKPI(kpiId)}>✏️ Editar</button>
               </div>
-              <div className="kpi-meta"><span>🔖 {kpiId}</span><span>📏 {kpi.unit}</span><span>🎯 Meta: {kpi.goalDef}{kpi.unit}</span><span>📂 {kpi.group === 'tracao' ? '📈 Tração' : '💰 Rentabilidade'}</span></div>
-              <div style={{ marginTop: '12px' }}><div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Fórmula Dinâmica ({kpi.categories.length} categorias):</div><div className="formula-preview">{generateDynamicFormula(kpiId, kpi)}</div></div>
+              <div className="kpi-meta"><span>🔖 {kpiId}</span><span>📏 {kpi.unit}</span><span>🎯 Meta: {kpi.goalDef}{kpi.unit}</span></div>
+              <div style={{ marginTop: '12px' }}><div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Fórmula ({kpi.categories.length} cats):</div><div className="formula-preview">{generateDynamicFormula(kpi)}</div></div>
             </div>
           ))}
 
@@ -597,7 +597,7 @@
       };
 
       const generatePreview = () => {
-        if (formData.categories.length === 0) return 'Nenhuma categoria selecionada';
+        if (formData.categories.length === 0) return 'Nenhuma categoria';
         const lines = [];
         formData.categories.forEach(catId => {
           const cat = config.categories.find(c => c.id === catId);
@@ -613,17 +613,17 @@
       return (
         <div className="modal" onClick={onClose} style={{ alignItems: 'flex-start', paddingTop: '40px' }}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ margin: '0 auto' }}>
-            <div className="modal-header"><div className="modal-title">✏️ Editar KPI: {kpi.name}</div><button className="icon-btn" onClick={onClose}>✖️</button></div>
-            <div className="form-group"><label className="form-label">Nome do KPI</label><input className="form-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
+            <div className="modal-header"><div className="modal-title">✏️ {kpi.name}</div><button className="icon-btn" onClick={onClose}>✖️</button></div>
+            <div className="form-group"><label className="form-label">Nome</label><input className="form-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
             <div className="form-group"><label className="form-label">Nome Curto</label><input className="form-input" value={formData.short} onChange={e => setFormData({ ...formData, short: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Emoji</label><input className="form-input" value={formData.icon} onChange={e => setFormData({ ...formData, icon: e.target.value })} maxLength={2} /></div>
+            <div className="form-group"><label className="form-label">Emoji</label><input className="form-input" value={formData.icon} onChange={e => setFormData({ ...formData, icon: e.target.value })} maxLength={2} style={{fontSize:'28px',textAlign:'center'}} /></div>
             <div className="form-group"><label className="form-label">Unidade</label><input className="form-input" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Meta Padrão</label><input type="number" className="form-input" value={formData.goalDef} onChange={e => setFormData({ ...formData, goalDef: Number(e.target.value) })} /></div>
+            <div className="form-group"><label className="form-label">Meta</label><input type="number" className="form-input" value={formData.goalDef} onChange={e => setFormData({ ...formData, goalDef: Number(e.target.value) })} /></div>
             <div className="form-group"><label className="form-label">Fórmula (texto)</label><textarea className="form-textarea" value={formData.formula} onChange={e => setFormData({ ...formData, formula: e.target.value })} /></div>
             <div className="form-group"><label className="form-label">Descrição</label><textarea className="form-textarea" value={formData.desc} onChange={e => setFormData({ ...formData, desc: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Categorias (marque para incluir no cálculo)</label><div className="category-checkboxes">{config.categories.filter(c => c.id !== 'ignorar').map(cat => (<label key={cat.id} className="checkbox-item"><input type="checkbox" checked={formData.categories.includes(cat.id)} onChange={() => handleToggleCategory(cat.id)} /><span className="checkbox-label"><span>{cat.icon}</span><span>{cat.label}</span></span></label>))}</div></div>
-            <div><div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Preview da Fórmula:</div><div className="formula-preview">{generatePreview()}</div></div>
-            <div className="modal-actions"><button className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={() => onSave(kpiId, formData)}>💾 Salvar KPI</button></div>
+            <div className="form-group"><label className="form-label">Categorias</label><div className="category-checkboxes">{config.categories.filter(c => c.id !== 'ignorar').map(cat => (<label key={cat.id} className="checkbox-item"><input type="checkbox" checked={formData.categories.includes(cat.id)} onChange={() => handleToggleCategory(cat.id)} /><span className="checkbox-label"><span>{cat.icon}</span><span>{cat.label}</span></span></label>))}</div></div>
+            <div><div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>Preview:</div><div className="formula-preview">{generatePreview()}</div></div>
+            <div className="modal-actions"><button className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={() => onSave(kpiId, formData)}>💾 Salvar</button></div>
           </div>
         </div>
       );

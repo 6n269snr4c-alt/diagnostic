@@ -843,9 +843,9 @@
       };
 
       const openUserDashboard = (userId) => {
-        // Abre o dashboard do usuário em nova aba (modo visualização)
+        // Abre o dashboard do usuário na mesma aba (modo visualização)
         const baseUrl = window.location.origin.replace('/admin', '');
-        window.open(`${baseUrl}?viewUser=${userId}`, '_blank');
+        window.location.href = `${baseUrl}?viewUser=${userId}`;
       };
 
       const formatDate = (timestamp) => {

@@ -202,6 +202,7 @@ let S={
 let _adminViewMode = false;
 let _viewingUserId = null;
 let _viewingUserName = null;
+let _viewingUserEmail = null;
 let _adminUserId = null;
 
 // Salva no Firestore (debounced)
@@ -4774,7 +4775,10 @@ function _showAdminViewBanner(){
       <span style="font-size: 20px;">👁️</span>
       <div>
         <div style="font-weight: 600; font-size: 14px;">Modo Visualização de Admin</div>
-        <div style="font-size: 12px; opacity: 0.9;">Visualizando dados de: <strong>${_viewingUserName}</strong></div>
+        <div style="font-size: 12px; opacity: 0.9;">
+          <strong>${_viewingUserName}</strong>
+          <span style="opacity: 0.7; margin-left: 8px;">${_viewingUserEmail}</span>
+        </div>
       </div>
     </div>
     <button onclick="_exitAdminViewMode()" style="
@@ -4825,10 +4829,12 @@ document.addEventListener('DOMContentLoaded',()=>{
           _viewingUserId = viewUserId;
           _adminUserId = user.uid;
           
-          // Carrega nome do usuário sendo visualizado
+          // Carrega nome e email do usuário sendo visualizado
           const viewingUserDoc = await db.collection('users').doc(viewUserId).get();
           if(viewingUserDoc.exists){
-            _viewingUserName = viewingUserDoc.data().userName || viewingUserDoc.data().company || 'Usuário';
+            const userData = viewingUserDoc.data();
+            _viewingUserName = userData.userName || userData.company || 'Usuário';
+            _viewingUserEmail = userData.email || 'Email não disponível';
           }
           
           // Carrega dados do usuário sendo visualizado
@@ -4845,6 +4851,24 @@ document.addEventListener('DOMContentLoaded',()=>{
         // Modo normal
         _adminViewMode = false;
         await loadUserData(user.uid);
+        
+        // ═══ Salva email do usuário no Firestore (para admin poder visualizar) ═══
+        // Só salva se NÃO estiver em modo admin view
+        try {
+          const userDoc = await db.collection('users').doc(user.uid).get();
+          if(userDoc.exists){
+            const userData = userDoc.data();
+            // Se não tem email salvo, salva agora
+            if(!userData.email && user.email){
+              await db.collection('users').doc(user.uid).update({
+                email: user.email
+              });
+              console.log('✅ Email do usuário salvo no Firestore');
+            }
+          }
+        } catch(err){
+          console.warn('Erro ao salvar email:', err);
+        }
       }
 
       // ── Garante que todos os KPIs do IND têm entrada em S.cfg e S.goals ──

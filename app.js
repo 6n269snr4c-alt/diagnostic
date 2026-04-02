@@ -196,9 +196,22 @@ let S={
   sel:null,
 };
 
+// ═══════════════════════════════════════════
+// ADMIN VIEW MODE
+// ═══════════════════════════════════════════
+let _adminViewMode = false;
+let _viewingUserId = null;
+let _viewingUserName = null;
+let _adminUserId = null;
+
 // Salva no Firestore (debounced)
 let _svTimer=null;
 function sv(){
+  // 🔒 Bloqueia salvamento em modo visualização de admin
+  if(_adminViewMode){
+    console.log('⚠️ Salvamento bloqueado - Modo visualização de admin');
+    return;
+  }
   clearTimeout(_svTimer);
   _svTimer=setTimeout(async()=>{
     const u=auth.currentUser;if(!u)return;
@@ -4732,7 +4745,42 @@ document.addEventListener('DOMContentLoaded',()=>{
   rImportPage();
   auth.onAuthStateChanged(async(user)=>{
     if(user){
-      await loadUserData(user.uid);
+      // ═══ MODO VISUALIZAÇÃO DE ADMIN ═══
+      const urlParams = new URLSearchParams(window.location.search);
+      const viewUserId = urlParams.get('viewUser');
+      
+      if(viewUserId){
+        // Verifica se o usuário logado é admin
+        const adminDoc = await db.collection('users').doc(user.uid).get();
+        const isAdmin = adminDoc.exists && adminDoc.data().isAdmin === true;
+        
+        if(isAdmin){
+          console.log('👁️ Modo Visualização de Admin ativado');
+          _adminViewMode = true;
+          _viewingUserId = viewUserId;
+          _adminUserId = user.uid;
+          
+          // Carrega nome do usuário sendo visualizado
+          const viewingUserDoc = await db.collection('users').doc(viewUserId).get();
+          if(viewingUserDoc.exists){
+            _viewingUserName = viewingUserDoc.data().userName || viewingUserDoc.data().company || 'Usuário';
+          }
+          
+          // Carrega dados do usuário sendo visualizado
+          await loadUserData(viewUserId);
+          
+          // Mostra banner de visualização
+          _showAdminViewBanner();
+        }else{
+          // Não é admin, ignora parâmetro e carrega próprios dados
+          console.warn('⚠️ Tentativa de visualizar outro usuário sem ser admin');
+          await loadUserData(user.uid);
+        }
+      }else{
+        // Modo normal
+        _adminViewMode = false;
+        await loadUserData(user.uid);
+      }
 
       // ── Garante que todos os KPIs do IND têm entrada em S.cfg e S.goals ──
       IND.forEach(function(ind){
@@ -7486,6 +7534,67 @@ function renderExecChartModal() {
   const padding = 40;
   const chartWidth = width - padding * 2;
   const chartHeight = height - padding * 2;
+
+// ═══════════════════════════════════════════
+// ADMIN VIEW MODE - BANNER
+// ═══════════════════════════════════════════
+function _showAdminViewBanner(){
+  // Remove banner existente se houver
+  const existing = document.getElementById('adminViewBanner');
+  if(existing) existing.remove();
+  
+  // Cria banner
+  const banner = document.createElement('div');
+  banner.id = 'adminViewBanner';
+  banner.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+  
+  banner.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 20px;">👁️</span>
+      <div>
+        <div style="font-weight: 600; font-size: 14px;">Modo Visualização de Admin</div>
+        <div style="font-size: 12px; opacity: 0.9;">Visualizando dados de: <strong>${_viewingUserName}</strong></div>
+      </div>
+    </div>
+    <button onclick="_exitAdminViewMode()" style="
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s;
+    " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+      🚪 Sair do Modo Visualização
+    </button>
+  `;
+  
+  document.body.insertBefore(banner, document.body.firstChild);
+  
+  // Ajusta padding do body para não ficar atrás do banner
+  document.body.style.paddingTop = '60px';
+}
+
+function _exitAdminViewMode(){
+  // Volta para o painel admin
+  window.location.href = window.location.origin + '/admin';
+}
   const step = chartWidth / (months.length - 1 || 1);
   
   ctx.clearRect(0, 0, width, height);

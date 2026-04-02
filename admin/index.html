@@ -745,29 +745,41 @@
       const loadUsers = async () => {
         setLoadingUsers(true);
         try {
+          console.log('🔍 Buscando usuários...');
           const snapshot = await db.collection('users').get();
+          console.log(`📦 ${snapshot.docs.length} documentos encontrados`);
+          
           const usersList = [];
           
           snapshot.docs.forEach(doc => {
-            const data = doc.data();
-            // Busca o usuário do Auth para pegar email
-            const currentUser = auth.currentUser;
-            usersList.push({
-              uid: doc.id,
-              name: data.name || data.cfg?.userName || 'Sem nome',
-              email: data.email || 'email@placeholder.com',
-              phone: data.phone || data.cfg?.whatsappPhone || '',
-              empresa: data.empresa || data.company || null,
-              createdAt: data.createdAt || data.cfg?.createdAt || null,
-              isAdmin: data.isAdmin || false
-            });
+            try {
+              const data = doc.data();
+              console.log(`📄 Processando doc ${doc.id}:`, data);
+              
+              const user = {
+                uid: doc.id,
+                name: data.name || (data.cfg && data.cfg.userName) || 'Sem nome',
+                email: data.email || 'N/A',
+                phone: data.phone || (data.cfg && data.cfg.whatsappPhone) || '-',
+                empresa: data.empresa || data.company || null,
+                createdAt: data.createdAt || (data.cfg && data.cfg.createdAt) || null,
+                isAdmin: data.isAdmin || false
+              };
+              
+              usersList.push(user);
+              console.log(`✅ Usuário processado:`, user);
+            } catch (docErr) {
+              console.error(`❌ Erro ao processar doc ${doc.id}:`, docErr);
+            }
           });
           
+          console.log(`✅ Total processado: ${usersList.length} usuários`);
           setUsers(usersList);
           showAlert(`✅ ${usersList.length} usuários carregados`, 'success');
         } catch (err) {
-          console.error('Erro ao carregar usuários:', err);
-          showAlert('❌ Erro ao carregar usuários', 'error');
+          console.error('❌ ERRO COMPLETO:', err);
+          console.error('Stack:', err.stack);
+          showAlert(`❌ Erro: ${err.message}`, 'error');
         } finally {
           setLoadingUsers(false);
         }

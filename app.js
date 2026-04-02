@@ -4741,6 +4741,71 @@ document.addEventListener('fullscreenchange',function(){
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('loginScreen').style.display!=='none')doLogin();
 });
+
+// ═══════════════════════════════════════════
+// ADMIN VIEW MODE - BANNER
+// ═══════════════════════════════════════════
+function _showAdminViewBanner(){
+  // Remove banner existente se houver
+  const existing = document.getElementById('adminViewBanner');
+  if(existing) existing.remove();
+  
+  // Cria banner
+  const banner = document.createElement('div');
+  banner.id = 'adminViewBanner';
+  banner.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+  
+  banner.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 20px;">👁️</span>
+      <div>
+        <div style="font-weight: 600; font-size: 14px;">Modo Visualização de Admin</div>
+        <div style="font-size: 12px; opacity: 0.9;">Visualizando dados de: <strong>${_viewingUserName}</strong></div>
+      </div>
+    </div>
+    <button onclick="_exitAdminViewMode()" style="
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s;
+    " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+      🚪 Sair do Modo Visualização
+    </button>
+  `;
+  
+  document.body.insertBefore(banner, document.body.firstChild);
+  
+  // Ajusta padding do body para não ficar atrás do banner
+  document.body.style.paddingTop = '60px';
+}
+
+function _exitAdminViewMode(){
+  // Volta para o painel admin
+  window.location.href = window.location.origin + '/admin';
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',()=>{
   rImportPage();
   auth.onAuthStateChanged(async(user)=>{
@@ -7535,66 +7600,6 @@ function renderExecChartModal() {
   const chartWidth = width - padding * 2;
   const chartHeight = height - padding * 2;
 
-// ═══════════════════════════════════════════
-// ADMIN VIEW MODE - BANNER
-// ═══════════════════════════════════════════
-function _showAdminViewBanner(){
-  // Remove banner existente se houver
-  const existing = document.getElementById('adminViewBanner');
-  if(existing) existing.remove();
-  
-  // Cria banner
-  const banner = document.createElement('div');
-  banner.id = 'adminViewBanner';
-  banner.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: #fff;
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    z-index: 99999;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  `;
-  
-  banner.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <span style="font-size: 20px;">👁️</span>
-      <div>
-        <div style="font-weight: 600; font-size: 14px;">Modo Visualização de Admin</div>
-        <div style="font-size: 12px; opacity: 0.9;">Visualizando dados de: <strong>${_viewingUserName}</strong></div>
-      </div>
-    </div>
-    <button onclick="_exitAdminViewMode()" style="
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.3);
-      color: #fff;
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 13px;
-      transition: all 0.2s;
-    " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-      🚪 Sair do Modo Visualização
-    </button>
-  `;
-  
-  document.body.insertBefore(banner, document.body.firstChild);
-  
-  // Ajusta padding do body para não ficar atrás do banner
-  document.body.style.paddingTop = '60px';
-}
-
-function _exitAdminViewMode(){
-  // Volta para o painel admin
-  window.location.href = window.location.origin + '/admin';
-}
   const step = chartWidth / (months.length - 1 || 1);
   
   ctx.clearRect(0, 0, width, height);
